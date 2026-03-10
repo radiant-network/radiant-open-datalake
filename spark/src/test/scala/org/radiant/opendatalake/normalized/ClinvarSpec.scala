@@ -3,18 +3,17 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.models.normalized.NormalizedClinvar
 import bio.ferlab.datalake.testutils.models.raw.RawClinvar
-import bio.ferlab.datalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec, TestETLContext}
-import io.delta.tables.DeltaTable
-import org.radiant.opendatalake.testutils.WithTestConfig
+import bio.ferlab.datalake.testutils.TestETLContext
+import org.radiant.opendatalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec}
 
-class ClinvarSpec extends SparkSpec with WithTestConfig with CreateDatabasesBeforeAll with CleanUpBeforeAll {
+class ClinvarSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBeforeAll {
 
   import spark.implicits._
 
   val source: DatasetConf = conf.getDataset("raw_clinvar")
   val destination: DatasetConf = conf.getDataset("normalized_clinvar")
 
-  override val dbToCreate: List[String] = List(destination.table.map(_.database).getOrElse("radiantodl"))
+  override val dbToCreate: List[String] = List(destination.table.map(_.database).get)
   override val dsToClean: List[DatasetConf] = List(destination)
 
   "transform" should "transform ClinvarInput to ClinvarOutput" in {
@@ -34,19 +33,16 @@ class ClinvarSpec extends SparkSpec with WithTestConfig with CreateDatabasesBefo
 
     val job = new Clinvar(TestETLContext())
     job.loadSingle(firstLoad.toDF())
-    val firstResult = spark.read.format("delta").load(destination.location)
+    val firstResult = spark.read.format("iceberg").load(destination.location)
     firstResult.select("chromosome", "start", "end", "reference", "alternate", "name").show(false)
     firstResult.as[NormalizedClinvar].collect() should contain allElementsOf firstLoad
 
     job.loadSingle(secondLoad.toDF())
-    val secondResult = spark.read.format("delta").load(destination.location)
+    val secondResult = spark.read.format("iceberg").load(destination.location)
     secondResult.select("chromosome", "start", "end", "reference", "alternate", "name").show(false)
     secondResult.as[NormalizedClinvar].collect() should contain allElementsOf expectedResults
 
-    DeltaTable.forName("radiantodl.clinvar").history().show(false)
-    spark.sql("DESCRIBE DETAIL radiantodl.clinvar").show(false)
+    val snapshots = spark.sql("SELECT * FROM reference.clinvar.snapshots").collect()
+    snapshots.length shouldBe 2 // One for each overwrite
   }
 }
-
-
-

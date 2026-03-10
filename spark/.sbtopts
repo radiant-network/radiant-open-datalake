@@ -1,0 +1,6 @@
+-J-Xms2048m
+-J-Xmx4G
+-J-XX:ReservedCodeCacheSize=128m
+-J-XX:MaxMetaspaceSize=512m
+-J-XX:+UseG1GC
+-J-Xss5M

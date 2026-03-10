@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.config
 
-import bio.ferlab.datalake.commons.config.Format.{CSV, DELTA, GFF, VCF, XML}
+import bio.ferlab.datalake.commons.config.Format.{CSV, GFF, ICEBERG, VCF, XML}
 import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config._
 import bio.ferlab.datalake.commons.file.FileSystemType.S3
@@ -9,129 +9,137 @@ import bio.ferlab.datalake.commons.file.FileSystemType.S3
 import pureconfig.generic.auto._
 
 object EtlConfiguration extends App {
-  val datalake_storage_id = "radiantodl_datalake"
+  val raw_storage_id = "raw_storage"
+  val iceberg_storage_id = "iceberg_storage"
+  val iceberg_database = "reference"
 
-  val qa_database = "radiantodl_qa"
-  val staging_database = "radiantodl_staging"
-  val prd_database = "radiantodl"
-
+  /* ********************************************************************************************
+   * Note:                                                                                      *
+   *                                                                                            *
+   * When creating the catalog with the REST Iceberg management service, the catalog root path. *
+   * must be configured as s3a://opendatalake-<env>/iceberg.                                    *
+   *                                                                                            *
+   * All Iceberg databases (namespaces) will be created as subfolders under this catalog root.  *
+   * For example, with database = "reference", tables will be stored under:                     *
+   *   s3://opendatalake-<env>/iceberg/reference/<table_name>.                                  *
+   **********************************************************************************************/
   val qa_storage = List(
-    StorageConf(datalake_storage_id, "s3a://radiantodl-qa-app-datalake", S3),
+    StorageConf(iceberg_storage_id, s"s3a://opendatalake-qa/iceberg/${iceberg_database}", S3),
+    StorageConf(raw_storage_id, "s3a://opendatalake-qa/raw/landing", S3)
   )
   val staging_storage = List(
-    StorageConf(datalake_storage_id, "s3a://radiantodl-staging-app-datalake", S3),
+    StorageConf(iceberg_storage_id, s"s3a://opendatalake-staging/iceberg/${iceberg_database}", S3),
+    StorageConf(raw_storage_id, "s3a://opendatalake-staging/raw/landing", S3)
   )
   val prd_storage = List(
-    StorageConf(datalake_storage_id, "s3a://radiantodl-prd-app-datalake", S3)
+    StorageConf(iceberg_storage_id, s"s3a://opendatalake-prod/iceberg/${iceberg_database}", S3),
+    StorageConf(raw_storage_id, "s3a://opendatalake-prod/raw/landing", S3)
   )
 
   val spark_conf = Map(
-    // TODO: remove or adjust these confs when converting to iceberg
-    "spark.sql.extensions" -> "io.delta.sql.DeltaSparkSessionExtension",
-    "spark.sql.catalog.spark_catalog" -> "org.apache.spark.sql.delta.catalog.DeltaCatalog",
-    "spark.databricks.delta.retentionDurationCheck.enabled" -> "false",
-    "spark.databricks.delta.merge.repartitionBeforeWrite.enabled" -> "true",
-    "spark.databricks.delta.schema.autoMerge.enabled" -> "true",
-    "spark.databricks.delta.vacuum.parallelDelete.enabled" -> "true",
-    "spark.delta.merge.repartitionBeforeWrite" -> "true"
+    "spark.sql.extensions" -> "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+    "spark.sql.catalog.opendatalake" -> "org.apache.iceberg.spark.SparkCatalog",
+    "spark.sql.defaultCatalog" -> "opendatalake"
   )
 
-  val prd_spark_conf = spark_conf ++ Map(
-    "hive.metastore.client.factory.class" -> "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
-  )
 
   val gnomad_storage_id = "gnomad"
-  val table_database = "radiantodl"
 
-  def table(table_name: String): Option[TableConf] = Some(TableConf(table_database, table_name))
-
+  def table(table_name: String): Option[TableConf] = Some(TableConf(iceberg_database, table_name))
 
   val sources = List(
     //raw
-    DatasetConf("raw_clinvar", datalake_storage_id, "/raw/landing/clinvar/clinvar.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_dbsnp", datalake_storage_id, "/raw/landing/dbsnp/GCF_000001405.40.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_gnomad_genomes_v3", datalake_storage_id, "/release/3.1/vcf/genomes/gnomad.genomes.v3.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")).copy(storageid = gnomad_storage_id),
-    DatasetConf("raw_gnomad_joint_v4", datalake_storage_id, "/raw/landing/gnomad_v4/release/4.1/vcf/joint/gnomad.joint.v4.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_gnomad_cnv_v4", datalake_storage_id, "/raw/landing/gnomad_v4/release/4.1/exome_cnv/gnomad.v4.1.cnv.all.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_gnomad_sv_v4", datalake_storage_id, "/raw/landing/gnomad_v4/release/4.1/genome_sv/gnomad.v4.1.sv.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_gnomad_constraint_v2_1_1", datalake_storage_id, "/raw/landing/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_topmed_bravo", datalake_storage_id, "/raw/landing/topmed/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_1000_genomes", datalake_storage_id, "/raw/landing/1000Genomes/ALL.*.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_dbnsfp", datalake_storage_id, "/raw/landing/dbNSFP/dbNSFP4.3a_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
-    DatasetConf("raw_dbnsfp_annovar", datalake_storage_id, "/raw/landing/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
-    DatasetConf("raw_omim_gene_set", datalake_storage_id, "/raw/landing/omim/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
-    DatasetConf("raw_orphanet_gene_association", datalake_storage_id, "/raw/landing/orphanet/en_product6.xml", XML, OverWrite),
-    DatasetConf("raw_orphanet_disease_history", datalake_storage_id, "/raw/landing/orphanet/en_product9_ages.xml", XML, OverWrite),
-    DatasetConf("raw_cosmic_gene_set", datalake_storage_id, "/raw/landing/cosmic/Cosmic_CancerGeneCensus_GRCh38.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_cosmic_mutation_set", datalake_storage_id, "/raw/landing/cosmic/cmc_export.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_ddd_gene_set", datalake_storage_id, "/raw/landing/ddd/DDG2P.csv.gz", CSV, OverWrite, readoptions = Map("header" -> "true")),
-    DatasetConf("raw_hpo_gene_set", datalake_storage_id, "/raw/landing/hpo/genes_to_phenotype.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t", "nullValue" -> "-")),
-    DatasetConf("raw_refseq_human_genes", datalake_storage_id, "/raw/landing/refseq/Homo_sapiens.gene_info.gz", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "header" -> "true", "sep" -> "\t", "nullValue" -> "-")),
-    DatasetConf("raw_refseq_annotation", datalake_storage_id, "/raw/landing/refseq/GCF_GRCh38_genomic.gff.gz", GFF, OverWrite),
-    DatasetConf("raw_ensembl_entrez", datalake_storage_id, "/raw/landing/ensembl/Homo_sapiens.GRCh38.entrez.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_ensembl_refseq", datalake_storage_id, "/raw/landing/ensembl/Homo_sapiens.GRCh38.refseq.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_ensembl_uniprot", datalake_storage_id, "/raw/landing/ensembl/Homo_sapiens.GRCh38.uniprot.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_ensembl_ena", datalake_storage_id, "/raw/landing/ensembl/Homo_sapiens.GRCh38.ena.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_ensembl_gff", datalake_storage_id, "/raw/landing/ensembl/Homo_sapiens.GRCh38.gff.gz", GFF, OverWrite),
-    DatasetConf("raw_spliceai_indel", datalake_storage_id, "/raw/landing/spliceai/spliceai_scores.raw.indel.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_spliceai_snv", datalake_storage_id, "/raw/landing/spliceai/spliceai_scores.raw.snv.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/clinvar.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/GCF_000001405.40.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_gnomad_genomes_v3", raw_storage_id, "/gnomad_v3/release/3.1/vcf/genomes/gnomad.genomes.v3.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")).copy(storageid = gnomad_storage_id),
+    DatasetConf("raw_gnomad_joint_v4", raw_storage_id, "/gnomad_v4/release/4.1/vcf/joint/gnomad.joint.v4.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_gnomad_cnv_v4", raw_storage_id, "/gnomad_v4/release/4.1/exome_cnv/gnomad.v4.1.cnv.all.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_gnomad_sv_v4", raw_storage_id, "/gnomad_v4/release/4.1/genome_sv/gnomad.v4.1.sv.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_gnomad_constraint_v2_1_1", raw_storage_id, "/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_topmed_bravo", raw_storage_id, "/topmed/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_1000_genomes", raw_storage_id, "/1000Genomes/ALL.*.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_dbnsfp", raw_storage_id, "/dbNSFP/dbNSFP4.3a_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
+    DatasetConf("raw_dbnsfp_annovar", raw_storage_id, "/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
+    DatasetConf("raw_omim_gene_set", raw_storage_id, "/omim/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
+    DatasetConf("raw_orphanet_gene_association", raw_storage_id, "/orphanet/en_product6.xml", XML, OverWrite),
+    DatasetConf("raw_orphanet_disease_history", raw_storage_id, "/orphanet/en_product9_ages.xml", XML, OverWrite),
+    DatasetConf("raw_cosmic_gene_set", raw_storage_id, "/cosmic/Cosmic_CancerGeneCensus_GRCh38.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_cosmic_mutation_set", raw_storage_id, "/cosmic/cmc_export.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_ddd_gene_set", raw_storage_id, "/ddd/DDG2P.csv.gz", CSV, OverWrite, readoptions = Map("header" -> "true")),
+    DatasetConf("raw_hpo_gene_set", raw_storage_id, "/hpo/genes_to_phenotype.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t", "nullValue" -> "-")),
+    DatasetConf("raw_refseq_human_genes", raw_storage_id, "/refseq/Homo_sapiens.gene_info.gz", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "header" -> "true", "sep" -> "\t", "nullValue" -> "-")),
+    DatasetConf("raw_refseq_annotation", raw_storage_id, "/refseq/GCF_GRCh38_genomic.gff.gz", GFF, OverWrite),
+    DatasetConf("raw_ensembl_entrez", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.entrez.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_ensembl_refseq", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.refseq.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_ensembl_uniprot", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.uniprot.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_ensembl_ena", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.ena.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+    DatasetConf("raw_ensembl_gff", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.gff.gz", GFF, OverWrite),
+    DatasetConf("raw_spliceai_indel", raw_storage_id, "/spliceai/spliceai_scores.raw.indel.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_spliceai_snv", raw_storage_id, "/spliceai/spliceai_scores.raw.snv.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
 
     //normalized
-    DatasetConf("normalized_1000_genomes", datalake_storage_id, "/public/1000_genomes", DELTA, OverWrite, partitionby = List(), table = table("1000_genomes")),
-    DatasetConf("normalized_cancer_hotspots", datalake_storage_id, "/public/cancer_hotspots", DELTA, OverWrite, partitionby = List(), table = table("cancer_hotspots")),
-    DatasetConf("normalized_clinvar", datalake_storage_id, "/public/clinvar", DELTA, OverWrite, partitionby = List(), repartition = Some(Coalesce()), table = table("clinvar")),
-    DatasetConf("normalized_cosmic_gene_set", datalake_storage_id, "/public/cosmic_gene_set", DELTA, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
-    DatasetConf("normalized_cosmic_mutation_set", datalake_storage_id, "/public/cosmic_mutation_set", DELTA, OverWrite, partitionby = List(), table = table("cosmic_mutation_set")),
-    DatasetConf("normalized_dbnsfp", datalake_storage_id, "/public/dbnsfp/variant", DELTA, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp")),
-    DatasetConf("normalized_dbnsfp_annovar", datalake_storage_id, "/public/annovar/dbnsfp", DELTA, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_annovar")),
-    DatasetConf("normalized_dbsnp", datalake_storage_id, "/public/dbsnp", DELTA, OverWrite, partitionby = List("chromosome"), table = table("dbsnp")),
-    DatasetConf("normalized_ddd_gene_set", datalake_storage_id, "/public/ddd_gene_set", DELTA, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
-    DatasetConf("normalized_ensembl_mapping", datalake_storage_id, "/public/ensembl_mapping", DELTA, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
-    DatasetConf("normalized_gnomad_genomes_v2_1_1", datalake_storage_id, "/public/gnomad_genomes_v2_1_1_liftover_grch38", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v2_1_1")),
-    DatasetConf("normalized_gnomad_exomes_v2_1_1", datalake_storage_id, "/public/gnomad_exomes_v2_1_1_liftover_grch38", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_exomes_v2_1_1")),
-    DatasetConf("normalized_gnomad_constraint_v2_1_1", datalake_storage_id, "/public/gnomad_constraint_v2_1_1", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
-    DatasetConf("normalized_gnomad_genomes_v3", datalake_storage_id, "/public/gnomad_genomes_v3", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v3")),
-    DatasetConf("normalized_gnomad_joint_v4", datalake_storage_id, "/public/gnomad_joint_v4", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_joint_v4")),
-    DatasetConf("normalized_gnomad_cnv_v4", datalake_storage_id, "/public/gnomad_cnv_v4", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_cnv_v4")),
-    DatasetConf("normalized_gnomad_sv_v4", datalake_storage_id, "/public/gnomad_sv_v4", DELTA, OverWrite, partitionby = List("chromosome"), table = table("gnomad_sv_v4")),
-    DatasetConf("normalized_human_genes", datalake_storage_id, "/public/human_genes", DELTA, OverWrite, partitionby = List(), table = table("human_genes")),
-    DatasetConf("normalized_hpo_gene_set", datalake_storage_id, "/public/hpo_gene_set", DELTA, OverWrite, partitionby = List(), table = table("hpo_gene_set")),
-    DatasetConf("normalized_omim_gene_set", datalake_storage_id, "/public/omim_gene_set", DELTA, OverWrite, partitionby = List(), table = table("omim_gene_set")),
-    DatasetConf("normalized_orphanet_gene_set", datalake_storage_id, "/public/orphanet_gene_set", DELTA, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
-    DatasetConf("normalized_topmed_bravo", datalake_storage_id, "/public/topmed_bravo", DELTA, OverWrite, partitionby = List(), table = table("topmed_bravo")),
-    DatasetConf("normalized_refseq_annotation", datalake_storage_id, "/public/refseq_annotation", DELTA, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
-    DatasetConf("normalized_spliceai_indel", datalake_storage_id, "/public/spliceai/indel", DELTA, OverWrite, partitionby = List("chromosome"), table = table("spliceai_indel")),
-    DatasetConf("normalized_spliceai_snv", datalake_storage_id, "/public/spliceai/snv", DELTA, OverWrite, partitionby = List("chromosome"), table = table("spliceai_snv")),
+    DatasetConf("normalized_1000_genomes", iceberg_storage_id, "/normalized/1000_genomes", ICEBERG, OverWrite, partitionby = List(), table = table("1000_genomes")),
+    DatasetConf("normalized_cancer_hotspots", iceberg_storage_id, "/normalized/cancer_hotspots", ICEBERG, OverWrite, partitionby = List(), table = table("cancer_hotspots")),
+    DatasetConf("normalized_clinvar", iceberg_storage_id, "/normalized/clinvar", ICEBERG, OverWrite, partitionby = List(), repartition = Some(Coalesce()), table = table("clinvar")),
+    DatasetConf("normalized_cosmic_gene_set", iceberg_storage_id, "/normalized/cosmic_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
+    DatasetConf("normalized_cosmic_mutation_set", iceberg_storage_id, "/normalized/cosmic_mutation_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_mutation_set")),
+    DatasetConf("normalized_dbnsfp", iceberg_storage_id, "/normalized/dbnsfp/variant", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp")),
+    DatasetConf("normalized_dbnsfp_annovar", iceberg_storage_id, "/normalized/annovar/dbnsfp", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_annovar")),
+    DatasetConf("normalized_dbsnp", iceberg_storage_id, "/normalized/dbsnp", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbsnp")),
+    DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
+    DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
+    DatasetConf("normalized_gnomad_genomes_v2_1_1", iceberg_storage_id, "/normalized/gnomad_genomes_v2_1_1_liftover_grch38", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v2_1_1")),
+    DatasetConf("normalized_gnomad_exomes_v2_1_1", iceberg_storage_id, "/normalized/gnomad_exomes_v2_1_1_liftover_grch38", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_exomes_v2_1_1")),
+    DatasetConf("normalized_gnomad_constraint_v2_1_1", iceberg_storage_id, "/normalized/gnomad_constraint_v2_1_1", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
+    DatasetConf("normalized_gnomad_genomes_v3", iceberg_storage_id, "/normalized/gnomad_genomes_v3", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v3")),
+    DatasetConf("normalized_gnomad_joint_v4", iceberg_storage_id, "/normalized/gnomad_joint_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_joint_v4")),
+    DatasetConf("normalized_gnomad_cnv_v4", iceberg_storage_id, "/normalized/gnomad_cnv_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_cnv_v4")),
+    DatasetConf("normalized_gnomad_sv_v4", iceberg_storage_id, "/normalized/gnomad_sv_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_sv_v4")),
+    DatasetConf("normalized_human_genes", iceberg_storage_id, "/normalized/human_genes", ICEBERG, OverWrite, partitionby = List(), table = table("human_genes")),
+    DatasetConf("normalized_hpo_gene_set", iceberg_storage_id, "/normalized/hpo_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("hpo_gene_set")),
+    DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
+    DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
+    DatasetConf("normalized_topmed_bravo", iceberg_storage_id, "/normalized/topmed_bravo", ICEBERG, OverWrite, partitionby = List(), table = table("topmed_bravo")),
+    DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
+    DatasetConf("normalized_spliceai_indel", iceberg_storage_id, "/normalized/spliceai/indel", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("spliceai_indel")),
+    DatasetConf("normalized_spliceai_snv", iceberg_storage_id, "/normalized/spliceai/snv", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("spliceai_snv")),
 
     // enriched
-    DatasetConf("enriched_genes", datalake_storage_id, "/public/genes", DELTA, OverWrite, partitionby = List(), table = table("genes")),
-    DatasetConf("enriched_dbnsfp", datalake_storage_id, "/public/dbnsfp/scores", DELTA, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_original")),
-    DatasetConf("enriched_spliceai_indel", datalake_storage_id, "/public/spliceai/enriched/indel", DELTA, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_indel")),
-    DatasetConf("enriched_spliceai_snv", datalake_storage_id, "/public/spliceai/enriched/snv", DELTA, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_snv")),
-    DatasetConf("enriched_rare_variant", datalake_storage_id, "/public/rare_variant/enriched", DELTA, OverWrite, partitionby = List("chromosome", "is_rare"), table = table("rare_variant_enriched"))
+    DatasetConf("enriched_genes", iceberg_storage_id, "/enriched/genes", ICEBERG, OverWrite, partitionby = List(), table = table("genes")),
+    DatasetConf("enriched_dbnsfp", iceberg_storage_id, "/enriched/dbnsfp/scores", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_original")),
+    DatasetConf("enriched_spliceai_indel", iceberg_storage_id, "/enriched/spliceai/indel", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_indel")),
+    DatasetConf("enriched_spliceai_snv", iceberg_storage_id, "/enriched/spliceai/snv", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_snv")),
+    DatasetConf("enriched_rare_variant", iceberg_storage_id, "/enriched/rare_variant", ICEBERG, OverWrite, partitionby = List("chromosome", "is_rare"), table = table("rare_variant_enriched"))
   )
 
   val qa_conf = SimpleConfiguration(DatalakeConf(
     storages = qa_storage,
-    sources = sources.map(ds => ds.copy(table = ds.table.map(t => TableConf(qa_database, t.name)))),
+    sources = sources,
     sparkconf = spark_conf
   ))
 
   val staging_conf = SimpleConfiguration(DatalakeConf(
     storages = staging_storage,
-    sources = sources.map(ds => ds.copy(table = ds.table.map(t => TableConf(staging_database, t.name)))),
+    sources = sources,
     sparkconf = spark_conf
   ))
 
   val prd_conf = SimpleConfiguration(DatalakeConf(
     storages = prd_storage,
-    sources = sources.map(ds => ds.copy(table = ds.table.map(t => TableConf(prd_database, t.name)))),
-    sparkconf = prd_spark_conf
+    sources = sources,
+    sparkconf = spark_conf
   ))
 
   val test_conf = SimpleConfiguration(DatalakeConf(
     storages = List(),
-    sources = sources,
+    /*
+      Modifying sources paths for compatibility with the Hadoop catalog used in local testing.
+      This catalog requires that table paths exactly match the default location it would assign, i.e.
+      "custom" locations are not supported. */
+    sources = sources.map {
+      case ds if ds.storageid == iceberg_storage_id => ds.copy(path = "/" + ds.table.get.name)
+      case ds => ds
+    },
     sparkconf = spark_conf
   ))
 

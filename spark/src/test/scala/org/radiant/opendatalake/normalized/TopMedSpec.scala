@@ -3,10 +3,10 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.models.normalized.NormalizedTopmed
 import bio.ferlab.datalake.testutils.models.raw.{RawTopMedFreeze8, RawTopMedFreeze10}
-import bio.ferlab.datalake.testutils.{SparkSpec, TestETLContext}
-import org.radiant.opendatalake.testutils.WithTestConfig
+import bio.ferlab.datalake.testutils.TestETLContext
+import org.radiant.opendatalake.testutils.SparkSpec
 
-class TopMedSpec extends SparkSpec with WithTestConfig {
+class TopMedSpec extends SparkSpec {
 
   import spark.implicits._
 
@@ -29,6 +29,3 @@ class TopMedSpec extends SparkSpec with WithTestConfig {
     result.as[NormalizedTopmed].collect() should contain theSameElementsAs Seq(NormalizedTopmed(name=None))
   }
 }
-
-
-
