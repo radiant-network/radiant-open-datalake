@@ -14,23 +14,23 @@ javaOptions ++= Seq(
 )
 
 // Library versions
-val sparkVersion = "3.5.1"
+val sparkVersion = "3.5.5"
 val glowVersion = "2.0.0"
 val datalakeSpark3Version = "14.14.4"
 val deltaVersion = "3.1.0"
 val scalatestVersion = "3.2.17"
 
 resolvers ++= Seq(
-    "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
-    "Sonatype OSS Releases" at "https://s01.oss.sonatype.org/content/repositories/releases"
+  "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
+  "Sonatype OSS Releases" at "https://s01.oss.sonatype.org/content/repositories/releases"
 )
 
 libraryDependencies += "bio.ferlab" %% "datalake-spark3" % datalakeSpark3Version
 libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % Provided
-libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "3.3.1" % Provided
-libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.1" % Provided
+libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "3.3.4" % Provided
+libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.4" % Provided
 libraryDependencies += "io.delta" %% "delta-spark" % deltaVersion
-libraryDependencies += "io.projectglow" %% "glow-spark3" % glowVersion exclude ("org.apache.hadoop", "hadoop-client")
+libraryDependencies += "io.projectglow" %% "glow-spark3" % glowVersion exclude("org.apache.hadoop", "hadoop-client")
 
 // test dependencies
 libraryDependencies += "org.scalatest" %% "scalatest" % scalatestVersion % Test
@@ -45,11 +45,11 @@ assembly / assemblyShadeRules := Seq(
 )
 
 assembly / assemblyMergeStrategy := {
-    case "META-INF/io.netty.versions.properties"                           => MergeStrategy.last
-    case "META-INF/versions/9/module-info.class"                           => MergeStrategy.discard 
-    case x                                                                 =>
-      val oldStrategy = (assembly / assemblyMergeStrategy).value
-      oldStrategy(x)
+  case "META-INF/io.netty.versions.properties" => MergeStrategy.last
+  case "META-INF/versions/9/module-info.class" => MergeStrategy.discard
+  case x =>
+    val oldStrategy = (assembly / assemblyMergeStrategy).value
+    oldStrategy(x)
 }
 assembly / assemblyJarName := "radiant-open-datalake-spark.jar"
 
