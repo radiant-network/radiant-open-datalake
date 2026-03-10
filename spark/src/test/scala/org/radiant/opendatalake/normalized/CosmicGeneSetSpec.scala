@@ -3,11 +3,11 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.models.normalized.NormalizedCosmicGeneSet
 import bio.ferlab.datalake.testutils.models.raw.RawCosmicGeneSet
-import bio.ferlab.datalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec, TestETLContext}
+import bio.ferlab.datalake.testutils.TestETLContext
 import org.radiant.opendatalake.normalized.cosmic.CosmicGeneSet
-import org.radiant.opendatalake.testutils.WithTestConfig
+import org.radiant.opendatalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec}
 
-class CosmicGeneSetSpec extends SparkSpec with WithTestConfig {
+class CosmicGeneSetSpec extends SparkSpec {
 
   import spark.implicits._
 

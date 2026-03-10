@@ -27,3 +27,5 @@ To run unit test, use:
 ```sh
 sbt clean test
 ```
+
+To run `spark-submit` commands locally, refer to the [sandbox](sandbox/README) directory. It provides a Docker Compose setup to start MinIO and an Iceberg REST catalog, along with example commands to build the JAR and launch `spark-submit`.

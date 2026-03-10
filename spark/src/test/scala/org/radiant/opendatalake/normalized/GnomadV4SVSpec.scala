@@ -4,10 +4,10 @@ import bio.ferlab.datalake.commons.config.DatasetConf
 import org.radiant.opendatalake.normalized.gnomad.GnomadV4SV
 import bio.ferlab.datalake.testutils.models.normalized.NormalizedGnomadV4SV
 import bio.ferlab.datalake.testutils.models.raw.RawGnomadV4SV
-import bio.ferlab.datalake.testutils.{SparkSpec, TestETLContext}
-import org.radiant.opendatalake.testutils.WithTestConfig
+import bio.ferlab.datalake.testutils.TestETLContext
+import org.radiant.opendatalake.testutils.SparkSpec
 
-class GnomadV4SVSpec extends SparkSpec with WithTestConfig {
+class GnomadV4SVSpec extends SparkSpec {
 
   import spark.implicits._
 
