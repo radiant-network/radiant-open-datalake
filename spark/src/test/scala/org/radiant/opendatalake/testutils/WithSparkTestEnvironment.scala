@@ -3,17 +3,25 @@ package org.radiant.opendatalake.testutils
 
 import bio.ferlab.datalake.commons.config.{ConfigurationLoader, SimpleConfiguration, StorageConf}
 import bio.ferlab.datalake.commons.file.FileSystemType.LOCAL
-import org.apache.commons.io.FileUtils
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql.SparkSession
+import org.scalatest.BeforeAndAfterEach
+import org.scalatest.flatspec.AnyFlatSpec
 
 import java.io.File
+import java.nio.file.Files
 
 
-trait WithSparkTestEnvironment {
+trait WithSparkTestEnvironment extends BeforeAndAfterEach {
+  this: AnyFlatSpec =>
 
+  /*
+  We use a fixed tmp folder for all tests to ensure consistency between the Spark warehouse path
+  (spark.sql.catalog.opendatalake.warehouse) and the storage configuration (in the StorageConf list).
+  Due to SparkSession's .getOrCreate singleton behavior, the same Spark instance is reused across tests,
+  so we cannot assign a different tmp folder per test.
+  */
   private val tmp = new File("tmp").getAbsolutePath
-  deleteRecursively(new File(tmp)) // Clean up before tests
 
   private val test_conf = ConfigurationLoader.loadFromResources[SimpleConfiguration]("config/test.conf")
 
@@ -36,11 +44,26 @@ trait WithSparkTestEnvironment {
     )))
   }
 
-  private def deleteRecursively(file: File): Unit = {
-    if (file.isDirectory) {
-      file.listFiles().foreach(deleteRecursively)
-    }
-    file.delete()
+  // Clean up the tmp directory before and after each test to ensure a clean state
+  override def beforeEach(): Unit = {
+    deleteRecursively(new File(tmp))
+    super.beforeEach()
   }
 
+  override def afterEach(): Unit = {
+    deleteRecursively(new File(tmp))
+    super.afterEach()
+  }
+
+  private def deleteRecursively(file: File): Unit = {
+    if (file.isDirectory) {
+      val files = file.listFiles()
+      if (files != null) {
+        files.foreach(deleteRecursively)
+      }
+    }
+    if (file.exists()) {
+      assert(file.delete(), s"Failed to delete file or directory: ${file.getAbsolutePath}")
+    }
+  }
 }

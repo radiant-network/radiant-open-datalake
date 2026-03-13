@@ -62,13 +62,7 @@ class GenesSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBefo
   }
 
   it should "write data into genes table" in {
-
-    job.transform(inputData)
-    
-    
     job.load(job.transform(inputData))
-
-
     val resultDF = destination.read
 
     val expectedOrphanet = List(ORPHANET(17601, "Multiple epiphyseal dysplasia, Al-Gazali type", List("Autosomal recessive")))
@@ -76,7 +70,6 @@ class GenesSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBefo
     val expectedCosmic = List(COSMIC(List("medullary thyroid", "papillary thyroid", "pheochromocytoma")))
 
     resultDF.where("symbol='OR4F5'").as[EnrichedGenes].collect().head shouldBe
-    EnrichedGenes(`orphanet` = expectedOrphanet, `omim` = expectedOmim, `cosmic` = expectedCosmic)
+      EnrichedGenes(`orphanet` = expectedOrphanet, `omim` = expectedOmim, `cosmic` = expectedCosmic)
   }
 }
-

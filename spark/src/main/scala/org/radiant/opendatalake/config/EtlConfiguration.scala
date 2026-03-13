@@ -20,8 +20,10 @@ object EtlConfiguration extends App {
    * must be configured as s3a://opendatalake-<env>/iceberg.                                    *
    *                                                                                            *
    * All Iceberg databases (namespaces) will be created as subfolders under this catalog root.  *
-   * For example, with database = "reference", tables will be stored under:                     *
-   *   s3://opendatalake-<env>/iceberg/reference/<table_name>.                                  *
+   * For example, with database = "reference", the storage prefix for tables in this database   *
+   * will be:                                                                                   *
+   *   s3://opendatalake-<env>/iceberg/reference/                                               *
+                                                                                                *
    **********************************************************************************************/
   val qa_storage = List(
     StorageConf(iceberg_storage_id, s"s3a://opendatalake-qa/iceberg/${iceberg_database}", S3),
@@ -36,6 +38,14 @@ object EtlConfiguration extends App {
     StorageConf(raw_storage_id, "s3a://opendatalake-prod/raw/landing", S3)
   )
 
+  /*
+    Environment-dependent or sensitive configuration properties are intentionally excluded here.
+    We assume these will be injected during the deployment process or at runtime.
+
+    It may be relevant to add certain Glue-specific properties to the qa, staging, and prod configuration
+    files in the future.  For now, we are omitting them since we cannot properly test them. If this
+    situation changes, consider including them here.
+  */
   val spark_conf = Map(
     "spark.sql.extensions" -> "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
     "spark.sql.catalog.opendatalake" -> "org.apache.iceberg.spark.SparkCatalog",

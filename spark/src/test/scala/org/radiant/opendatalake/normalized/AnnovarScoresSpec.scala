@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.normalized
 
-import  org.radiant.opendatalake.testutils.SparkSpec
+import org.radiant.opendatalake.testutils.SparkSpec
 
 class AnnovarScoresSpec extends SparkSpec {
 //TODO need to regenerate input dataframe
