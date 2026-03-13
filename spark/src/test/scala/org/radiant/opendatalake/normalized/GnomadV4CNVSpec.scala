@@ -4,11 +4,11 @@ import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits
 import bio.ferlab.datalake.testutils.models.normalized.{NormalizedGnomadConstraint, NormalizedGnomadV4CNV}
 import bio.ferlab.datalake.testutils.models.raw.RawGnomadV4CNV
-import bio.ferlab.datalake.testutils.{ClassGenerator, SparkSpec, TestETLContext}
+import bio.ferlab.datalake.testutils.{ClassGenerator, TestETLContext}
 import org.radiant.opendatalake.normalized.gnomad.{GnomadConstraint, GnomadV4CNV}
-import org.radiant.opendatalake.testutils.WithTestConfig
+import org.radiant.opendatalake.testutils.SparkSpec
 
-class GnomadV4CNVSpec extends SparkSpec with WithTestConfig {
+class GnomadV4CNVSpec extends SparkSpec {
 
   import spark.implicits._
 

@@ -3,11 +3,11 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.models.normalized.{NormalizedOmimGeneSet, PHENOTYPE}
 import bio.ferlab.datalake.testutils.models.raw.RawOmimGeneSet
-import bio.ferlab.datalake.testutils.{SparkSpec, TestETLContext}
+import bio.ferlab.datalake.testutils.TestETLContext
 import org.radiant.opendatalake.normalized.omim.OmimGeneSet
-import org.radiant.opendatalake.testutils.WithTestConfig
+import org.radiant.opendatalake.testutils.SparkSpec
 
-class OmimGeneSetSpec extends SparkSpec with WithTestConfig {
+class OmimGeneSetSpec extends SparkSpec {
 
   import spark.implicits._
 
