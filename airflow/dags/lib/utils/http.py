@@ -1,3 +1,12 @@
+"""
+HTTP utility functions for downloading files and making GET requests.
+
+Note:
+    These functions do not implement automatic retry logic for failed requests.
+    Consider adding retries at the DAG/task level, or directly in these utilities
+    if robustness is needed.
+"""
+
 from typing import Any
 
 import requests
