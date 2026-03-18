@@ -3,10 +3,10 @@ package org.radiant.opendatalake.enriched
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.models.enriched.{EnrichedSpliceAi, MAX_SCORE}
 import bio.ferlab.datalake.testutils.models.normalized.NormalizedSpliceAi
-import bio.ferlab.datalake.testutils.{SparkSpec, TestETLContext}
-import org.radiant.opendatalake.testutils.WithTestConfig
+import bio.ferlab.datalake.testutils.TestETLContext
+import org.radiant.opendatalake.testutils.SparkSpec
 
-class SpliceAiSpec extends SparkSpec with WithTestConfig {
+class SpliceAiSpec extends SparkSpec {
 
   import spark.implicits._
 

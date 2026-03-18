@@ -4,12 +4,12 @@ import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.testutils.models.enriched._
 import bio.ferlab.datalake.testutils.models.normalized._
-import bio.ferlab.datalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec, TestETLContext}
+import bio.ferlab.datalake.testutils.TestETLContext
 import org.apache.spark.sql.functions
 import org.apache.spark.sql.functions.col
-import org.radiant.opendatalake.testutils.WithTestConfig
+import org.radiant.opendatalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec}
 
-class GenesSpec extends SparkSpec with WithTestConfig with CreateDatabasesBeforeAll with CleanUpBeforeAll {
+class GenesSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBeforeAll {
 
   import spark.implicits._
 
@@ -62,11 +62,7 @@ class GenesSpec extends SparkSpec with WithTestConfig with CreateDatabasesBefore
   }
 
   it should "write data into genes table" in {
-
-    job.transform(inputData)
     job.load(job.transform(inputData))
-
-
     val resultDF = destination.read
 
     val expectedOrphanet = List(ORPHANET(17601, "Multiple epiphyseal dysplasia, Al-Gazali type", List("Autosomal recessive")))
@@ -77,4 +73,3 @@ class GenesSpec extends SparkSpec with WithTestConfig with CreateDatabasesBefore
       EnrichedGenes(`orphanet` = expectedOrphanet, `omim` = expectedOmim, `cosmic` = expectedCosmic)
   }
 }
-
