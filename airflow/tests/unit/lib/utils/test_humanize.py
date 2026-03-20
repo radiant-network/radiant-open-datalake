@@ -1,5 +1,6 @@
-from dags.lib.utils.humanize import bytes_to_human_readable
 import pytest
+
+from dags.lib.utils.humanize import bytes_to_human_readable
 
 
 @pytest.mark.parametrize(

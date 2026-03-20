@@ -34,6 +34,41 @@ def list_multipart_uploads(s3: S3Hook, s3_bucket: str, s3_key: str) -> list[dict
     return response.get('Uploads', [])
 
 
+def get_first_s3_multipart_upload_id(s3: S3Hook, s3_bucket: str, s3_key: str) -> str | None:
+    """
+    Retrieve the UploadId of the first active multipart upload for the specified S3 key prefix.
+
+    Args:
+        s3 (S3Hook): The S3Hook instance to use for the connection.
+        s3_bucket (str): The name of the S3 bucket.
+        s3_key (str): The key prefix to filter multipart uploads.
+
+    Returns:
+        str | None: The UploadId of the first active multipart upload, or None if no active uploads are found.
+    """
+    uploads = list_multipart_uploads(s3, s3_bucket, s3_key)
+    if uploads:
+        return get_upload_id(uploads[0])
+    return None
+
+
+def create_multipart_upload(s3: S3Hook, s3_bucket: str, s3_key: str) -> str:
+    """
+    Initiate a multipart upload and return the UploadId.
+
+    Args:
+        s3 (S3Hook): The S3Hook instance to use for the connection.
+        s3_bucket (str): The name of the S3 bucket.
+        s3_key (str): The key for which to initiate the multipart upload.
+
+    Returns:
+        str: The UploadId of the initiated multipart upload.
+    """
+    s3_client = s3.get_conn()
+    response = s3_client.create_multipart_upload(Bucket=s3_bucket, Key=s3_key)
+    return get_upload_id(response)
+
+
 def load_file(s3: S3Hook, s3_bucket: str, dest_s3_key: str, local_file_name: str, md5_hash: str | None = None):
     """
     Upload a file to S3. Optionally upload an associated .md5 file if an MD5 hash is provided.

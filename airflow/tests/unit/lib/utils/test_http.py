@@ -1,9 +1,10 @@
-from dags.lib.utils.http import http_get, stream_download_file
-import requests
+from unittest.mock import MagicMock, patch
 
-import requests_mock
 import pytest
-from unittest.mock import patch, MagicMock
+import requests
+import requests_mock
+
+from dags.lib.utils.http import http_get, stream_download_file
 
 
 def test_http_get_successful_response():
