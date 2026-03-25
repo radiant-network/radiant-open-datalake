@@ -13,7 +13,7 @@ from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from botocore.client import BaseClient
 
 from dags.lib.utils.humanize import bytes_to_human_readable as human_readable
-from dags.lib.utils.s3 import create_multipart_upload, get_first_s3_multipart_upload_id
+from dags.lib.utils.s3 import create_multipart_upload, get_upload_id, list_multipart_uploads
 
 
 def multipart_upload_with_resume(
@@ -105,7 +105,8 @@ def _prepare_multipart_upload(s3: S3Hook, s3_bucket: str, s3_key: str):
     uploaded_bytes = 0
 
     # Check if an UploadId already exists to resume download
-    upload_id = get_first_s3_multipart_upload_id(s3, s3_bucket, s3_key)
+    uploads = list_multipart_uploads(s3, s3_bucket, s3_key)
+    upload_id = get_upload_id(uploads[0]) if uploads else None
     if upload_id:
         (uploaded_bytes, parts, part_number) = _get_uploaded_parts_info(s3, s3_bucket, s3_key, upload_id)
     else:

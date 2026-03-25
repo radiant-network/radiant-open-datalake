@@ -19,7 +19,7 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
     ]
 
     with (
-        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
+        patch("dags.lib.s3_transfer.list_multipart_uploads", return_value=[]) as list_multipart_uploads_mock,
         patch(
             "dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"
         ) as create_multipart_upload_mock,
@@ -36,6 +36,9 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
             url=url,
             partSizeMb=(1 / (1024 * 1024)),  # using part size of 1 byte
         )
+
+        # Should call list_multipart_upload correctly
+        list_multipart_uploads_mock.assert_called_once_with(s3_hook, "bucket", "key")
 
         # Should create new multipart upload since no existing upload ID
         create_multipart_upload_mock.assert_called_once_with(s3_hook, "bucket", "key")
@@ -76,7 +79,9 @@ def test_multipart_upload_with_resume_resume_upload(s3_hook, s3_client):
     ]
 
     with (
-        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value="upload-id"),
+        patch(
+            "dags.lib.s3_transfer.list_multipart_uploads", return_value=[{"UploadId": "upload-id"}]
+        ) as list_multipart_uploads_mock,
         requests_mock.Mocker() as m,
     ):
         url = "http://example.com/file"
@@ -86,6 +91,10 @@ def test_multipart_upload_with_resume_resume_upload(s3_hook, s3_client):
         multipart_upload_with_resume(
             s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
         )
+
+        # Check that list_multipart_uploads is called correctly
+        list_multipart_uploads_mock.assert_called_once_with(s3_hook, "bucket", "key")
+
         last_request = m.last_request
         assert "Range" in last_request.headers
         assert last_request.headers["Range"] == "bytes=1-"
@@ -122,7 +131,7 @@ def test_multipart_upload_with_resume_restart_on_non_206(s3_hook, s3_client):
     ]
 
     with (
-        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value="upload-id"),
+        patch("dags.lib.s3_transfer.list_multipart_uploads", return_value=[{"UploadId": "upload-id"}]),
         requests_mock.Mocker() as m,
     ):
         url = "http://example.com/file"
@@ -160,7 +169,7 @@ def test_multipart_upload_with_resume_raises_on_error(s3_hook, s3_client):
     s3_client.upload_part.side_effect = Exception("S3 error")
 
     with (
-        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
+        patch("dags.lib.s3_transfer.list_multipart_uploads", return_value=[]),
         patch("dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"),
         requests_mock.Mocker() as m,
     ):
@@ -176,7 +185,7 @@ def test_multipart_upload_with_resume_http_error_raises(s3_hook, s3_client):
     s3_client.list_parts.return_value = {"Parts": []}
 
     with (
-        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
+        patch("dags.lib.s3_transfer.list_multipart_uploads", return_value=[]),
         patch("dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"),
         requests_mock.Mocker() as m,
     ):
