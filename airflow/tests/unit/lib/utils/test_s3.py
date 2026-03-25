@@ -1,23 +1,8 @@
 import pytest
 
 from dags.lib.utils.s3 import (
-    create_multipart_upload,
-    get_upload_id,
-    list_multipart_uploads,
-    load_file,
+    load_file, MultipartUpload,
 )
-
-
-def test_get_upload_id_returns_id_from_valid_dictionary():
-    upload = {"UploadId": "abc123"}
-    assert get_upload_id(upload) == "abc123"
-
-
-def test_get_upload_id_raises_error_when_missing_upload_id_key():
-    upload = {"SomeOtherKey": "value"}
-    with pytest.raises(KeyError):
-        get_upload_id(upload)
-
 
 def test_list_multipart_uploads_returns_uploads_when_present(s3_hook, s3_client):
     uploads = [
@@ -26,7 +11,9 @@ def test_list_multipart_uploads_returns_uploads_when_present(s3_hook, s3_client)
     ]
     s3_client.list_multipart_uploads.return_value = {"Uploads": uploads}
 
-    result = list_multipart_uploads(s3_hook, "bucket", "prefix")
+    multipart = MultipartUpload(s3_hook, "bucket", "prefix")
+    result = multipart._list_multipart_uploads()
+
     assert result == uploads
     s3_client.list_multipart_uploads.assert_called_once_with(Bucket="bucket", Prefix="prefix")
 
@@ -34,7 +21,9 @@ def test_list_multipart_uploads_returns_uploads_when_present(s3_hook, s3_client)
 def test_list_multipart_uploads_returns_empty_list_when_no_uploads(s3_hook, s3_client):
     s3_client.list_multipart_uploads.return_value = {"somekey": "somevalue"}  # No 'Uploads' key in response
 
-    result = list_multipart_uploads(s3_hook, "bucket", "prefix")
+    multipart = MultipartUpload(s3_hook, "bucket", "prefix")
+    result = multipart._list_multipart_uploads()
+
     assert result == []
     s3_client.list_multipart_uploads.assert_called_once_with(Bucket="bucket", Prefix="prefix")
 
@@ -69,6 +58,7 @@ def test_load_file_uploads_md5_file_when_md5_hash_provided(s3_hook):
 def test_create_multipart_upload_returns_upload_id(s3_hook, s3_client):
     s3_client.create_multipart_upload.return_value = {"UploadId": "test-upload-id"}
 
-    upload_id = create_multipart_upload(s3_hook, "bucket", "key")
+    multipart = MultipartUpload(s3_hook, "bucket", "key")
+    upload_id = multipart._create_multipart_upload()
     assert upload_id == "test-upload-id"
     s3_client.create_multipart_upload.assert_called_once_with(Bucket="bucket", Key="key")

@@ -34,7 +34,7 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
             s3_bucket="bucket",
             s3_key="key",
             url=url,
-            partSizeMb=(1 / (1024 * 1024)),  # using part size of 1 byte
+            part_size_mb=int(1 / (1024 * 1024)),  # using part size of 1 byte
         )
 
         # Should call list_multipart_upload correctly
@@ -89,7 +89,7 @@ def test_multipart_upload_with_resume_resume_upload(s3_hook, s3_client):
         m.get(url, content=remaining_content, status_code=206, headers={"Content-Length": str(len(remaining_content))})
 
         multipart_upload_with_resume(
-            s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
+            s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, part_size_mb=int(1 / (1024 * 1024))
         )
 
         # Check that list_multipart_uploads is called correctly
@@ -140,7 +140,7 @@ def test_multipart_upload_with_resume_restart_on_non_206(s3_hook, s3_client):
         m.get(url, content=content, status_code=200, headers={"Content-Length": str(len(content))})
 
         multipart_upload_with_resume(
-            s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
+            s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, part_size_mb=int(1 / (1024 * 1024))
         )
         assert s3_client.upload_part.called
         assert s3_client.complete_multipart_upload.called
@@ -196,5 +196,5 @@ def test_multipart_upload_with_resume_http_error_raises(s3_hook, s3_client):
 
         with pytest.raises(requests.exceptions.HTTPError):
             multipart_upload_with_resume(
-                s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
+                s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, part_size_mb=int(1 / (1024 * 1024))
             )
