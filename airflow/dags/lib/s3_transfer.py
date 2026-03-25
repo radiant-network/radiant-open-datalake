@@ -117,7 +117,7 @@ def _prepare_multipart_upload(s3: S3Hook, s3_bucket: str, s3_key: str):
     if upload_id:
         (uploaded_bytes, parts, part_number) = _get_uploaded_parts_info(s3, s3_bucket, s3_key, upload_id)
     else:
-        upload_id = create_multipart_upload()
+        upload_id = create_multipart_upload(s3, s3_bucket, s3_key)
     return (upload_id, parts, part_number, uploaded_bytes)
 
 

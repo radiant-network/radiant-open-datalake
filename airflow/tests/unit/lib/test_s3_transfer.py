@@ -19,8 +19,13 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
     ]
 
     with (
-        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
-        patch("dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"),
+        patch(
+            "dags.lib.s3_transfer.get_first_s3_multipart_upload_id",
+            return_value=None
+        ),
+        patch(
+            "dags.lib.s3_transfer.create_multipart_upload",
+            return_value="upload-id") as create_multipart_upload_mock,
         requests_mock.Mocker() as m
     ):
         url = "http://example.com/file"
@@ -33,6 +38,11 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
             s3_key="key",
             url=url,
             partSizeMb=(1 / (1024 * 1024))  # using part size of 1 byte
+        )
+
+        # Should create new multipart upload since no existing upload ID
+        create_multipart_upload_mock.assert_called_once_with(
+            s3_hook, "bucket", "key"
         )
 
         # Check that Range header is NOT present in the request
