@@ -19,14 +19,11 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
     ]
 
     with (
+        patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
         patch(
-            "dags.lib.s3_transfer.get_first_s3_multipart_upload_id",
-            return_value=None
-        ),
-        patch(
-            "dags.lib.s3_transfer.create_multipart_upload",
-            return_value="upload-id") as create_multipart_upload_mock,
-        requests_mock.Mocker() as m
+            "dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"
+        ) as create_multipart_upload_mock,
+        requests_mock.Mocker() as m,
     ):
         url = "http://example.com/file"
         content = b"abcde"
@@ -37,13 +34,11 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
             s3_bucket="bucket",
             s3_key="key",
             url=url,
-            partSizeMb=(1 / (1024 * 1024))  # using part size of 1 byte
+            partSizeMb=(1 / (1024 * 1024)),  # using part size of 1 byte
         )
 
         # Should create new multipart upload since no existing upload ID
-        create_multipart_upload_mock.assert_called_once_with(
-            s3_hook, "bucket", "key"
-        )
+        create_multipart_upload_mock.assert_called_once_with(s3_hook, "bucket", "key")
 
         # Check that Range header is NOT present in the request
         last_request = m.last_request
@@ -57,21 +52,21 @@ def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):
             Bucket="bucket",
             Key="key",
             UploadId="upload-id",
-            MultipartUpload={'Parts': [
-                {"PartNumber": 1, "ETag": "entity_tag1"},
-                {"PartNumber": 2, "ETag": "entity_tag2"},
-                {"PartNumber": 3, "ETag": "entity_tag3"},
-                {"PartNumber": 4, "ETag": "entity_tag4"},
-                {"PartNumber": 5, "ETag": "entity_tag5"},
-            ]}
+            MultipartUpload={
+                "Parts": [
+                    {"PartNumber": 1, "ETag": "entity_tag1"},
+                    {"PartNumber": 2, "ETag": "entity_tag2"},
+                    {"PartNumber": 3, "ETag": "entity_tag3"},
+                    {"PartNumber": 4, "ETag": "entity_tag4"},
+                    {"PartNumber": 5, "ETag": "entity_tag5"},
+                ]
+            },
         )
 
 
 def test_multipart_upload_with_resume_resume_upload(s3_hook, s3_client):
     # Simulate already uploaded part
-    s3_client.list_parts.return_value = {
-        "Parts": [{"PartNumber": 1, "ETag": "entity_tag1", "Size": 1}]
-    }
+    s3_client.list_parts.return_value = {"Parts": [{"PartNumber": 1, "ETag": "entity_tag1", "Size": 1}]}
     s3_client.complete_multipart_upload.return_value = None
     s3_client.upload_part.side_effect = [
         {"ETag": "entity_tag2"},
@@ -82,18 +77,14 @@ def test_multipart_upload_with_resume_resume_upload(s3_hook, s3_client):
 
     with (
         patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value="upload-id"),
-        requests_mock.Mocker() as m
+        requests_mock.Mocker() as m,
     ):
         url = "http://example.com/file"
         remaining_content = b"bcde"
         m.get(url, content=remaining_content, status_code=206, headers={"Content-Length": str(len(remaining_content))})
 
         multipart_upload_with_resume(
-            s3=s3_hook,
-            s3_bucket="bucket",
-            s3_key="key",
-            url=url,
-            partSizeMb=(1 / (1024 * 1024))
+            s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
         )
         last_request = m.last_request
         assert "Range" in last_request.headers
@@ -107,20 +98,20 @@ def test_multipart_upload_with_resume_resume_upload(s3_hook, s3_client):
             Bucket="bucket",
             Key="key",
             UploadId="upload-id",
-            MultipartUpload={'Parts': [
-                {"PartNumber": 1, "ETag": "entity_tag1"},
-                {"PartNumber": 2, "ETag": "entity_tag2"},
-                {"PartNumber": 3, "ETag": "entity_tag3"},
-                {"PartNumber": 4, "ETag": "entity_tag4"},
-                {"PartNumber": 5, "ETag": "entity_tag5"},
-            ]}
+            MultipartUpload={
+                "Parts": [
+                    {"PartNumber": 1, "ETag": "entity_tag1"},
+                    {"PartNumber": 2, "ETag": "entity_tag2"},
+                    {"PartNumber": 3, "ETag": "entity_tag3"},
+                    {"PartNumber": 4, "ETag": "entity_tag4"},
+                    {"PartNumber": 5, "ETag": "entity_tag5"},
+                ]
+            },
         )
 
 
 def test_multipart_upload_with_resume_restart_on_non_206(s3_hook, s3_client):
-    s3_client.list_parts.return_value = {
-        "Parts": [{"PartNumber": 1, "ETag": "etag", "Size": 1}]
-    }
+    s3_client.list_parts.return_value = {"Parts": [{"PartNumber": 1, "ETag": "etag", "Size": 1}]}
     s3_client.complete_multipart_upload.return_value = None
     s3_client.upload_part.side_effect = [
         {"ETag": "entity_tag1"},
@@ -132,20 +123,15 @@ def test_multipart_upload_with_resume_restart_on_non_206(s3_hook, s3_client):
 
     with (
         patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value="upload-id"),
-        requests_mock.Mocker() as m
+        requests_mock.Mocker() as m,
     ):
-
         url = "http://example.com/file"
         content = b"abcde"
         # Simulate server not supporting resume (status 200 instead of 206) and sending full file content
         m.get(url, content=content, status_code=200, headers={"Content-Length": str(len(content))})
 
         multipart_upload_with_resume(
-            s3=s3_hook,
-            s3_bucket="bucket",
-            s3_key="key",
-            url=url,
-            partSizeMb=(1 / (1024 * 1024))
+            s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
         )
         assert s3_client.upload_part.called
         assert s3_client.complete_multipart_upload.called
@@ -158,13 +144,15 @@ def test_multipart_upload_with_resume_restart_on_non_206(s3_hook, s3_client):
             Bucket="bucket",
             Key="key",
             UploadId="upload-id",
-            MultipartUpload={'Parts': [
-                {"PartNumber": 1, "ETag": "entity_tag1"},
-                {"PartNumber": 2, "ETag": "entity_tag2"},
-                {"PartNumber": 3, "ETag": "entity_tag3"},
-                {"PartNumber": 4, "ETag": "entity_tag4"},
-                {"PartNumber": 5, "ETag": "entity_tag5"},
-            ]}
+            MultipartUpload={
+                "Parts": [
+                    {"PartNumber": 1, "ETag": "entity_tag1"},
+                    {"PartNumber": 2, "ETag": "entity_tag2"},
+                    {"PartNumber": 3, "ETag": "entity_tag3"},
+                    {"PartNumber": 4, "ETag": "entity_tag4"},
+                    {"PartNumber": 5, "ETag": "entity_tag5"},
+                ]
+            },
         )
 
 
@@ -174,13 +162,13 @@ def test_multipart_upload_with_resume_raises_on_error(s3_hook, s3_client):
     with (
         patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
         patch("dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"),
-        requests_mock.Mocker() as m
+        requests_mock.Mocker() as m,
     ):
         url = "http://example.com/file"
         content = b"abcde"
         m.get(url, content=content, status_code=200, headers={"Content-Length": str(len(content))})
 
-        with pytest.raises(Exception,  match="S3 error"):
+        with pytest.raises(Exception, match="S3 error"):
             multipart_upload_with_resume(s3_hook, "bucket", "key", url)
 
 
@@ -190,7 +178,7 @@ def test_multipart_upload_with_resume_http_error_raises(s3_hook, s3_client):
     with (
         patch("dags.lib.s3_transfer.get_first_s3_multipart_upload_id", return_value=None),
         patch("dags.lib.s3_transfer.create_multipart_upload", return_value="upload-id"),
-        requests_mock.Mocker() as m
+        requests_mock.Mocker() as m,
     ):
         url = "http://example.com/file"
 
@@ -199,9 +187,5 @@ def test_multipart_upload_with_resume_http_error_raises(s3_hook, s3_client):
 
         with pytest.raises(requests.exceptions.HTTPError):
             multipart_upload_with_resume(
-                s3=s3_hook,
-                s3_bucket="bucket",
-                s3_key="key",
-                url=url,
-                partSizeMb=(1 / (1024 * 1024))
+                s3=s3_hook, s3_bucket="bucket", s3_key="key", url=url, partSizeMb=(1 / (1024 * 1024))
             )

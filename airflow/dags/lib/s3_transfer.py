@@ -17,12 +17,7 @@ from dags.lib.utils.s3 import create_multipart_upload, get_first_s3_multipart_up
 
 
 def multipart_upload_with_resume(
-    s3: S3Hook,
-    s3_bucket: str,
-    s3_key: str,
-    url: str,
-    headers: dict | None = None,
-    partSizeMb: int = 200
+    s3: S3Hook, s3_bucket: str, s3_key: str, url: str, headers: dict | None = None, partSizeMb: int = 200
 ) -> None:
     """
     Perform a multipart upload to S3 with resume capability from a remote URL.
@@ -51,7 +46,7 @@ def multipart_upload_with_resume(
         # Prepare or resume a multipart upload session
         (upload_id, parts, part_number, uploaded_bytes) = _prepare_multipart_upload(s3, s3_bucket, s3_key)
         if uploaded_bytes > 0:
-            headers['Range'] = f'bytes={uploaded_bytes}-'
+            headers["Range"] = f"bytes={uploaded_bytes}-"
 
         # Upload remaining bytes in chunks (parts)
         with requests.get(url, stream=True, headers=headers) as r:
@@ -60,7 +55,7 @@ def multipart_upload_with_resume(
                 logging.info("File cannot be resumed, starting from the beginning")
                 parts, part_number, uploaded_bytes = [], 1, 0
 
-            file_size = int(r.headers['Content-Length']) + uploaded_bytes
+            file_size = int(r.headers["Content-Length"]) + uploaded_bytes
             r.raise_for_status()
 
             _log_upload_start(uploaded_bytes, file_size, url, s3_key)
@@ -75,15 +70,12 @@ def multipart_upload_with_resume(
                 uploaded_bytes=uploaded_bytes,
                 file_size=file_size,
                 parts=parts,
-                partSizeMb=partSizeMb
+                partSizeMb=partSizeMb,
             )
 
         # Complete the upload
         s3_client.complete_multipart_upload(
-            Bucket=s3_bucket,
-            Key=s3_key,
-            UploadId=upload_id,
-            MultipartUpload={'Parts': parts}
+            Bucket=s3_bucket, Key=s3_key, UploadId=upload_id, MultipartUpload={"Parts": parts}
         )
         logging.info(f"Multipart upload of {s3_key} from {url} completed successfully")
 
@@ -133,10 +125,10 @@ def _get_uploaded_parts_info(s3: S3Hook, s3_bucket: str, s3_key: str, upload_id:
     """
     s3_client = s3.get_conn()
     dict = s3_client.list_parts(Bucket=s3_bucket, Key=s3_key, UploadId=upload_id)
-    retrieved_parts = dict.get('Parts', [])
-    parts = [{'PartNumber': part['PartNumber'], 'ETag': part['ETag']} for part in retrieved_parts]
+    retrieved_parts = dict.get("Parts", [])
+    parts = [{"PartNumber": part["PartNumber"], "ETag": part["ETag"]} for part in retrieved_parts]
     part_number = len(parts) + 1
-    uploaded_bytes = sum(part['Size'] for part in retrieved_parts)
+    uploaded_bytes = sum(part["Size"] for part in retrieved_parts)
     return (uploaded_bytes, parts, part_number)
 
 
@@ -150,7 +142,7 @@ def _upload_chunks(
     uploaded_bytes: int,
     file_size: int,
     parts: list[dict],
-    partSizeMb: int
+    partSizeMb: int,
 ):
     """
     Uploads file data in chunks (parts) to S3 as part of a multipart upload.
@@ -170,13 +162,9 @@ def _upload_chunks(
     for chunk in response.iter_content(chunk_size=int(partSizeMb * 1024 * 1024)):
         if chunk:  # filter out keep-alive new chunks
             part_response = s3_client.upload_part(
-                Bucket=s3_bucket,
-                Key=s3_key,
-                PartNumber=part_number,
-                UploadId=upload_id,
-                Body=chunk
+                Bucket=s3_bucket, Key=s3_key, PartNumber=part_number, UploadId=upload_id, Body=chunk
             )
-            parts.append({'PartNumber': part_number, 'ETag': part_response['ETag']})
+            parts.append({"PartNumber": part_number, "ETag": part_response["ETag"]})
             part_number += 1
             uploaded_bytes += len(chunk)
             percentage = (uploaded_bytes / file_size) * 100
@@ -196,9 +184,7 @@ def _log_upload_start(uploaded_bytes: int, file_size: int, url: str, s3_key: str
         s3_key (str): Target S3 key.
     """
     if uploaded_bytes == 0:
-        logging.info(
-            f"Start upload of '{url}' ({human_readable(file_size)}), to {s3_key}"
-        )
+        logging.info(f"Start upload of '{url}' ({human_readable(file_size)}), to {s3_key}")
     else:
         logging.info(
             f"Resuming upload of '{url}' ({human_readable(file_size)}), to {s3_key} "

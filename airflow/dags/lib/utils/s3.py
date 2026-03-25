@@ -13,7 +13,7 @@ def get_upload_id(upload: dict) -> str:
     Returns:
         str: The UploadId of the multipart upload.
     """
-    return upload['UploadId']
+    return upload["UploadId"]
 
 
 def list_multipart_uploads(s3: S3Hook, s3_bucket: str, s3_key: str) -> list[dict]:
@@ -31,7 +31,7 @@ def list_multipart_uploads(s3: S3Hook, s3_bucket: str, s3_key: str) -> list[dict
     """
     s3_client = s3.get_conn()
     response = s3_client.list_multipart_uploads(Bucket=s3_bucket, Prefix=s3_key)
-    return response.get('Uploads', [])
+    return response.get("Uploads", [])
 
 
 def get_first_s3_multipart_upload_id(s3: S3Hook, s3_bucket: str, s3_key: str) -> str | None:
@@ -83,5 +83,7 @@ def load_file(s3: S3Hook, s3_bucket: str, dest_s3_key: str, local_file_name: str
     s3.load_file(local_file_name, dest_s3_key, s3_bucket, replace=True)
     logging.info(f"File '{local_file_name}' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}'.")
     if md5_hash:
-        s3.load_string(md5_hash, f'{dest_s3_key}.md5', s3_bucket, replace=True)
-        logging.info(f"MD5 file for '{local_file_name}.md5' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}.md5'.")
+        s3.load_string(md5_hash, f"{dest_s3_key}.md5", s3_bucket, replace=True)
+        logging.info(
+            f"MD5 file for '{local_file_name}.md5' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}.md5'."
+        )

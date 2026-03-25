@@ -62,6 +62,7 @@ def test_load_file_uploads_md5_file_when_md5_hash_provided(s3_hook):
     md5_hash = "abc123"
 
     from dags.lib.utils.s3 import load_file
+
     load_file(s3_hook, s3_bucket, dest_s3_key, local_file_name, md5_hash=md5_hash)
 
     s3_hook.load_file.assert_called_once_with(local_file_name, dest_s3_key, s3_bucket, replace=True)
@@ -78,12 +79,9 @@ def test_get_first_s3_multipart_upload_id_returns_none_if_no_uploads(s3_hook):
 def test_get_first_s3_multipart_upload_id_returns_first_upload_id(s3_hook):
     with (
         patch("dags.lib.utils.s3.list_multipart_uploads") as list_uploads,
-        patch("dags.lib.utils.s3.get_upload_id") as get_upload_id
+        patch("dags.lib.utils.s3.get_upload_id") as get_upload_id,
     ):
-        list_uploads.return_value = [
-            {"UploadId": "first"},
-            {"UploadId": "second"}
-        ]
+        list_uploads.return_value = [{"UploadId": "first"}, {"UploadId": "second"}]
         get_upload_id.return_value = "first"
         upload_id = get_first_s3_multipart_upload_id(s3_hook, "bucket", "key")
         assert upload_id == "first"
