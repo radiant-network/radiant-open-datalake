@@ -7,24 +7,22 @@ from botocore.client import BaseClient
 logger = logging.getLogger(__name__)
 
 
-def load_file(s3: S3Hook, s3_bucket: str, dest_s3_key: str, local_file_name: str, md5_hash: str | None = None):
+def load_file(s3: S3Hook, s3_bucket: str, s3_key: str, local_file_name: str, md5_hash: str | None = None):
     """
     Upload a file to S3. Optionally upload an associated .md5 file if an MD5 hash is provided.
 
     Args:
         s3 (S3Hook): S3Hook instance.
         s3_bucket (str): Target S3 bucket.
-        dest_s3_key (str): Destination S3 key.
+        s3_key (str): Destination S3 key.
         local_file_name (str): Local file to upload.
         md5_hash (str, optional): If provided, uploads a .md5 file containing this hash alongside the main file.
     """
-    s3.load_file(local_file_name, dest_s3_key, s3_bucket, replace=True)
-    logging.info(f"File '{local_file_name}' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}'.")
+    s3.load_file(local_file_name, s3_key, s3_bucket, replace=True)
+    logging.info(f"File '{local_file_name}' successfully uploaded to 's3://{s3_bucket}/{s3_key}'.")
     if md5_hash:
-        s3.load_string(md5_hash, f"{dest_s3_key}.md5", s3_bucket, replace=True)
-        logging.info(
-            f"MD5 file for '{local_file_name}.md5' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}.md5'."
-        )
+        s3.load_string(md5_hash, f"{s3_key}.md5", s3_bucket, replace=True)
+        logging.info(f"MD5 file for '{local_file_name}.md5' successfully uploaded to 's3://{s3_bucket}/{s3_key}.md5'.")
 
 
 @dataclass
