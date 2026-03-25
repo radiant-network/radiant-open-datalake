@@ -7,6 +7,7 @@ prefer using `utils/s3.py`.
 """
 
 import logging
+from dataclasses import dataclass
 
 import requests
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
@@ -23,10 +24,10 @@ def multipart_upload_with_resume(
     Perform a multipart upload to S3 with resume capability from a remote URL.
 
     This function will:
-      - Check if a multipart upload already exists for the given S3 key and resume if possible.
-      - Download the remote file in chunks and upload each chunk as a part to S3.
-      - Log progress and handle both new and resumed uploads.
-      - Complete the multipart upload once all parts are uploaded.
+    - Check if a multipart upload already exists for the given S3 key and resume if possible.
+    - Download the remote file in chunks and upload each chunk as a part to S3.
+    - Log progress and handle both new and resumed uploads.
+    - Complete the multipart upload once all parts are uploaded.
 
     Args:
         s3 (S3Hook): Airflow S3Hook instance.
@@ -40,43 +41,34 @@ def multipart_upload_with_resume(
         Exception: Any error during upload will be logged and re-raised.
     """
     try:
-        s3_client = s3.get_conn()
         headers = headers or {}
+        multipart_upload = MultipartUpload(s3, s3_bucket, s3_key)
 
-        # Prepare or resume a multipart upload session
-        (upload_id, parts, part_number, uploaded_bytes) = _prepare_multipart_upload(s3, s3_bucket, s3_key)
-        if uploaded_bytes > 0:
-            headers["Range"] = f"bytes={uploaded_bytes}-"
+        # prepare or resume a multipart upload session
+        multipart_upload.prepare()
+
+        if multipart_upload.uploaded_bytes > 0:
+            headers["Range"] = f"bytes={multipart_upload.uploaded_bytes}-"
 
         # Upload remaining bytes in chunks (parts)
         with requests.get(url, stream=True, headers=headers) as r:
             # If resuming, ensure we get a partial content response (206)
-            if len(parts) > 0 and r.status_code != 206:
+            if len(multipart_upload.uploaded_parts) > 0 and r.status_code != 206:
                 logging.info("File cannot be resumed, starting from the beginning")
-                parts, part_number, uploaded_bytes = [], 1, 0
+                multipart_upload.reset()
 
-            file_size = int(r.headers["Content-Length"]) + uploaded_bytes
             r.raise_for_status()
 
-            _log_upload_start(uploaded_bytes, file_size, url, s3_key)
+            file_size = int(r.headers["Content-Length"]) + multipart_upload.uploaded_bytes
+            _log_upload_start(multipart_upload.uploaded_bytes, file_size, url, s3_key)
 
-            _upload_chunks(
-                response=r,
-                s3_client=s3_client,
-                s3_bucket=s3_bucket,
-                s3_key=s3_key,
-                upload_id=upload_id,
-                part_number=part_number,
-                uploaded_bytes=uploaded_bytes,
-                file_size=file_size,
-                parts=parts,
-                partSizeMb=partSizeMb,
-            )
+            for chunk in r.iter_content(chunk_size=int(partSizeMb * 1024 * 1024)):
+                if chunk:  # filter out keep-alive new chunks
+                    multipart_upload.upload_part(chunk)
+                    _log_progress(multipart_upload.uploaded_bytes, file_size)
 
         # Complete the upload
-        s3_client.complete_multipart_upload(
-            Bucket=s3_bucket, Key=s3_key, UploadId=upload_id, MultipartUpload={"Parts": parts}
-        )
+        multipart_upload.complete()
         logging.info(f"Multipart upload of {s3_key} from {url} completed successfully")
 
     except Exception as e:
@@ -84,94 +76,9 @@ def multipart_upload_with_resume(
         raise e
 
 
-def _prepare_multipart_upload(s3: S3Hook, s3_bucket: str, s3_key: str):
-    """
-    Prepare or resume a multipart upload session.
-
-    Checks if a multipart upload already exists for the given S3 key.
-    If so, retrieves the upload state and sets the HTTP Range header to resume.
-    Otherwise, creates a new multipart upload.
-
-    Returns:
-        Tuple containing:
-            - upload_id (str): The multipart upload ID.
-            - parts (list): List of already uploaded parts.
-            - part_number (int): Next part number to use.
-            - uploaded_bytes (int): Number of bytes already uploaded.
-            - headers (dict): HTTP headers (possibly updated with Range).
-    """
-    parts = []
-    part_number = 1
-    uploaded_bytes = 0
-
-    # Check if an UploadId already exists to resume download
-    uploads = list_multipart_uploads(s3, s3_bucket, s3_key)
-    upload_id = get_upload_id(uploads[0]) if uploads else None
-    if upload_id:
-        (uploaded_bytes, parts, part_number) = _get_uploaded_parts_info(s3, s3_bucket, s3_key, upload_id)
-    else:
-        upload_id = create_multipart_upload(s3, s3_bucket, s3_key)
-    return (upload_id, parts, part_number, uploaded_bytes)
-
-
-def _get_uploaded_parts_info(s3: S3Hook, s3_bucket: str, s3_key: str, upload_id: str):
-    """
-    Retrieve information about already uploaded parts for a multipart upload.
-
-    Returns:
-        Tuple containing:
-            - uploaded_bytes (int): Total bytes already uploaded.
-            - parts (list): List of part metadata.
-            - part_number (int): Next part number to use.
-    """
-    s3_client = s3.get_conn()
-    dict = s3_client.list_parts(Bucket=s3_bucket, Key=s3_key, UploadId=upload_id)
-    retrieved_parts = dict.get("Parts", [])
-    parts = [{"PartNumber": part["PartNumber"], "ETag": part["ETag"]} for part in retrieved_parts]
-    part_number = len(parts) + 1
-    uploaded_bytes = sum(part["Size"] for part in retrieved_parts)
-    return (uploaded_bytes, parts, part_number)
-
-
-def _upload_chunks(
-    response: requests.Response,
-    s3_client: BaseClient,
-    s3_bucket: str,
-    s3_key: str,
-    upload_id: str,
-    part_number: int,
-    uploaded_bytes: int,
-    file_size: int,
-    parts: list[dict],
-    partSizeMb: int,
-):
-    """
-    Uploads file data in chunks (parts) to S3 as part of a multipart upload.
-
-    Args:
-        r: The streaming HTTP response object.
-        s3_client: The boto3 S3 client.
-        s3_bucket (str): Target S3 bucket.
-        s3_key (str): Target S3 key.
-        upload_id (str): Multipart upload ID.
-        part_number (int): Starting part number.
-        uploaded_bytes (int): Bytes already uploaded.
-        file_size (int): Total file size.
-        parts (list): List to append part metadata to.
-        partSizeMb (int): Size of each part in MB.
-    """
-    for chunk in response.iter_content(chunk_size=int(partSizeMb * 1024 * 1024)):
-        if chunk:  # filter out keep-alive new chunks
-            part_response = s3_client.upload_part(
-                Bucket=s3_bucket, Key=s3_key, PartNumber=part_number, UploadId=upload_id, Body=chunk
-            )
-            parts.append({"PartNumber": part_number, "ETag": part_response["ETag"]})
-            part_number += 1
-            uploaded_bytes += len(chunk)
-            percentage = (uploaded_bytes / file_size) * 100
-            logging.info(
-                f"Uploaded {human_readable(uploaded_bytes)} of {human_readable(file_size)} ({percentage:.2f}%)"
-            )
+def _log_progress(uploaded_bytes: int, file_size: int) -> None:
+    percentage = (uploaded_bytes / file_size) * 100
+    logging.info(f"Uploaded {human_readable(uploaded_bytes)} of {human_readable(file_size)} ({percentage:.2f}%)")
 
 
 def _log_upload_start(uploaded_bytes: int, file_size: int, url: str, s3_key: str) -> None:
@@ -190,4 +97,56 @@ def _log_upload_start(uploaded_bytes: int, file_size: int, url: str, s3_key: str
         logging.info(
             f"Resuming upload of '{url}' ({human_readable(file_size)}), to {s3_key} "
             f"({human_readable(uploaded_bytes)} already downloaded)"
+        )
+
+
+@dataclass
+class UploadedPart:
+    part_number: int
+    etag: str
+
+
+class MultipartUpload:
+    def __init__(self, s3: S3Hook, bucket: str, key: str):
+        self.s3 = s3
+        self.s3_client: BaseClient = self.s3.get_conn()
+        self.bucket = bucket
+        self.key = key
+        self.upload_id: str | None = None
+        self.uploaded_parts: list[UploadedPart] = []
+        self.uploaded_bytes: int = 0
+
+    def prepare(self):
+        uploads = list_multipart_uploads(self.s3, self.bucket, self.key)
+        upload_id = get_upload_id(uploads[0]) if uploads else None
+        if upload_id:
+            response = self.s3_client.list_parts(Bucket=self.bucket, Key=self.key, UploadId=upload_id)
+            retrieved_parts = response.get("Parts", [])
+            self.uploaded_parts = [
+                UploadedPart(part_number=part["PartNumber"], etag=part["ETag"]) for part in retrieved_parts
+            ]
+            self.uploaded_bytes = sum(part["Size"] for part in retrieved_parts)
+        else:
+            upload_id = create_multipart_upload(self.s3, self.bucket, self.key)
+        self.upload_id = upload_id
+
+    def reset(self):
+        self.uploaded_parts = []
+        self.uploaded_bytes = 0
+
+    def upload_part(self, data: bytes):
+        part_number = len(self.uploaded_parts) + 1
+        part_response = self.s3_client.upload_part(
+            Bucket=self.bucket, Key=self.key, PartNumber=part_number, UploadId=self.upload_id, Body=data
+        )
+        self.uploaded_parts.append(UploadedPart(part_number=part_number, etag=part_response["ETag"]))
+        self.uploaded_bytes += len(data)
+
+    def complete(self):
+        parts = [
+            {"ETag": p.etag, "PartNumber": p.part_number}
+            for p in sorted(self.uploaded_parts, key=lambda p: p.part_number)
+        ]
+        self.s3_client.complete_multipart_upload(
+            Bucket=self.bucket, Key=self.key, UploadId=self.upload_id, MultipartUpload={"Parts": parts}
         )
