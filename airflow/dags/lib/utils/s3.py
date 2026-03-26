@@ -1,37 +1,10 @@
 import logging
+from dataclasses import dataclass
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from botocore.client import BaseClient
 
-
-def get_upload_id(upload: dict) -> str:
-    """
-    Extract the UploadId from a multipart upload metadata dictionary.
-
-    Args:
-        upload (dict): A dictionary representing a multipart upload, as returned by S3.
-
-    Returns:
-        str: The UploadId of the multipart upload.
-    """
-    return upload['UploadId']
-
-
-def list_multipart_uploads(s3: S3Hook, s3_bucket: str, s3_key: str) -> list[dict]:
-    """
-    Retrieve a list of active multipart uploads for the specified S3 key prefix.
-
-    Args:
-        s3 (S3Hook): The S3Hook instance to use for the connection.
-        s3_bucket (str): The name of the S3 bucket.
-        s3_key (str): The key prefix to filter multipart uploads.
-
-    Returns:
-        list[dict]: A list of multipart upload metadata dictionaries.
-                    Returns an empty list if no active uploads are found.
-    """
-    s3_client = s3.get_conn()
-    response = s3_client.list_multipart_uploads(Bucket=s3_bucket, Prefix=s3_key)
-    return response.get('Uploads', [])
+logger = logging.getLogger(__name__)
 
 
 def load_file(s3: S3Hook, s3_bucket: str, dest_s3_key: str, local_file_name: str, md5_hash: str | None = None):
@@ -48,5 +21,79 @@ def load_file(s3: S3Hook, s3_bucket: str, dest_s3_key: str, local_file_name: str
     s3.load_file(local_file_name, dest_s3_key, s3_bucket, replace=True)
     logging.info(f"File '{local_file_name}' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}'.")
     if md5_hash:
-        s3.load_string(md5_hash, f'{dest_s3_key}.md5', s3_bucket, replace=True)
-        logging.info(f"MD5 file for '{local_file_name}.md5' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}.md5'.")
+        s3.load_string(md5_hash, f"{dest_s3_key}.md5", s3_bucket, replace=True)
+        logging.info(
+            f"MD5 file for '{local_file_name}.md5' successfully uploaded to 's3://{s3_bucket}/{dest_s3_key}.md5'."
+        )
+
+
+@dataclass
+class UploadedPart:
+    part_number: int
+    etag: str
+
+
+class MultipartUpload:
+    def __init__(self, s3_client: BaseClient, bucket: str, key: str):
+        self.s3_client = s3_client
+        self.bucket = bucket
+        self.key = key
+        self.upload_id: str | None = None
+        self.uploaded_parts: list[UploadedPart] = []
+        self.uploaded_bytes: int = 0
+
+    def prepare(self):
+        uploads = self._list_multipart_uploads()
+        upload_id = uploads[0]["UploadId"] if uploads else None
+        if upload_id:
+            response = self.s3_client.list_parts(Bucket=self.bucket, Key=self.key, UploadId=upload_id)
+            retrieved_parts = response.get("Parts", [])
+            self.uploaded_parts = [
+                UploadedPart(part_number=part["PartNumber"], etag=part["ETag"]) for part in retrieved_parts
+            ]
+            self.uploaded_bytes = sum(part["Size"] for part in retrieved_parts)
+        else:
+            upload_id = self._create_multipart_upload()
+        self.upload_id = upload_id
+
+    def _list_multipart_uploads(self) -> list[dict]:
+        uploads = self.s3_client.list_multipart_uploads(Bucket=self.bucket, Prefix=self.key)
+        return uploads.get("Uploads", [])
+
+    def _create_multipart_upload(self) -> str:
+        response = self.s3_client.create_multipart_upload(Bucket=self.bucket, Key=self.key)
+        return response["UploadId"]
+
+    def reset(self):
+        self.uploaded_parts = []
+        self.uploaded_bytes = 0
+
+    def upload_part(self, data: bytes):
+        part_number = len(self.uploaded_parts) + 1
+        part_response = self.s3_client.upload_part(
+            Bucket=self.bucket, Key=self.key, PartNumber=part_number, UploadId=self.upload_id, Body=data
+        )
+        self.uploaded_parts.append(UploadedPart(part_number=part_number, etag=part_response["ETag"]))
+        self.uploaded_bytes += len(data)
+
+    def complete(self):
+        parts = [
+            {"ETag": p.etag, "PartNumber": p.part_number}
+            for p in sorted(self.uploaded_parts, key=lambda p: p.part_number)
+        ]
+        self.s3_client.complete_multipart_upload(
+            Bucket=self.bucket, Key=self.key, UploadId=self.upload_id, MultipartUpload={"Parts": parts}
+        )
+
+    def __enter__(self) -> "MultipartUpload":
+        self.prepare()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        if exc_type is None:
+            self.complete()
+        else:
+            logger.error(
+                f"Exception during multipart upload for 's3://{self.bucket}/{self.key}': {exc_val}",
+            )
+        return False

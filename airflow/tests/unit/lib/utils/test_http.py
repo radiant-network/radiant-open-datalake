@@ -1,9 +1,10 @@
-from dags.lib.utils.http import http_get, stream_download_file
-import requests
+from unittest.mock import MagicMock, patch
 
-import requests_mock
 import pytest
-from unittest.mock import patch, MagicMock
+import requests
+import requests_mock
+
+from dags.lib.utils.http import http_get, stream_download_file
 
 
 def test_http_get_successful_response():
@@ -85,7 +86,8 @@ def test_stream_download_file_respects_chunk_size(tmp_path):
 
     def fake_iter_content(chunk_size):
         for i in range(0, len(content), chunk_size):
-            yield content[i:i+chunk_size]
+            yield content[i : i + chunk_size]
+
     mock_response.iter_content.side_effect = fake_iter_content
 
     with patch("requests.get", return_value=mock_response):
