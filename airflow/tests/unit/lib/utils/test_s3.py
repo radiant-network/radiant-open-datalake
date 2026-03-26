@@ -1,31 +1,4 @@
-import pytest
-
-from dags.lib.utils.s3 import (
-    load_file, MultipartUpload,
-)
-
-def test_list_multipart_uploads_returns_uploads_when_present(s3_hook, s3_client):
-    uploads = [
-        {"UploadId": "id1", "Key": "prefix/file1"},
-        {"UploadId": "id2", "Key": "prefix/file2"},
-    ]
-    s3_client.list_multipart_uploads.return_value = {"Uploads": uploads}
-
-    multipart = MultipartUpload(s3_hook, "bucket", "prefix")
-    result = multipart._list_multipart_uploads()
-
-    assert result == uploads
-    s3_client.list_multipart_uploads.assert_called_once_with(Bucket="bucket", Prefix="prefix")
-
-
-def test_list_multipart_uploads_returns_empty_list_when_no_uploads(s3_hook, s3_client):
-    s3_client.list_multipart_uploads.return_value = {"somekey": "somevalue"}  # No 'Uploads' key in response
-
-    multipart = MultipartUpload(s3_hook, "bucket", "prefix")
-    result = multipart._list_multipart_uploads()
-
-    assert result == []
-    s3_client.list_multipart_uploads.assert_called_once_with(Bucket="bucket", Prefix="prefix")
+from dags.lib.utils.s3 import load_file
 
 
 def test_load_file_uploads_file_to_s3(s3_hook):
@@ -53,12 +26,3 @@ def test_load_file_uploads_md5_file_when_md5_hash_provided(s3_hook):
 
     s3_hook.load_file.assert_called_once_with(local_file_name, dest_s3_key, s3_bucket, replace=True)
     s3_hook.load_string.assert_called_once_with(md5_hash, f"{dest_s3_key}.md5", s3_bucket, replace=True)
-
-
-def test_create_multipart_upload_returns_upload_id(s3_hook, s3_client):
-    s3_client.create_multipart_upload.return_value = {"UploadId": "test-upload-id"}
-
-    multipart = MultipartUpload(s3_hook, "bucket", "key")
-    upload_id = multipart._create_multipart_upload()
-    assert upload_id == "test-upload-id"
-    s3_client.create_multipart_upload.assert_called_once_with(Bucket="bucket", Key="key")

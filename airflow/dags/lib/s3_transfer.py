@@ -41,7 +41,7 @@ def multipart_upload_with_resume(
     try:
         headers = headers or {}
 
-        with MultipartUpload(s3, s3_bucket, s3_key) as multipart_upload:
+        with MultipartUpload(s3.get_conn(), s3_bucket, s3_key) as multipart_upload:
             if multipart_upload.uploaded_bytes > 0:
                 headers["Range"] = f"bytes={multipart_upload.uploaded_bytes}-"
 
@@ -57,7 +57,7 @@ def multipart_upload_with_resume(
                 file_size = int(r.headers["Content-Length"]) + multipart_upload.uploaded_bytes
                 _log_upload_start(multipart_upload.uploaded_bytes, file_size, url, s3_key)
 
-                for chunk in r.iter_content(chunk_size=int(part_size_mb * 1024 * 1024)):
+                for chunk in r.iter_content(chunk_size=round(part_size_mb * 1024 * 1024)):
                     if chunk:  # filter out keep-alive new chunks
                         multipart_upload.upload_part(chunk)
                         _log_progress(multipart_upload.uploaded_bytes, file_size)

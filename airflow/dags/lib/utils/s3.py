@@ -34,9 +34,8 @@ class UploadedPart:
 
 
 class MultipartUpload:
-    def __init__(self, s3: S3Hook, bucket: str, key: str):
-        self.s3 = s3
-        self.s3_client: BaseClient = self.s3.get_conn()
+    def __init__(self, s3_client: BaseClient, bucket: str, key: str):
+        self.s3_client = s3_client
         self.bucket = bucket
         self.key = key
         self.upload_id: str | None = None
