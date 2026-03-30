@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import Enum
 
 
 @dataclass(frozen=True)
@@ -40,3 +41,24 @@ class DownloadConfig:
 
     def get_url(self, version: str) -> str:
         return self.download_url if isinstance(self.download_url, str) else self.download_url(version)
+
+
+class UpdateMode(Enum):
+    MANUAL = "manual"
+    AUTO = "auto"
+
+
+@dataclass(frozen=True)
+class SourceConfig:
+    short_name: str
+    display_name: str
+    website: str
+    download_configs: list[DownloadConfig]
+    update_mode: UpdateMode = UpdateMode.MANUAL
+
+    def get_latest_version(self) -> str | None:
+        """Override this method to specify how to retrieve the latest version for a source.
+        Returns:
+            str or None: The latest detected version as a string, or None if automatic version detection does not apply
+        """
+        return None

@@ -19,6 +19,9 @@ jobs:
       - name: Install dependencies
         run: make install-dev
         working-directory: ./airflow
+      - name: Reset airflow db
+        run: make airflow-reset
+        working-directory: ./airflow
       - name: Run tests
         run: make test
         working-directory: ./airflow

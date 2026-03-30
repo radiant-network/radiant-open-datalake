@@ -16,3 +16,7 @@ test: test-static test-unit
 format:
 	ruff format dags/ tests
 	ruff check --fix dags/ tests/
+
+airflow-reset:
+	AIRFLOW__CORE__UNIT_TEST_MODE=True airflow db reset -y
+

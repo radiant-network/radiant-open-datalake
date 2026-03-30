@@ -4,7 +4,7 @@ from pathlib import Path
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from dags.lib.domain.model.download_config import DownloadConfig
+from dags.lib.domain.model.config import DownloadConfig
 from dags.lib.domain.model.sources import get_download_configs
 from dags.lib.s3_transfer import multipart_upload_with_resume
 from dags.lib.utils.http import http_get, stream_download_file

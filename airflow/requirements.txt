@@ -1,5 +1,5 @@
 requests==2.32.5
 
-# We might need to revisit the version of this provider if we use airflow 2
+apache_airflow==3.1.8
 apache_airflow_providers_amazon==9.23.0
 

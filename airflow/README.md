@@ -15,7 +15,12 @@ pip install --upgrade pip
 make install-dev
 ```
 
-2) Run the tests:
+2) Setup airflow db:
+```sh
+make airflow-reset
+```
+
+3) Run the tests:
 ```sh
 make test
 ```

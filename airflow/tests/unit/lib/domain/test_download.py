@@ -1,7 +1,7 @@
 from unittest.mock import ANY, MagicMock, call, patch
 
 from dags.lib.domain.download import download
-from dags.lib.domain.model.download_config import DownloadConfig
+from dags.lib.domain.model.config import DownloadConfig
 
 
 def test_download_direct_upload_no_md5(s3_hook):
@@ -103,7 +103,6 @@ def test_download_via_local_copy_with_extract_members_no_md5(s3_hook):
         mock_tarfile_open.return_value.__enter__.return_value = mock_tar
 
         download(s3_hook, "bucket", "prefix", "source", "some_version")
-
         mock_stream_download_file.assert_called_once_with(
             url="http://example.com/archive.tar.gz", dest_file_name="archive.tar.gz", headers={}
         )
