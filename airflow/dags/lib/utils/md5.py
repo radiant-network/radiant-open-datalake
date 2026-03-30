@@ -38,7 +38,7 @@ def check_md5(path: str, expected_md5) -> str:
     return md5
 
 
-def extract_md5_from_checksum_file_content(md5_file_content: str) -> dict:
+def extract_md5_from_checksum_file_content(md5_file_content: str) -> str:
     """
     Extract the MD5 hash from the content of a checksum (.md5) file.
 

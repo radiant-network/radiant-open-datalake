@@ -7,14 +7,14 @@ def test_get_download_configs_with_string_lowercase():
     configs = get_download_configs("clinvar")
     assert isinstance(configs, list)
     assert configs
-    assert configs[0].get_url() == "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz"
+    assert configs[0].download_url == "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz"
 
 
 def test_get_download_configs_with_string_uppercase():
     configs = get_download_configs("CLINVAR")
     assert isinstance(configs, list)
     assert configs
-    assert configs[0].get_url() == "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz"
+    assert configs[0].download_url == "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz"
 
 
 def test_get_download_configs_invalid_string():

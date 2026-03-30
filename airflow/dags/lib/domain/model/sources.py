@@ -12,23 +12,24 @@ class SourceConfig:
     download_configs: list[DownloadConfig]
 
 
+# As indicated by the underscore prefix, this enum is intended for internal use within this module only.
+# In the future, we may switch to a configuration-based mechanism instead of using an enum.
 class _Source(Enum):
     CLINVAR = SourceConfig(
         short_name="clinvar",
         display_name="NCBI Clinvar",
         website="https://www.ncbi.nlm.nih.gov/clinvar/",
         download_configs=[
-            DownloadConfig(url="https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz", md5_present=True)
+            DownloadConfig(
+                download_url="https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz", md5_present=True
+            )
         ],
     )
 
 
-########################################################################################
-# Always use the functions below to access source configuration.                       #
-# Avoid direct access to the enum, as we may switch to a configuration-based mechanism #
-# in the future. If the existing functions do not fit your needs, add a new one rather #
-# than accessing the enum directly.                                                    #
-########################################################################################
+###########################################################
+# Use the functions below to access source configuration. #
+###########################################################
 
 
 def get_download_configs(source: str) -> list[DownloadConfig]:
