@@ -19,9 +19,6 @@ class DownloadConfig:
     - A string (for a fixed URL)
     - A callable that takes a version as a parameter and returns the URL (for dynamic URLs)
 
-    The download_url attribute should be a string (fixed url) or a callable
-    taking a version in parameter and returning the url (dynamic url).
-
     If `extract_members` is provided (e.g., `extract_members=["file1.txt", "file2.txt"]`),
     the downloaded file is assumed to be a tar archive, and only the specified members will
     be extracted and copied.

@@ -18,10 +18,6 @@ def download(s3: S3Hook, s3_bucket: str, s3_prefix: str, source: str, version: s
 
 
 def _handle_file_transfer(s3, s3_bucket, s3_prefix: str, version: str, download_conf: DownloadConfig):
-    # Pre-compute the URL and any parameters that may depend on it.
-    # This ensures all config values are consistent with the actual URL used for the download,
-    # especially when the URL is generated dynamically for some sources.
-
     if download_conf.use_direct_upload:
         _direct_upload_to_s3(
             s3=s3, s3_bucket=s3_bucket, s3_prefix=s3_prefix, version=version, download_conf=download_conf

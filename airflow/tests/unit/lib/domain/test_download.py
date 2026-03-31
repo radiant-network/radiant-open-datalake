@@ -228,7 +228,7 @@ def test_download_via_local_configured_name_and_headers(s3_hook):
         )
 
 
-def test_download_with_dynamcic_url(s3_hook):
+def test_download_with_dynamic_url(s3_hook):
     download_config = DownloadConfig(
         download_url=lambda version: f"http://example.com/file_{version}.txt",
         use_direct_upload=True,
