@@ -20,11 +20,10 @@ def discover_new_source_versions():
         from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
         from dags.lib import config
-        from dags.lib.domain.datalake import get_raw_datalake_prefix
         from dags.lib.domain.model.sources import get_latest_version
 
         latest_version = get_latest_version(source)
-        prefix = get_raw_datalake_prefix(source, latest_version)
+        prefix = f"raw/{source}/{latest_version}"
 
         s3_hook = S3Hook(config.s3_conn_id)
         bucket = config.raw_datalake_bucket

@@ -1,7 +1,7 @@
 from enum import Enum
 
 from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.sources_impl.clinvar import ClinvarSourceConfig
+from dags.lib.domain.sources_impl import ClinvarSourceConfig
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -34,6 +34,6 @@ def get_auto_update_source_ids() -> list[str]:
     return [s.name.lower() for s in _Source if s.value.update_mode == UpdateMode.AUTO]
 
 
-def get_latest_version(source: str) -> str | None:
+def get_latest_version(source: str) -> str:
     source_enum = _Source[source.upper()]
     return source_enum.value.get_latest_version()

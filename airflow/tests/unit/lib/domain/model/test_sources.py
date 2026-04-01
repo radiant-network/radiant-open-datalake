@@ -35,6 +35,6 @@ def test_get_auto_update_source_ids():
 def test_get_latest_version():
     mock_response = Mock()
     mock_response.text = "sometext clinvar_20240327.vcf"
-    with patch("dags.lib.domain.sources_impl.clinvar.http_get", return_value=mock_response):
+    with patch("dags.lib.domain.sources_impl.http_get", return_value=mock_response):
         assert get_latest_version("clinvar") == "20240327"
         assert get_latest_version("Clinvar") == "20240327"
