@@ -56,9 +56,10 @@ class SourceConfig:
     download_configs: list[DownloadConfig]
     update_mode: UpdateMode = UpdateMode.MANUAL
 
-    def get_latest_version(self) -> str | None:
+    def get_latest_version(self) -> str:
         """Override this method to specify how to retrieve the latest version for a source.
+
         Returns:
-            str or None: The latest detected version as a string, or None if automatic version detection does not apply
+            str: The latest detected version as a string
         """
-        return None
+        raise NotImplementedError()

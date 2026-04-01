@@ -1,4 +1,6 @@
-from airflow.sdk import Variable
+# Importing from airflow.models instead of airflow.sdk to avoid test initialization issues.
+# This is fixed in newer Airflow versions, so you can switch back to airflow.sdk if we upgrade.
+from airflow.models import Variable
 
 # S3 settings
 environment = Variable.get("environment", "dev")

@@ -63,7 +63,8 @@ def test_source_config_defaults():
 
     # check defaults
     assert source_conf.update_mode == UpdateMode.MANUAL
-    assert source_conf.get_latest_version() is None
+    with pytest.raises(NotImplementedError):
+        source_conf.get_latest_version()
 
 
 def test_source_config_with_update_mode_auto():

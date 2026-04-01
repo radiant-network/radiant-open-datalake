@@ -17,7 +17,6 @@ from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest
     catchup=False,
 )
 def discover_new_source_versions():
-
     @task(outlets=[new_source_version_asset])
     def poll(source: str):
         latest_version = get_latest_version(source)
