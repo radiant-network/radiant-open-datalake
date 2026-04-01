@@ -1,12 +1,8 @@
-import logging
-
-from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-from airflow.sdk import Metadata, dag, task
+from airflow.sdk import Metadata, dag, task, task_group
 
 from dags.lib import config
 from dags.lib.assets import new_source_version_asset
-from dags.lib.domain.datalake import get_raw_datalake_prefix
-from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest_version
+from dags.lib.domain.model.sources import get_auto_update_source_ids
 
 
 @dag(
@@ -17,8 +13,16 @@ from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest
     catchup=False,
 )
 def discover_new_source_versions():
-    @task(outlets=[new_source_version_asset])
-    def poll(source: str):
+    @task.virtualenv(requirements=["requests==2.32.5"])
+    def check_for_update(source: str):
+        import logging
+
+        from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+
+        from dags.lib import config
+        from dags.lib.domain.datalake import get_raw_datalake_prefix
+        from dags.lib.domain.model.sources import get_latest_version
+
         latest_version = get_latest_version(source)
         prefix = get_raw_datalake_prefix(source, latest_version)
 
@@ -33,10 +37,23 @@ def discover_new_source_versions():
         else:
             logging.info("New version detected for source %s: %s. Will trigger download.", source, latest_version)
             s3_hook.load_string("", key=f"{prefix}/.in_progress", bucket_name=bucket)
-            yield Metadata(new_source_version_asset, {"latest_version": latest_version})
+            return {"latest_version": latest_version, "source": source}
+
+    @task.short_circuit
+    def should_continue(update_info):
+        return update_info
+
+    @task(outlets=[new_source_version_asset])
+    def emit_asset_event(update_info):
+        yield Metadata(new_source_version_asset, update_info)
+
+    @task_group()
+    def group(source: str):
+        check_for_update_task = check_for_update(source)
+        (check_for_update_task >> should_continue(check_for_update_task) >> emit_asset_event(check_for_update_task))
 
     for source in get_auto_update_source_ids():
-        poll.override(task_id=f"poll-{source}")(source)
+        group.override(group_id=f"process_{source}")(source)
 
 
 discover_new_source_versions()

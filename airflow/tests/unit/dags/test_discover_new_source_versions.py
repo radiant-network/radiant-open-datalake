@@ -13,5 +13,9 @@ def test_dag_loads_without_errors(dag_bag):
 
 def test_dag_has_expected_tasks(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-discover-new-source-versions")
-    expected_tasks = {"poll-clinvar"}
+    expected_tasks = {
+        "process_clinvar.check_for_update",
+        "process_clinvar.should_continue",
+        "process_clinvar.emit_asset_event",
+    }
     assert set(dag.task_ids) == expected_tasks
