@@ -1,6 +1,6 @@
 import pytest
 
-from dags.lib.domain.model.download_config import DownloadConfig
+from dags.lib.domain.model.config import DownloadConfig, SourceConfig, UpdateMode
 
 
 def test_download_config_with_fixed_url():
@@ -45,3 +45,35 @@ def test_download_config_asserts_on_direct_upload_and_extract_members():
             extract_members=["a.txt"],
             use_direct_upload=True,
         )
+
+
+def test_source_config_defaults():
+    source_conf = SourceConfig(
+        short_name="clinvar",
+        display_name="Clinvar",
+        website="https://www.ncbi.nlm.nih.gov/clinvar/",
+        download_configs=[],
+    )
+
+    # check member values
+    assert source_conf.short_name == "clinvar"
+    assert source_conf.display_name == "Clinvar"
+    assert source_conf.website == "https://www.ncbi.nlm.nih.gov/clinvar/"
+    assert source_conf.download_configs == []
+
+    # check defaults
+    assert source_conf.update_mode == UpdateMode.MANUAL
+    with pytest.raises(NotImplementedError):
+        source_conf.get_latest_version()
+
+
+def test_source_config_with_update_mode_auto():
+    source_conf = SourceConfig(
+        short_name="gnomad",
+        display_name="GnomAD",
+        website="https://gnomad.broadinstitute.org/",
+        download_configs=[],
+        update_mode=UpdateMode.AUTO,
+    )
+
+    assert source_conf.update_mode == UpdateMode.AUTO
