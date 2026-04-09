@@ -1,8 +1,11 @@
-from airflow.sdk import Metadata, dag, task, task_group
+import logging
+
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from airflow.sdk import Metadata, dag, task
 
 from dags.lib import config
-from dags.lib.assets import new_source_version_asset
-from dags.lib.domain.model.sources import get_auto_update_source_ids
+from dags.lib.assets import check_version_asset_alias, new_source_version_asset
+from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest_version
 
 
 @dag(
@@ -13,19 +16,15 @@ from dags.lib.domain.model.sources import get_auto_update_source_ids
     catchup=False,
 )
 def discover_new_source_versions():
-    @task.virtualenv(requirements=["requests==2.32.5"])
+    # Not using virtualenv operator due to an Airflow 3.0.6 bug blocking access to variables/connections.
+    # You might want to revisit if upgrading Airflow.
+    @task(outlets=[check_version_asset_alias])
     def check_for_update(source: str):
-        import logging
-
-        from airflow.providers.amazon.aws.hooks.s3 import S3Hook
-
-        from dags.lib import config
-        from dags.lib.domain.model.sources import get_latest_version
-
         latest_version = get_latest_version(source)
         prefix = f"raw/{source}/{latest_version}"
 
         s3_hook = S3Hook(config.s3_conn_id)
+
         bucket = config.raw_datalake_bucket
         if s3_hook.check_for_prefix(bucket_name=bucket, prefix=prefix, delimiter="/"):
             logging.info(
@@ -36,23 +35,14 @@ def discover_new_source_versions():
         else:
             logging.info("New version detected for source %s: %s. Will trigger download.", source, latest_version)
             s3_hook.load_string("", key=f"{prefix}/.in_progress", bucket_name=bucket)
-            return {"latest_version": latest_version, "source": source}
-
-    @task.short_circuit
-    def should_continue(update_info):
-        return update_info
-
-    @task(outlets=[new_source_version_asset])
-    def emit_asset_event(update_info):
-        yield Metadata(new_source_version_asset, update_info)
-
-    @task_group()
-    def group(source: str):
-        check_for_update_task = check_for_update(source)
-        (check_for_update_task >> should_continue(check_for_update_task) >> emit_asset_event(check_for_update_task))
+            yield Metadata(
+                asset=new_source_version_asset,
+                extra={"source": source, "latest_version": latest_version},  # extra has to be provided, can be {}
+                alias=check_version_asset_alias,
+            )
 
     for source in get_auto_update_source_ids():
-        group.override(group_id=f"process_{source}")(source)
+        check_for_update.override(task_id=f"{source}_check_for_update")(source=source)
 
 
 discover_new_source_versions()
