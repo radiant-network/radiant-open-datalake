@@ -1,0 +1,7 @@
+apiVersion: v1
+data:
+  init.sql: |
+    CREATE DATABASE airflow WITH OWNER postgres;
+kind: ConfigMap
+metadata:
+  name: postgres-init-scripts

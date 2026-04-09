@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-init-job
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:13
+          command: ['sh', '-c', 'until pg_isready -h postgres -p 5432 -U postgres; do echo waiting for postgres; sleep 2; done']
+          env:
+            - name: PGPASSWORD
+              value: "postgres"
+      containers:
+        - name: psql
+          image: postgres:13
+          env:
+            - name: PGPASSWORD
+              value: "postgres"
+          command: ["psql"]
+          args:
+            - "-h"
+            - "postgres"
+            - "-U"
+            - "postgres"
+            - "-d"
+            - "postgres"
+            - "-f"
+            - "/scripts/init.sql"
+          volumeMounts:
+            - name: init-scripts
+              mountPath: /scripts
+      restartPolicy: OnFailure
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: postgres-init-scripts

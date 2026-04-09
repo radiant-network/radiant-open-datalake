@@ -22,3 +22,11 @@ Note: we strongly to use python 3.12 as will be used in the AWS environment.
 ```sh
 make test
 ```
+
+### Sandbox for local integration testing
+
+A local sandbox is available to run DAGs locally with Airflow.
+
+AWS-dependent operators are not supported, but this can still be useful for testing some DAGs.
+
+See [sandbox/README.md](sandbox/README.md) for instructions.

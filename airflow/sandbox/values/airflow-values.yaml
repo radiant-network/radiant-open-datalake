@@ -1,0 +1,60 @@
+executor: "CeleryExecutor"
+# Default airflow tag to deploy
+defaultAirflowTag: "3.0.6"
+# Airflow version (Used to make some decisions based on Airflow Version being deployed)
+airflowVersion: "3.0.6"
+apiServer:
+  service:
+    type: LoadBalancer
+webserver:   
+  defaultUser:
+    enabled: true
+    username: airflow
+    password: airflow
+config:
+  api:
+    auth_backends: "airflow.api.auth.backend.basic_auth"
+
+postgresql:
+  enabled: false
+
+data:
+  metadataConnection:
+    user: postgres
+    pass: postgres
+    protocol: postgresql
+    host: postgres
+    port: 5432
+    db: airflow
+
+dags:
+  persistence:
+    enabled: true
+    existingClaim: opendatalake-dags-pvc
+  gitSync:
+    enabled: false
+
+logs:
+  persistence:
+    enabled: true
+    existingClaim: opendatalake-logs-pvc
+
+extraEnv: |
+  - name: PYTHONPATH
+    value: /opt/airflow/dags
+  - name: AIRFLOW_CONN_OPENDATALAKE_S3
+    value: '{
+        "conn_type": "Amazon Web Services",
+        "login": "admin",
+        "password": "password",
+        "host": "opendatalake-minio",
+        "port": 9000,
+        "extra": {
+            "aws_access_key_id": "admin",
+            "aws_secret_access_key": "password",
+            "endpoint_url": "http://opendatalake-minio:9000",
+            "region_name": "us-east-1",
+            "aws_allow_http": true,
+            "verify": false
+        }
+    }'

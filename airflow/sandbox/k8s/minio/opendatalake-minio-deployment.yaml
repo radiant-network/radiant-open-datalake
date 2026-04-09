@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: opendatalake-minio
+  name: opendatalake-minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opendatalake-minio
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: opendatalake-minio
+    spec:
+      containers:
+        - args:
+            - server
+            - /data
+            - --console-address
+            - :9001
+          env:
+            - name: MINIO_DOMAIN
+              value: opendatalake-minio
+            - name: MINIO_ROOT_PASSWORD
+              value: password
+            - name: MINIO_ROOT_USER
+              value: admin
+          image: minio/minio:RELEASE.2024-10-29T16-01-48Z
+          name: opendatalake-minio
+          ports:
+            - containerPort: 9001
+              protocol: TCP
+            - containerPort: 9000
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /data
+              name: minio-data-volume
+      restartPolicy: Always
+      volumes:
+        - name: minio-data-volume
+          persistentVolumeClaim:
+            claimName: minio-data-volume
