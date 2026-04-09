@@ -9,10 +9,10 @@ from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest
 
 
 @dag(
-    dag_display_name=f"{config.dag_display_name_prefix} - Discover New Source Versions",
-    dag_id=f"{config.dag_id_prefix}-discover-new-source-versions",
+    dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Discover New Source Versions",
+    dag_id=f"{config.DAG_ID_PREFIX}-discover-new-source-versions",
     schedule="0 6 * * *",  # every day at 6 AM
-    tags=config.dag_default_tags,
+    tags=config.DAG_DEFAULT_TAGS,
     catchup=False,
 )
 def discover_new_source_versions():

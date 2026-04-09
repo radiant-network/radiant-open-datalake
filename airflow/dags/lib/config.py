@@ -8,10 +8,10 @@ s3_conn_id = "opendatalake_s3"
 raw_datalake_bucket = f"opendatalake-{environment}"
 
 # DAGs settings
-dag_default_tags = ["opendatalake"]
-dag_id_prefix = "opendatalake"
-dag_display_name_prefix = "Open Datalake"
+DAG_DEFAULT_TAGS = ["opendatalake"]
+DAG_ID_PREFIX = "opendatalake"
+DAG_DISPLAY_NAME_PREFIX = "Open Datalake"
 
 # Assets settings
-assets_uri_prefix = "opendatalake"
-assets_name_prefix = "opendatalake"
+ASSETS_URI_PREFIX = "opendatalake"
+ASSETS_NAME_PREFIX = "opendatalake"
