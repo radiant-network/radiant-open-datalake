@@ -2,11 +2,14 @@
 
 from airflow.sdk import Asset, AssetAlias
 
-from dags.lib.config import ASSETS_NAME_PREFIX, ASSETS_URI_PREFIX
+from dags.lib.config import ASSETS_URI_PREFIX
 
-new_source_version_asset = Asset(
-    uri=f"x-{ASSETS_URI_PREFIX}-new-source-version",
-    name=f"{ASSETS_NAME_PREFIX}-new-source-version",
-)
 
-check_version_asset_alias = AssetAlias(f"x-{ASSETS_URI_PREFIX}-check-version-alias")
+def new_source_version_asset(source):
+    return Asset(
+        uri=f"{ASSETS_URI_PREFIX}-new-{source}-version",
+        name=source,
+    )
+
+
+check_version_asset_alias = AssetAlias(f"{ASSETS_URI_PREFIX}-check-version-alias")

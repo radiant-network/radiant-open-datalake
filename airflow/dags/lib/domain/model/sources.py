@@ -1,7 +1,7 @@
 from enum import Enum
 
 from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.sources_impl import ClinvarSourceConfig
+from dags.lib.domain.sources_impl import ClinvarSourceConfig, DNSNPSourceConfig
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -16,6 +16,13 @@ class _Source(Enum):
                 download_url="https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz", md5_present=True
             )
         ],
+        update_mode=UpdateMode.AUTO,
+    )
+    DBSNP = DNSNPSourceConfig(
+        short_name="dbsnp",
+        display_name="DBSNP",
+        website="https://www.ncbi.nlm.nih.gov/dbsnp/",
+        download_configs=[],
         update_mode=UpdateMode.AUTO,
     )
 
@@ -34,6 +41,6 @@ def get_auto_update_source_ids() -> list[str]:
     return [s.name.lower() for s in _Source if s.value.update_mode == UpdateMode.AUTO]
 
 
-def get_latest_version(source: str) -> str:
+def get_latest_version(source: str) -> str | None:
     source_enum = _Source[source.upper()]
     return source_enum.value.get_latest_version()

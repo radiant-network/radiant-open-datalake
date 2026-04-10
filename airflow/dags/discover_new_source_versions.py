@@ -21,6 +21,10 @@ def discover_new_source_versions():
     @task(outlets=[check_version_asset_alias])
     def check_for_update(source: str):
         latest_version = get_latest_version(source)
+        if not latest_version:
+            logging.warning(f"Could not determine latest version for source {source}, skipping update check")
+            return
+
         prefix = f"raw/{source}/{latest_version}"
 
         s3_hook = S3Hook(config.s3_conn_id)
@@ -36,7 +40,7 @@ def discover_new_source_versions():
             logging.info("New version detected for source %s: %s. Will trigger download.", source, latest_version)
             s3_hook.load_string("", key=f"{prefix}/.in_progress", bucket_name=bucket)
             yield Metadata(
-                asset=new_source_version_asset,
+                asset=new_source_version_asset(source=source),
                 extra={"source": source, "latest_version": latest_version},  # extra has to be provided, can be {}
                 alias=check_version_asset_alias,
             )

@@ -1,6 +1,3 @@
-from unittest.mock import patch
-
-
 def test_dag_loads_without_errors(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-discover-new-source-versions")
     assert dag is not None
