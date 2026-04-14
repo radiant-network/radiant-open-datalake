@@ -1,0 +1,19 @@
+FROM --platform=linux/amd64 python:3.12
+
+WORKDIR /opt/opendatalake
+RUN useradd -ms /bin/bash airflow
+RUN chown -R airflow:airflow /opt/opendatalake
+USER airflow
+
+COPY requirements.txt /opt/opendatalake/requirements.txt
+COPY constraints-python3.12.txt /opt/opendatalake/constraints-python3.12.txt
+
+RUN pip install -r /opt/opendatalake/requirements.txt --constraint /opt/opendatalake/constraints-python3.12.txt
+
+# Setup Open Datalake code
+COPY dags /opt/opendatalake/dags
+
+# Necessary to have those scripts when running in AWS ECS
+COPY scripts/ecs/ /opt/opendatalake/
+
+ENV PYTHONPATH="/opt/opendatalake"

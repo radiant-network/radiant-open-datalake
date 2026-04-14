@@ -2,8 +2,14 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dags.lib.domain.model.config import UpdateMode
-from dags.lib.domain.model.sources import _Source, get_auto_update_source_ids, get_download_configs, get_latest_version
+from dags.lib.domain.model.config import DownloadConfig, UpdateMode
+from dags.lib.domain.model.sources import (
+    _Source,
+    get_auto_update_source_ids,
+    get_download_config,
+    get_download_configs,
+    get_latest_version,
+)
 
 
 def test_get_download_configs_with_string_lowercase():
@@ -38,3 +44,25 @@ def test_get_latest_version():
     with patch("dags.lib.domain.sources_impl.http_get", return_value=mock_response):
         assert get_latest_version("clinvar") == "20240327"
         assert get_latest_version("Clinvar") == "20240327"
+
+
+def test_get_download_config_valid():
+    config = get_download_config("clinvar", 0)
+    assert isinstance(config, DownloadConfig)
+    assert config.label == "vcf"
+
+
+def test_get_download_config_invalid_index():
+    # Assuming 'clinvar' is a valid source and has only one config (index 0)
+    with pytest.raises(ValueError) as exc:
+        get_download_config("clinvar", 1)
+    assert "invalid for 'clinvar'" in str(exc.value)
+
+    with pytest.raises(ValueError) as exc:
+        get_download_config("clinvar", -1)
+    assert "invalid for 'clinvar'" in str(exc.value)
+
+
+def test_get_download_config_invalid_source():
+    with pytest.raises(KeyError):
+        get_download_config("not_a_source", 0)

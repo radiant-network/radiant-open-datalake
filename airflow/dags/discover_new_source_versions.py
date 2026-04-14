@@ -4,7 +4,7 @@ from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.sdk import Metadata, dag, task
 
 from dags.lib import config
-from dags.lib.assets import check_version_asset_alias, new_source_version_asset
+from dags.lib.assets import new_source_version_asset, new_source_version_asset_alias
 from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest_version
 
 
@@ -12,15 +12,23 @@ from dags.lib.domain.model.sources import get_auto_update_source_ids, get_latest
     dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Discover New Source Versions",
     dag_id=f"{config.DAG_ID_PREFIX}-discover-new-source-versions",
     schedule="0 6 * * *",  # every day at 6 AM
-    tags=config.DAG_DEFAULT_TAGS,
+    tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{source}" for source in get_auto_update_source_ids()],
     catchup=False,
+    # to prevent missing asset events bugs due to concurrent runs / tasks
+    # consider removing these limits if airflow upgrade fixes the underlying issue
+    max_active_runs=1,
+    max_active_tasks=1,
 )
 def discover_new_source_versions():
     # Not using virtualenv operator due to an Airflow 3.0.6 bug blocking access to variables/connections.
     # You might want to revisit if upgrading Airflow.
-    @task(outlets=[check_version_asset_alias])
+    @task(outlets=[new_source_version_asset_alias])
     def check_for_update(source: str):
         latest_version = get_latest_version(source)
+        if not latest_version:
+            logging.warning(f"Could not determine latest version for source {source}, skipping update check")
+            return
+
         prefix = f"raw/{source}/{latest_version}"
 
         s3_hook = S3Hook(config.s3_conn_id)
@@ -36,9 +44,9 @@ def discover_new_source_versions():
             logging.info("New version detected for source %s: %s. Will trigger download.", source, latest_version)
             s3_hook.load_string("", key=f"{prefix}/.in_progress", bucket_name=bucket)
             yield Metadata(
-                asset=new_source_version_asset,
-                extra={"source": source, "latest_version": latest_version},  # extra has to be provided, can be {}
-                alias=check_version_asset_alias,
+                asset=new_source_version_asset(source=source),
+                extra={"version": latest_version},
+                alias=new_source_version_asset_alias,
             )
 
     for source in get_auto_update_source_ids():

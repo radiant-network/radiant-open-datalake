@@ -63,6 +63,33 @@ In a new terminal, run the following command to mount the dags directory in mini
 minikube mount $(pwd)/dags:/opt/airflow/dags/dags
 ```
 
+## Pre-building the Open Datalake ECS task operator image (~6 minutes)
+
+Run the following command to build the image:
+
+```
+eval $(minikube -p minikube docker-env)  # To ensure the image is built inside minikube's docker environment
+docker build -t ghcr.io/radiant-network/opendatalake-airflow-task-operator:latest -f Dockerfile.opendatalake.operator .
+```
+
+## Switch download_source DAG from ECS to K8s operator (Optional)
+
+You can swap the ECS operator for the K8s operator in the `download_source` DAG for local testing.
+
+Run the following commands to switch:
+```sh
+cp sandbox/operators/k8s.py dags/lib/operators/k8s.py
+sed -i '' 's/operators\.ecs/operators\.k8s/g'  dags/download_source.py
+```
+
+To revert back to the ECS operator:
+```sh
+rm dags/lib/operators/k8s.py
+sed -i '' 's/operators\.k8s/operators\.ecs/g'  dags/download_source.py
+```
+
+Note: The swap commands will modify your code copy. Make sure you do not commit the operator swap to version control.
+
 ## Install airflow volumes for logs and dags
 ```
 kubectl apply -f sandbox/k8s/airflow/
@@ -92,7 +119,13 @@ airflow-triggerer-0                      2/2     Running     0          2m11s
 airflow-worker-0                         2/2     Running     0          2m11s
 ```
 
+
 ## Connect to the Airflow UI
 Connect to the Airflow UI at http://localhost:8080
 - Username: airflow
 - Password: airflow
+
+
+## Create Pool
+
+In the airflow UI, using the Admin tab, create pool "opendatalake_download_tasks_pool" with 1 slots.

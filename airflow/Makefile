@@ -17,7 +17,7 @@ test-unit:
 test: test-static test-unit
 
 format:
-	ruff format dags/ tests
-	ruff check --fix dags/ tests/
+	ruff format dags/ tests/ scripts/
+	ruff check --fix dags/ tests/ scripts/
 
 
