@@ -3,6 +3,15 @@
 This directory contains Airflow DAGs and related code for orchestrating workflows associated to public datasets.
 
 
+## Runtime Requirements
+
+### ECS Operator
+
+- All required Airflow variables and environment variables must be set. See [dags.lib.config](dags/lib/config.py) for details.
+
+- The ECS container must be pre-configured so that S3 credentials and connection info are available at runtime (e.g., via environment variables or IAM roles) to allow the S3 hook to function properly.
+
+
 ## Developpers
 
 ### Run unit tests

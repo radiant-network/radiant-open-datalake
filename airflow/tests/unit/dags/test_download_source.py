@@ -1,7 +1,6 @@
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from dags.download_source import direct_upload
-from dags.lib.domain.model.config import DownloadConfig
 
 
 def test_dag_loads_without_errors(dag_bag):
@@ -17,18 +16,27 @@ def test_dag_has_expected_tasks(dag_bag):
     assert expected_tasks == dag.task_ids
 
 
-def test_direct_upload_task_calls_download():
-    download_config = DownloadConfig(download_url="http://example.com/file.txt", use_direct_upload=True)
+def test_direct_upload_calls_s3_downloader():
+    source = "clinvar"
+    prefix = "raw/clinvar/v1"
+    version = "v1"
+    download_index = 0
 
+    fake_download_conf = MagicMock()
+    fake_downloader = MagicMock()
     with (
-        patch("dags.download_source.download.direct_upload") as mock_direct_upload,
-        patch("dags.download_source.get_download_config", return_value=download_config) as mock_get_download_config,
+        patch(
+            "dags.download_source.get_download_config_at_index", return_value=fake_download_conf
+        ) as mock_get_download_conf,
+        patch("dags.download_source.S3Downloader", return_value=fake_downloader) as mock_downloader_constructor,
     ):
-        direct_upload.function("test_source", "test_prefix", "test_version", 0)
-        mock_direct_upload.assert_called_once_with(
-            s3_prefix="test_prefix", version="test_version", download_conf=download_config
+        direct_upload.function(source, prefix, version, download_index)
+
+        mock_get_download_conf.assert_called_once_with(source, download_index)
+        mock_downloader_constructor.assert_called_once_with(
+            s3_prefix=prefix, version=version, download_conf=fake_download_conf
         )
-        mock_get_download_config.assert_called_once_with("test_source", 0)
+        fake_downloader.direct_upload.assert_called_once()
 
 
 def test_upload_via_local_copy_task_build_python_script_operator():

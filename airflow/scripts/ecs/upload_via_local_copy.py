@@ -2,17 +2,18 @@ import argparse
 import logging
 import sys
 
-from dags.lib.domain.download import upload_via_local_copy
-from dags.lib.domain.model.sources import get_download_config
+from dags.lib.domain.download import S3Downloader
+from dags.lib.domain.model.sources import get_download_config_at_index
 
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger(__name__)
 
 
 def main(source: str, prefix: str, version: str, download_index: int):
-    download_conf = get_download_config(source, download_index)
+    download_conf = get_download_config_at_index(source, download_index)
 
-    upload_via_local_copy(s3_prefix=prefix, version=version, download_conf=download_conf)
+    downloader = S3Downloader(s3_prefix=prefix, version=version, download_conf=download_conf)
+    downloader.upload_via_local_copy()
     logger.info(f"Upload via local copy completed for source {source} version {version} to prefix {prefix}")
 
 

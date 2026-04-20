@@ -1,4 +1,4 @@
-import os
+import logging
 from datetime import timedelta
 
 from airflow.providers.amazon.aws.operators import ecs
@@ -18,33 +18,27 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
         ecs_env: ECSEnv = config.ecs_env,
         **kwargs,
     ):
-        assert "overrides" not in kwargs, "Don't pass 'overrides': generated dynamically."
+        kwargs.setdefault("overrides", {})
+        if "containerOverrides" in kwargs["overrides"]:
+            logging.warning(
+                "A user-provided containerOverrides was detected."
+                "The operator will append its own container override."
+                "Ensure there are no duplicate or conflicting definitions."
+            )
 
-        super().__init__(overrides={}, **_get_ecs_context(ecs_env), **kwargs)
+        super().__init__(**_get_ecs_context(ecs_env), **kwargs)
         self.script_name = script_name
         self.script_args = script_args
         self.container_name = container_name
 
     def execute(self, context, **kwargs):
-        # Note: passing the s3 connection variable as env vars for now.
-        # There might be a more secure way to pass the connection info to the container
-        s3_conn_variable_prefix = "AIRFLOW_CONN_" + config.s3_conn_id.upper()
-        s3_conn_variables = [
-            {"name": k, "value": v} for k, v in os.environ.items() if k.startswith(s3_conn_variable_prefix)
-        ]
-
         command = ["python", self.script_name]
         for k, v in self.script_args.items():
             command.append(f"--{k}")
             command.append(str(v))
 
-        self.overrides["containerOverrides"] = [
-            {
-                "name": self.container_name,
-                "command": command,
-                "environment": s3_conn_variables,
-            }
-        ]
+        self.overrides = self.overrides or {}
+        self.overrides.setdefault("containerOverrides", []).append({"name": self.container_name, "command": command})
 
         return super().execute(context, **kwargs)
 

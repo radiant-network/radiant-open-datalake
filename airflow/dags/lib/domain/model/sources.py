@@ -34,10 +34,10 @@ def get_download_configs(source: str) -> list[DownloadConfig]:
     return source_enum.value.download_configs
 
 
-def get_download_config(source: str, index: int) -> DownloadConfig:
+def get_download_config_at_index(source: str, index: int) -> DownloadConfig:
     download_configs = get_download_configs(source)
-    if index < 0 or index >= len(download_configs):
-        raise ValueError(
+    if not 0 <= index < len(download_configs):
+        raise IndexError(
             f"Download config index {index} invalid for '{source}' (allowed: 0–{len(download_configs) - 1})"
         )
     return download_configs[index]

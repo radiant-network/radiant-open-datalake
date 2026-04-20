@@ -1,7 +1,7 @@
 from unittest.mock import ANY, MagicMock, call, patch
 
 from dags.lib.config import raw_datalake_bucket
-from dags.lib.domain.download import direct_upload, upload_via_local_copy
+from dags.lib.domain.download import S3Downloader
 from dags.lib.domain.model.config import DownloadConfig
 
 
@@ -11,9 +11,12 @@ def test_direct_upload(s3_hook):
     with (
         patch("dags.lib.domain.download.http_get", return_value=MagicMock(text="abc123  file.txt")),
         patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        direct_upload("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+
+        downloader.direct_upload()
         mock_multipart.assert_called_once_with(
             s3=s3_hook,
             s3_bucket=raw_datalake_bucket,
@@ -31,9 +34,11 @@ def test_direct_upload_with_md5(s3_hook):
     with (
         patch("dags.lib.domain.download.http_get", return_value=MagicMock(text="abc123  file.txt")),
         patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        direct_upload("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.direct_upload()
         mock_multipart.assert_called_once_with(
             s3=s3_hook,
             s3_bucket=raw_datalake_bucket,
@@ -56,9 +61,11 @@ def test_direct_upload_with_configured_name_and_headers(s3_hook):
     with (
         patch("dags.lib.domain.download.http_get", return_value=MagicMock(text="abc123  file.txt")),
         patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        direct_upload("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.direct_upload()
         mock_multipart.assert_called_once_with(
             s3=s3_hook,
             s3_bucket=raw_datalake_bucket,
@@ -79,9 +86,9 @@ def test_direct_upload_with_dynamic_url(s3_hook):
     with (
         patch("dags.lib.domain.download.http_get", return_value=MagicMock(text="abc123  file_1.1.0.txt")),
         patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        direct_upload("prefix", "1.1.0", download_config)
+        downloader = S3Downloader(s3=s3_hook, s3_prefix="prefix", version="1.1.0", download_conf=download_config)
+        downloader.direct_upload()
         mock_multipart.assert_called_once_with(
             s3=s3_hook,
             s3_bucket=raw_datalake_bucket,
@@ -100,9 +107,11 @@ def test_upload_via_local_copy(s3_hook):
         patch("dags.lib.domain.download.check_md5") as mock_check_md5,
         patch("dags.lib.domain.download.load_file") as mock_load,
         patch("dags.lib.domain.download.tarfile") as tarfile_mock,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        upload_via_local_copy("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.upload_via_local_copy()
         mock_stream_download_file.assert_called_once_with(
             url="http://example.com/file2.txt", dest_file_name="file2.txt", headers={}
         )
@@ -127,9 +136,11 @@ def test_upload_via_local_copy_with_md5(s3_hook):
         patch("dags.lib.domain.download.check_md5") as mock_check_md5,
         patch("dags.lib.domain.download.load_file") as mock_load,
         patch("dags.lib.domain.download.tarfile") as tarfile_mock,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        upload_via_local_copy("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.upload_via_local_copy()
         mock_stream_download_file.assert_called_once_with(
             url="http://example.com/file2.txt", dest_file_name="file2.txt", headers={}
         )
@@ -155,12 +166,13 @@ def test_upload_via_local_copy_with_extract_members_no_md5(s3_hook):
         patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
         patch("dags.lib.domain.download.load_file") as mock_load,
         patch("dags.lib.domain.download.tarfile.open") as mock_tarfile_open,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
         mock_tar = MagicMock()
         mock_tarfile_open.return_value.__enter__.return_value = mock_tar
-
-        upload_via_local_copy("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.upload_via_local_copy()
         mock_stream_download_file.assert_called_once_with(
             url="http://example.com/archive.tar.gz", dest_file_name="archive.tar.gz", headers={}
         )
@@ -200,12 +212,13 @@ def test_upload_via_local_copy_with_extract_members_with_md5(s3_hook):
         patch("dags.lib.domain.download.check_md5"),
         patch("dags.lib.domain.download.load_file") as mock_load,
         patch("dags.lib.domain.download.tarfile.open") as mock_tarfile_open,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
         mock_tar = MagicMock()
         mock_tarfile_open.return_value.__enter__.return_value = mock_tar
-
-        upload_via_local_copy("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.upload_via_local_copy()
 
         mock_stream_download_file.assert_called_once_with(
             url="http://example.com/archive.tar.gz", dest_file_name="archive.tar.gz", headers={}
@@ -244,9 +257,11 @@ def test_upload_via_local_copy_with_configured_name_and_headers(s3_hook):
         patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
         patch("dags.lib.domain.download.check_md5") as mock_check_md5,
         patch("dags.lib.domain.download.load_file") as mock_load,
-        patch("dags.lib.domain.download._S3", s3_hook),
     ):
-        upload_via_local_copy("prefix", "some_version", download_config)
+        downloader = S3Downloader(
+            s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
+        )
+        downloader.upload_via_local_copy()
         mock_stream_download_file.assert_called_once_with(
             url="http://example.com/file2.txt", dest_file_name="custom_name.txt", headers={"myheader": "myvalue"}
         )

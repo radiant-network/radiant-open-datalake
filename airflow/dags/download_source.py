@@ -6,9 +6,13 @@ from airflow.sdk import Metadata, dag, task, task_group
 
 from dags.lib import config
 from dags.lib.assets import downloaded_source_asset, new_source_version_asset
-from dags.lib.domain import download
+from dags.lib.domain.download import S3Downloader
 from dags.lib.domain.model.config import DownloadConfig
-from dags.lib.domain.model.sources import get_auto_update_source_ids, get_download_config, get_download_configs
+from dags.lib.domain.model.sources import (
+    get_auto_update_source_ids,
+    get_download_config_at_index,
+    get_download_configs,
+)
 from dags.lib.operators.ecs import PythonScriptOperator
 from dags.lib.tasks import get_version
 
@@ -20,8 +24,9 @@ def direct_upload(source: str, prefix: str, version: str, download_index: int):
     Note: We pass only source and download config index (not the DownloadConfig object)
     to avoid serialization  issues and prevent exposing sensitive info in the Airflow UI.
     """
-    download_conf = get_download_config(source, download_index)
-    download.direct_upload(s3_prefix=prefix, version=version, download_conf=download_conf)
+    download_conf = get_download_config_at_index(source, download_index)
+    downloader = S3Downloader(s3_prefix=prefix, version=version, download_conf=download_conf)
+    downloader.direct_upload()
 
 
 def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, download_index: int):
@@ -104,8 +109,7 @@ def _make_download_source_dag(source_id: str):
         prefix = get_prefix(version)
         download_tasks = download_files(prefix, version)
         finalize_download_task = finalize_download(version, prefix)
-        for download_task in download_tasks:
-            download_task >> finalize_download_task
+        download_tasks >> finalize_download_task
 
     _download()
 

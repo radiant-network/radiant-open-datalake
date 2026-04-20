@@ -6,7 +6,7 @@ from dags.lib.domain.model.config import DownloadConfig, UpdateMode
 from dags.lib.domain.model.sources import (
     _Source,
     get_auto_update_source_ids,
-    get_download_config,
+    get_download_config_at_index,
     get_download_configs,
     get_latest_version,
 )
@@ -46,23 +46,23 @@ def test_get_latest_version():
         assert get_latest_version("Clinvar") == "20240327"
 
 
-def test_get_download_config_valid():
-    config = get_download_config("clinvar", 0)
+def test_get_download_config_at_index_valid():
+    config = get_download_config_at_index("clinvar", 0)
     assert isinstance(config, DownloadConfig)
     assert config.label == "vcf"
 
 
-def test_get_download_config_invalid_index():
+def test_get_download_config_at_index_invalid():
     # Assuming 'clinvar' is a valid source and has only one config (index 0)
-    with pytest.raises(ValueError) as exc:
-        get_download_config("clinvar", 1)
+    with pytest.raises(IndexError) as exc:
+        get_download_config_at_index("clinvar", 1)
     assert "invalid for 'clinvar'" in str(exc.value)
 
-    with pytest.raises(ValueError) as exc:
-        get_download_config("clinvar", -1)
+    with pytest.raises(IndexError) as exc:
+        get_download_config_at_index("clinvar", -1)
     assert "invalid for 'clinvar'" in str(exc.value)
 
 
-def test_get_download_config_invalid_source():
+def test_get_download_config_at_index_invalid_source():
     with pytest.raises(KeyError):
-        get_download_config("not_a_source", 0)
+        get_download_config_at_index("not_a_source", 0)
