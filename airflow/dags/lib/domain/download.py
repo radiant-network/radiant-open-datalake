@@ -1,29 +1,27 @@
 import logging
 import tarfile
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 from dags.lib.config import raw_datalake_bucket, s3_conn_id
-from dags.lib.domain.model.config import DownloadConfig
 from dags.lib.s3_transfer import multipart_upload_with_resume
 from dags.lib.utils.http import http_get, stream_download_file
 from dags.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
 from dags.lib.utils.s3 import load_file
 
 
-@dataclass
 class S3Downloader:
     """
     Handles uploading files to S3 for a given download configuration.
     """
 
-    s3_prefix: str
-    version: str
-    download_conf: DownloadConfig
-    s3: S3Hook = field(default_factory=lambda: S3Hook(s3_conn_id))
-    s3_bucket: str = raw_datalake_bucket
+    def __init__(self, s3_prefix, version, download_conf, s3=None, s3_bucket=None):
+        self.s3_prefix = s3_prefix
+        self.version = version
+        self.download_conf = download_conf
+        self.s3 = s3 if s3 is not None else S3Hook(s3_conn_id)
+        self.s3_bucket = s3_bucket if s3_bucket is not None else raw_datalake_bucket
 
     def upload_via_local_copy(self):
         """
