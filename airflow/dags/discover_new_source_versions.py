@@ -50,7 +50,10 @@ def discover_new_source_versions():
             )
 
     for source in get_auto_update_source_ids():
-        check_for_update.override(task_id=f"{source}_check_for_update")(source=source)
+        check_for_update.override(
+            task_id=f"{source}_check_for_update",
+            task_display_name=f"[PyOp] Check {source.capitalize()} For Update",
+        )(source=source)
 
 
 discover_new_source_versions()

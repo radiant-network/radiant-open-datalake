@@ -17,7 +17,7 @@ from dags.lib.operators.ecs import PythonScriptOperator
 from dags.lib.tasks import get_version
 
 
-@task
+@task(task_display_name="[PyOp] Direct Upload")
 def direct_upload(source: str, prefix: str, version: str, download_index: int):
     """
     Runs a direct upload for a given source and download config.
@@ -29,7 +29,9 @@ def direct_upload(source: str, prefix: str, version: str, download_index: int):
     downloader.direct_upload()
 
 
-def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, download_index: int):
+def upload_via_local_copy(
+    task_id: str, source: str, prefix: str, version: str, download_index: int, display_label: str = ""
+):
     """
     Creates a PythonScriptOperator to upload files via a local copy.
     Note: We pass only source and download config index (not the DownloadConfig object)
@@ -41,11 +43,13 @@ def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, 
         "version": version,
         "download_index": download_index,
     }
+    display_suffix = f" {display_label}" if display_label else ""
     return PythonScriptOperator(
         script_name="/opt/opendatalake/upload_via_local_copy.py",
         script_args=script_args,
         pool=config.DOWNLOAD_TASKS_POOL,
         task_id=task_id,
+        task_display_name=f"[ECS] Local Copy Upload{display_suffix}",
     )
 
 
@@ -79,7 +83,7 @@ def _make_download_source_dag(source_id: str):
         catchup=False,
     )
     def _download():
-        @task
+        @task(task_display_name="[PyOp] Get S3 Prefix")
         def get_prefix(version):
             return f"raw/{source_id}/{version}"
 
@@ -92,14 +96,20 @@ def _make_download_source_dag(source_id: str):
             tasks = []
             for i, download_conf in enumerate(get_download_configs(source_id)):
                 task_id = _generate_download_task_id(download_conf, i + 1)
+                display_label = (download_conf.label or "").upper()
                 if download_conf.use_direct_upload:
-                    task = direct_upload.override(task_id=task_id)(source_id, prefix, version, i)
+                    task = direct_upload.override(
+                        task_id=task_id,
+                        task_display_name=f"[PyOp] Direct Upload {display_label}".rstrip(),
+                    )(source_id, prefix, version, i)
                 else:
-                    task = upload_via_local_copy(task_id, source_id, prefix, version, i)
+                    task = upload_via_local_copy(
+                        task_id, source_id, prefix, version, i, display_label=display_label
+                    )
                 tasks.append(task)
             return tasks
 
-        @task(outlets=[output_asset])
+        @task(outlets=[output_asset], task_display_name="[PyOp] Finalize Download")
         def finalize_download(version, prefix):
             s3_client = S3Hook(config.s3_conn_id).get_conn()
             s3_client.delete_object(Bucket=config.raw_datalake_bucket, Key=f"{prefix}/.in_progress")
