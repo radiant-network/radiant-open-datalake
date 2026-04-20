@@ -31,6 +31,7 @@ class DownloadConfig:
     extract_members: list[str] | None = None
     use_direct_upload: bool = False
     md5_present: bool = False
+    label: str | None = None  # Optional, use for display purposes in airflow UI
 
     def __post_init__(self):
         if not self.download_url:

@@ -59,3 +59,29 @@ extraEnv: |
             "verify": false
         }
     }'
+  
+  # These variables are related to ecs. ECS is not supported in the sandbox, but we add them for partial testing and documentation purpose.
+  - name: AIRFLOW_VAR_AWS_ECS_CLUSTER
+    value: "ecs-cluster"
+  - name: AIRFLOW_VAR_AWS_ECS_SUBNETS
+    value: "subnet-123,subnet-456"
+  - name: AIRFLOW_VAR_AWS_ECS_SECURITY_GROUPS
+    value: "sg-123,sg-456"
+  - name: AIRFLOW_VAR_AWS_ECS_S3_WORKSPACE
+    value: "s3://opendatalake-ecs-workspace"   
+  - name: OPENDATALAKE_TASK_OPERATOR_TASK_DEFINITION
+    value: "opendatalake-task-def"
+  - name: OPENDATALAKE_TASK_OPERATOR_LOG_GROUP
+    value: "opendatalake-ecs-logs"
+  - name: OPENDATALAKE_TASK_OPERATOR_LOG_REGION
+    value: "us-east-1"
+  - name: OPENDATALAKE_TASK_OPERATOR_LOG_PREFIX
+    value: "opendatalake"
+
+  # Also to test ecs operator (although not needed for compilation). Strangely the boto3 client does not read AWS_REGION
+  - name: AWS_DEFAULT_REGION
+    value: us-east-1
+  - name: AWS_ACCESS_KEY_ID
+    value: admin
+  - name: AWS_SECRET_ACCESS_KEY
+    value: password  

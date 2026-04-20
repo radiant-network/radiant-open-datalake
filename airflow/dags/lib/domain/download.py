@@ -4,92 +4,81 @@ from pathlib import Path
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from dags.lib.domain.model.config import DownloadConfig
-from dags.lib.domain.model.sources import get_download_configs
+from dags.lib.config import raw_datalake_bucket, s3_conn_id
 from dags.lib.s3_transfer import multipart_upload_with_resume
 from dags.lib.utils.http import http_get, stream_download_file
 from dags.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
 from dags.lib.utils.s3 import load_file
 
 
-def download(s3: S3Hook, s3_bucket: str, s3_prefix: str, source: str, version: str):
-    for download_config in get_download_configs(source):
-        _handle_file_transfer(s3, s3_bucket, s3_prefix, version, download_config)
+class S3Downloader:
+    """
+    Handles uploading files to S3 for a given download configuration.
+    """
 
+    def __init__(self, s3_prefix, version, download_conf, s3=None, s3_bucket=None):
+        self.s3_prefix = s3_prefix
+        self.version = version
+        self.download_conf = download_conf
+        self.s3 = s3 if s3 is not None else S3Hook(s3_conn_id)
+        self.s3_bucket = s3_bucket if s3_bucket is not None else raw_datalake_bucket
 
-def _handle_file_transfer(s3, s3_bucket, s3_prefix: str, version: str, download_conf: DownloadConfig):
-    if download_conf.use_direct_upload:
-        _direct_upload_to_s3(
-            s3=s3, s3_bucket=s3_bucket, s3_prefix=s3_prefix, version=version, download_conf=download_conf
-        )
+    def upload_via_local_copy(self):
+        """
+        Downloads the file locally, checks MD5 if available, extracts tar members if needed, and uploads to S3.
 
-    else:
-        _upload_via_local_copy_to_s3(
-            s3=s3,
-            s3_bucket=s3_bucket,
-            s3_prefix=s3_prefix,
-            version=version,
-            download_conf=download_conf,
-        )
+        Also uploads the MD5 hash to S3 if present. For tar extraction, MD5 is computed after extraction and uploaded
+        for each memberif the download config has md5_present=True.
+        """
+        url = self.download_conf.get_url(self.version)
+        dest_file_name = self.download_conf.name or Path(url).name
+        md5_hash = _get_md5_hash(url) if self.download_conf.md5_present else None
+        headers = self.download_conf.headers or {}
 
+        logging.info(f"Start upload of {url}")
+        stream_download_file(url=url, dest_file_name=dest_file_name, headers=headers)
 
-def _upload_via_local_copy_to_s3(
-    s3: S3Hook, s3_bucket: str, s3_prefix: str, version: str, download_conf: DownloadConfig
-):
-    url = download_conf.get_url(version)
-    dest_file_name = download_conf.name or Path(url).name
-    md5_hash = _get_md5_hash(url) if download_conf.md5_present else None
-    headers = download_conf.headers or {}
+        if md5_hash:
+            check_md5(dest_file_name, md5_hash)
+        if self.download_conf.extract_members:
+            self._extract_and_upload_tar_members(
+                tar_file_name=dest_file_name,
+                save_md5=md5_hash is not None,
+            )
+        else:
+            load_file(
+                s3=self.s3,
+                s3_bucket=self.s3_bucket,
+                s3_key=f"{self.s3_prefix}/{dest_file_name}",
+                local_file_name=dest_file_name,
+                md5_hash=md5_hash,
+            )
 
-    logging.info(f"Start upload of {url}")
-    stream_download_file(url=url, dest_file_name=dest_file_name, headers=headers)
+    def direct_upload(self) -> None:
+        """
+        Streams a file directly to S3 using multipart upload. Optionally uploads MD5 hash.
+        """
+        url = self.download_conf.get_url(self.version)
+        dest_file_name = self.download_conf.name or Path(url).name
+        s3_key = f"{self.s3_prefix}/{dest_file_name}"
+        md5_hash = _get_md5_hash(url) if self.download_conf.md5_present else None
+        headers = self.download_conf.headers or {}
 
-    if md5_hash:
-        check_md5(dest_file_name, md5_hash)
-    if download_conf.extract_members:
-        _extract_and_upload_tar_members(
-            s3=s3,
-            s3_bucket=s3_bucket,
-            s3_prefix=s3_prefix,
-            member_names=download_conf.extract_members,
-            tar_file_name=dest_file_name,
-            save_md5=md5_hash is not None,
-        )
-    else:
-        load_file(
-            s3=s3,
-            s3_bucket=s3_bucket,
-            s3_key=f"{s3_prefix}/{dest_file_name}",
-            local_file_name=dest_file_name,
-            md5_hash=md5_hash,
-        )
+        multipart_upload_with_resume(s3=self.s3, s3_bucket=self.s3_bucket, s3_key=s3_key, url=url, headers=headers)
+        if md5_hash:
+            self.s3.load_string(md5_hash, f"{s3_key}.md5", self.s3_bucket, replace=True)
+            logging.info("Md5 file saved, but not checked (cannot be done on stream upload)")
 
+    def _extract_and_upload_tar_members(self, tar_file_name: str, save_md5: bool):
+        member_names = self.download_conf.extract_members
 
-def _direct_upload_to_s3(
-    s3: S3Hook, s3_bucket: str, s3_prefix: str, version: str, download_conf: DownloadConfig
-) -> None:
-    url = download_conf.get_url(version)
-    dest_file_name = download_conf.name or Path(url).name
-    s3_key = f"{s3_prefix}/{dest_file_name}"
-    md5_hash = _get_md5_hash(url) if download_conf.md5_present else None
-    headers = download_conf.headers or {}
+        with tarfile.open(tar_file_name, "r") as tar:
+            tar.extractall(filter=lambda member, _: member if member.name in member_names else None)
 
-    multipart_upload_with_resume(s3=s3, s3_bucket=s3_bucket, s3_key=s3_key, url=url, headers=headers)
-    if md5_hash:
-        s3.load_string(md5_hash, f"{s3_key}.md5", s3_bucket, replace=True)
-        logging.info("Md5 file saved, but not checked (cannot be done on stream upload)")
-
-
-def _extract_and_upload_tar_members(
-    s3: S3Hook, s3_bucket: str, s3_prefix: str, member_names: list[str], tar_file_name: str, save_md5: bool
-):
-    with tarfile.open(tar_file_name, "r") as tar:
-        tar.extractall(filter=lambda member, _: member if member.name in member_names else None)
-
-    for member in member_names:
-        s3_key = f"{s3_prefix}/{member}"
-        md5_hash = compute_file_md5(member) if save_md5 else None
-        load_file(s3=s3, s3_bucket=s3_bucket, s3_key=s3_key, local_file_name=member, md5_hash=md5_hash)
+        for member in member_names:
+            s3_key = f"{self.s3_prefix}/{member}"
+            md5_hash = compute_file_md5(member) if save_md5 else None
+            load_file(s3=self.s3, s3_bucket=self.s3_bucket, s3_key=s3_key, local_file_name=member, md5_hash=md5_hash)
 
 
 def _get_md5_hash(url):
