@@ -21,7 +21,7 @@ class DummyAsset:
 
 @pytest.fixture(autouse=True)
 def patch_task_decorator():
-    with patch("dags.lib.tasks.task", lambda *a, **k: (lambda f: f)):
+    with patch("dags.lib.tasks.task", lambda *a, **k: lambda f: f):
         yield
 
 

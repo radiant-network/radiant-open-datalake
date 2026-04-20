@@ -51,4 +51,4 @@ def extract_md5_from_checksum_file_content(md5_file_content: str) -> str:
     Raises:
         AttributeError: If no valid MD5 hash is found in the content.
     """
-    return re.search("^([0-9a-f]+)", md5_file_content).group(1)
+    return re.search("^([0-9a-f]{32})", md5_file_content).group(1)

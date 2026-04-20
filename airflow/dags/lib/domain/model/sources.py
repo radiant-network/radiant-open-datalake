@@ -1,7 +1,7 @@
 from enum import Enum
 
 from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.sources_impl import ClinvarSourceConfig
+from dags.lib.domain.sources_impl import ClinvarSourceConfig, DBSNPSourceConfig
 
 _VCF_LABEL = "vcf"
 
@@ -16,6 +16,19 @@ class _Source(Enum):
         download_configs=[
             DownloadConfig(
                 download_url="https://ftp.ncbi.nlm.nih.gov/pub/clinvar/vcf_GRCh38/clinvar.vcf.gz",
+                md5_present=True,
+                label=_VCF_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+    DBSNP = DBSNPSourceConfig(
+        short_name="dbsnp",
+        display_name="NCBI dbSNP",
+        website="https://www.ncbi.nlm.nih.gov/snp/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/{version}.gz",
                 md5_present=True,
                 label=_VCF_LABEL,
             )
