@@ -1,9 +1,12 @@
+import logging
 import re
 from typing import override
 
 from dags.lib.domain.model.config import SourceConfig
 from dags.lib.utils.http import http_get
 from dags.lib.utils.md5 import extract_md5_from_checksum_file_content
+
+LOGGER = logging.getLogger(__name__)
 
 
 class ClinvarSourceConfig(SourceConfig):
@@ -27,15 +30,16 @@ class DBSNPSourceConfig(SourceConfig):
     """
 
     _REFSEQ_FILE_PATTERN = re.compile(r"GCF_\d{9}\.\d+\.gz(?:\.md5)?")
+    _REFSEQ_ACCESSION_PATTERN = re.compile(r"^(GCF)_(\d{9})\.(\d+)$")
 
     @override
     def get_latest_version(self) -> str:
         url = self.download_configs[0].download_url(version="").removesuffix(".gz")
         return self._get_latest_ref_seq(url)
 
-    @staticmethod
-    def _parse_ref_seq(filename: str) -> dict:
-        match = re.match(r"^(GCF)_(\d{9})\.(\d+)$", filename)
+    @classmethod
+    def _parse_ref_seq(cls, filename: str) -> dict:
+        match = cls._REFSEQ_ACCESSION_PATTERN.match(filename)
         if not match:
             raise ValueError(f"Invalid RefSeq filename: {filename}")
 
@@ -57,6 +61,8 @@ class DBSNPSourceConfig(SourceConfig):
             raise ValueError(f"No RefSeq accessions found at: {url}")
 
         latest = max(accessions, key=lambda x: x["version"])
+        LOGGER.info(f"Found latest RefSeq accession: {str(latest)}")
+
         if f"{latest['full']}.gz.md5" not in files:
             raise ValueError(f"Latest RefSeq {latest['full']} is missing .md5 companion at: {url}")
 

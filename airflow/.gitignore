@@ -2,4 +2,8 @@ __pycache__/
 
 .airflow_home/
 
+config/
+logs/
+plugins/
+
 dags/lib/operators/k8s.py
