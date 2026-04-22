@@ -1,0 +1,76 @@
+import pytest
+
+from dags.lib.domain.model.config import DownloadConfig, UpdateMode
+from dags.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
+
+
+@pytest.fixture
+def clinvar_source_config() -> ClinvarSourceConfig:
+    return ClinvarSourceConfig(
+        short_name="clinvar",
+        display_name="ClinVar",
+        website="https://www.ncbi.nlm.nih.gov/clinvar/",
+        download_configs=[DownloadConfig(download_url="https://example.com/clinvar")],
+    )
+
+
+@pytest.fixture
+def dbsnp_source_conf() -> DBSNPSourceConfig:
+    return DBSNPSourceConfig(
+        short_name="dbsnp",
+        display_name="NCBI dbSNP",
+        website="https://www.ncbi.nlm.nih.gov/snp/",
+        listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz"
+                ),
+                md5_present=True,
+                label="test",
+            ),
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz.tbi"
+                ),
+                md5_present=True,
+                label="test",
+            ),
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+
+
+@pytest.fixture
+def dbsnp_valid_listing_html() -> str:
+    return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+ <head>
+  <title>Index of /snp/latest_release/VCF</title>
+ </head>
+ <body>
+<h1>Index of /snp/latest_release/VCF</h1>
+<pre>Name                        Last modified      Size  <hr><a href="/snp/latest_release/">Parent Directory</a>
+<a href="CHECKSUMS">CHECKSUMS</a>                   2025-01-15 21:55  224
+<a href="GCF_000001405.25.gz">GCF_000001405.25.gz</a>         2025-01-15 19:05   26G
+<a href="GCF_000001405.25.gz.md5">GCF_000001405.25.gz.md5</a>     2025-01-15 19:25   54
+<a href="GCF_000001405.25.gz.tbi">GCF_000001405.25.gz.tbi</a>     2025-01-15 19:25  2.9M
+<a href="GCF_000001405.25.gz.tbi.md5">GCF_000001405.25.gz.tbi.md5</a> 2025-01-15 19:25   58
+<a href="GCF_000001405.42.gz">GCF_000001405.42.gz</a>         2025-01-15 21:27   28G
+<a href="GCF_000001405.42.gz.md5">GCF_000001405.42.gz.md5</a>     2025-01-15 21:55   54
+<a href="GCF_000001405.42.gz.tbi">GCF_000001405.42.gz.tbi</a>     2025-01-15 21:55  3.0M
+<a href="GCF_000001405.42.gz.tbi.md5">GCF_000001405.42.gz.tbi.md5</a> 2025-01-15 21:55   58
+<hr></pre>
+</body></html>
+"""  # noqa: E501
+
+
+@pytest.fixture
+def dbsnp_invalid_listing_html_missing_md5(dbsnp_valid_listing_html) -> str:
+    _missing = dbsnp_valid_listing_html.replace("GCF_000001405.42.gz.md5", "GCF_000001405.24.gz.md5")
+    return _missing
+
+
+@pytest.fixture
+def dbsnp_valid_md5_html() -> str:
+    return "6a6f313e92a39c337571174dad12cfe1  GCF_000001405.40.gz"

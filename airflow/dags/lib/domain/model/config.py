@@ -11,7 +11,7 @@ class DownloadConfig:
     Features:
         - Support for HTTP headers in the download request
         - Extraction of specific members from an archive (e.g., tar files)
-        - Direct S3 upload (bypassing local copy and extraction)
+        - Streaming S3 upload (bypassing local disk and extraction). Tip: Useful for large files.
         - Optional MD5 checksum handling
 
     Use `get_url(version)` to retrieve the download URL for a specific version.
@@ -29,7 +29,7 @@ class DownloadConfig:
     name: str | None = None
     headers: dict | None = None
     extract_members: list[str] | None = None
-    use_direct_upload: bool = False
+    use_stream_upload: bool = False
     md5_present: bool = False
     label: str | None = None  # Optional, use for display purposes in airflow UI
 
@@ -37,8 +37,8 @@ class DownloadConfig:
         if not self.download_url:
             raise ValueError("download_url must be provided as either a `str` or a `Callable`")
 
-        if self.use_direct_upload and self.extract_members:
-            raise ValueError("direct upload does not support tar extract")
+        if self.use_stream_upload and self.extract_members:
+            raise ValueError("stream upload does not support tar extract")
 
     def get_url(self, version: str) -> str:
         return self.download_url if isinstance(self.download_url, str) else self.download_url(version)

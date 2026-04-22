@@ -48,6 +48,7 @@ def test_upload_via_local_copy_task_build_python_script_operator():
         prefix="test_prefix",
         version="test_version",
         download_index=0,
+        label="test_label",
     )
     assert operator.task_id == "test_task"
     assert operator.script_name == "/opt/opendatalake/upload_via_local_copy.py"
@@ -57,3 +58,4 @@ def test_upload_via_local_copy_task_build_python_script_operator():
         "version": "test_version",
         "download_index": 0,
     }
+    assert "test_label" in operator.task_display_name

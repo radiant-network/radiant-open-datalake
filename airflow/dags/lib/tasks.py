@@ -4,7 +4,7 @@ from airflow.sdk import Asset, task
 
 
 def get_version(asset: Asset, **kwargs):
-    @task(task_id="get_version", inlets=[asset])
+    @task(task_id="get_version", task_display_name="[PyOp] Get Version", inlets=[asset])
     def _get_version(triggering_asset_events):
         events = triggering_asset_events[asset]
         if not events:
