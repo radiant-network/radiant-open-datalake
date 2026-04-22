@@ -38,7 +38,7 @@ def test_download_config_asserts_download_url_is_specified():
 
 
 def test_download_config_asserts_on_direct_upload_and_extract_members():
-    with pytest.raises(ValueError, match="direct upload does not support tar extract"):
+    with pytest.raises(ValueError, match="stream upload does not support tar extract"):
         DownloadConfig(
             download_url="http://example.com/file.txt",
             name="file.txt",
