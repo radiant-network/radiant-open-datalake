@@ -39,7 +39,7 @@ class _Source(Enum):
                 download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/{version}.gz.tbi",
                 md5_present=True,
                 label=_TBI_LABEL,
-            )
+            ),
         ],
         update_mode=UpdateMode.AUTO,
     )

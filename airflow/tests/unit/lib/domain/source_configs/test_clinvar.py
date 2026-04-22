@@ -21,5 +21,3 @@ def test_clinvar_get_latest_version_no_match_raises(clinvar_source_config):
         clinvar_source_config.get_latest_version()
 
     assert excinfo.value.args[0] == "Could not parse ClinVar version from https://example.com/clinvar.md5"
-
-

@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 
-
 def test_dbsnp_parse_ref_seq_invalid(dbsnp_source_conf):
     with pytest.raises(ValueError) as excinfo:
         dbsnp_source_conf._parse_ref_seq(filename="invalid_refseq")

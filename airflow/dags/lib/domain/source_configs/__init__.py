@@ -1,5 +1,5 @@
-from .clinvar import *
-from .dbsnp import *
+from .clinvar import ClinvarSourceConfig
+from .dbsnp import DBSNPSourceConfig
 
 __all__ = [
     "ClinvarSourceConfig",

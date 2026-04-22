@@ -21,6 +21,7 @@ class DBSNPSourceConfig(SourceConfig):
 
     Ref: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/data-processing/policies-annotation/genome-processing/version-status/
     """
+
     listing_url: str
     _REFSEQ_FILE_PATTERN = re.compile(rf"{REFSEQ_ACCESSION_NUMBER}\.\d+\.gz(?:\.md5)?")
     _REFSEQ_ACCESSION_PATTERN = re.compile(rf"^({REFSEQ_ACCESSION_NUMBER})\.(\d+)$")
@@ -58,7 +59,7 @@ class DBSNPSourceConfig(SourceConfig):
             raise ValueError(f"Latest RefSeq {latest['full']} is missing .md5 companion at: {listing_url}")
 
         cls._verify_md5_digest(listing_url=listing_url, version=latest["version"])
-        return f"{REFSEQ_ACCESSION_NUMBER}.{latest["version"]}"
+        return f"{REFSEQ_ACCESSION_NUMBER}.{latest['version']}"
 
     @staticmethod
     def _verify_md5_digest(listing_url: str, version: int) -> None:

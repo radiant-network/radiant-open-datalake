@@ -23,15 +23,19 @@ def dbsnp_source_conf() -> DBSNPSourceConfig:
         listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
         download_configs=[
             DownloadConfig(
-                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz",
+                download_url=lambda version: (
+                    f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz"
+                ),
                 md5_present=True,
                 label="test",
             ),
             DownloadConfig(
-                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz.tbi",
+                download_url=lambda version: (
+                    f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz.tbi"
+                ),
                 md5_present=True,
                 label="test",
-            )
+            ),
         ],
         update_mode=UpdateMode.AUTO,
     )
