@@ -1,5 +1,6 @@
 import logging
 import re
+from dataclasses import dataclass
 from typing import override
 
 from dags.lib.domain.model.config import SourceConfig
@@ -8,18 +9,10 @@ from dags.lib.utils.md5 import extract_md5_from_checksum_file_content
 
 LOGGER = logging.getLogger(__name__)
 
-
-class ClinvarSourceConfig(SourceConfig):
-    @override
-    def get_latest_version(self) -> str:
-        md5_url = self.download_configs[0].download_url + ".md5"
-        text = http_get(md5_url).text
-        match = re.search(r"clinvar_([0-9]+)\.vcf", text)
-        if not match:
-            raise ValueError(f"Could not parse ClinVar version from {md5_url}")
-        return match.group(1)
+REFSEQ_ACCESSION_NUMBER = "GCF_000001405"
 
 
+@dataclass(frozen=True, kw_only=True)
 class DBSNPSourceConfig(SourceConfig):
     """dbSNP source config.
 
@@ -28,14 +21,13 @@ class DBSNPSourceConfig(SourceConfig):
 
     Ref: https://www.ncbi.nlm.nih.gov/datasets/docs/v2/data-processing/policies-annotation/genome-processing/version-status/
     """
-
-    _REFSEQ_FILE_PATTERN = re.compile(r"GCF_\d{9}\.\d+\.gz(?:\.md5)?")
-    _REFSEQ_ACCESSION_PATTERN = re.compile(r"^(GCF)_(\d{9})\.(\d+)$")
+    listing_url: str
+    _REFSEQ_FILE_PATTERN = re.compile(rf"{REFSEQ_ACCESSION_NUMBER}\.\d+\.gz(?:\.md5)?")
+    _REFSEQ_ACCESSION_PATTERN = re.compile(rf"^({REFSEQ_ACCESSION_NUMBER})\.(\d+)$")
 
     @override
     def get_latest_version(self) -> str:
-        url = self.download_configs[0].download_url(version="").removesuffix(".gz")
-        return self._get_latest_ref_seq(url)
+        return self._get_latest_ref_seq(listing_url=self.listing_url)
 
     @classmethod
     def _parse_ref_seq(cls, filename: str) -> dict:
@@ -43,35 +35,34 @@ class DBSNPSourceConfig(SourceConfig):
         if not match:
             raise ValueError(f"Invalid RefSeq filename: {filename}")
 
-        prefix, digits, version = match.groups()
+        accession, version = match.groups()
         return {
-            "prefix": prefix,
-            "digits": digits,
+            "accession": accession,
             "version": int(version),
             "full": filename,
         }
 
     @classmethod
-    def _get_latest_ref_seq(cls, url: str) -> str:
-        html = http_get(url).text
+    def _get_latest_ref_seq(cls, listing_url: str) -> str:
+        html = http_get(listing_url).text
         files = set(cls._REFSEQ_FILE_PATTERN.findall(html))
 
         accessions = [cls._parse_ref_seq(f.removesuffix(".gz")) for f in files if f.endswith(".gz")]
         if not accessions:
-            raise ValueError(f"No RefSeq accessions found at: {url}")
+            raise ValueError(f"No RefSeq accessions found at: {listing_url}")
 
         latest = max(accessions, key=lambda x: x["version"])
         LOGGER.info(f"Found latest RefSeq accession: {str(latest)}")
 
         if f"{latest['full']}.gz.md5" not in files:
-            raise ValueError(f"Latest RefSeq {latest['full']} is missing .md5 companion at: {url}")
+            raise ValueError(f"Latest RefSeq {latest['full']} is missing .md5 companion at: {listing_url}")
 
-        cls._verify_md5_digest(url, latest["full"])
-        return latest["full"]
+        cls._verify_md5_digest(listing_url=listing_url, version=latest["version"])
+        return f"{REFSEQ_ACCESSION_NUMBER}.{latest["version"]}"
 
-    @classmethod
-    def _verify_md5_digest(cls, listing_url: str, accession: str) -> None:
-        md5_url = f"{listing_url.rstrip('/')}/{accession}.gz.md5"
+    @staticmethod
+    def _verify_md5_digest(listing_url: str, version: int) -> None:
+        md5_url = f"{listing_url.rstrip('/')}/{REFSEQ_ACCESSION_NUMBER}.{version}.gz.md5"
         md5_body = http_get(md5_url).text
         md5_raw = md5_body.split(" ")[0]
         try:

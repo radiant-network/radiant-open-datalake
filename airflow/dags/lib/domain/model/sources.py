@@ -1,9 +1,10 @@
 from enum import Enum
 
 from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.sources_impl import ClinvarSourceConfig, DBSNPSourceConfig
+from dags.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
 
 _VCF_LABEL = "vcf"
+_TBI_LABEL = "tbi"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -26,11 +27,18 @@ class _Source(Enum):
         short_name="dbsnp",
         display_name="NCBI dbSNP",
         website="https://www.ncbi.nlm.nih.gov/snp/",
+        listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
         download_configs=[
             DownloadConfig(
                 download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/{version}.gz",
                 md5_present=True,
                 label=_VCF_LABEL,
+                use_stream_upload=True,
+            ),
+            DownloadConfig(
+                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/{version}.gz.tbi",
+                md5_present=True,
+                label=_TBI_LABEL,
             )
         ],
         update_mode=UpdateMode.AUTO,

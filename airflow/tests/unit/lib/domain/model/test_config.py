@@ -9,14 +9,14 @@ def test_download_config_with_fixed_url():
         name="file.txt",
         headers={"Authorization": "Bearer token"},
         extract_members=None,
-        use_direct_upload=False,
+        use_stream_upload=False,
         md5_present=True,
     )
     assert conf.get_url("some_version") == "http://example.com/file.txt"
     assert conf.name == "file.txt"
     assert conf.headers == {"Authorization": "Bearer token"}
     assert conf.extract_members is None
-    assert conf.use_direct_upload is False
+    assert conf.use_stream_upload is False
     assert conf.md5_present is True
 
 
@@ -26,7 +26,7 @@ def test_download_config_with_dynamic_url():
         name="file.txt",
         headers=None,
         extract_members=None,
-        use_direct_upload=False,
+        use_stream_upload=False,
         md5_present=False,
     )
     assert conf.get_url("1.1.0") == "http://example.com/file_1.1.0.txt"
@@ -43,7 +43,7 @@ def test_download_config_asserts_on_direct_upload_and_extract_members():
             download_url="http://example.com/file.txt",
             name="file.txt",
             extract_members=["a.txt"],
-            use_direct_upload=True,
+            use_stream_upload=True,
         )
 
 

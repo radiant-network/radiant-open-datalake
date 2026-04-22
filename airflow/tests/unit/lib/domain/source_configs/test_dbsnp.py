@@ -3,25 +3,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 
-def test_clinvar_get_latest_version(clinvar_source_config):
-    mock_response = Mock()
-    mock_response.text = "some text clinvar_20240327.vcf more text"
-    with patch("dags.lib.domain.sources_impl.http_get", return_value=mock_response) as mock_http_get:
-        version = clinvar_source_config.get_latest_version()
-        assert version == "20240327"
-        mock_http_get.assert_called_once_with("https://example.com/clinvar.md5")
-
-
-def test_clinvar_get_latest_version_no_match_raises(clinvar_source_config):
-    mock_response = Mock(text="no version pattern here")
-    with (
-        patch("dags.lib.domain.sources_impl.http_get", return_value=mock_response),
-        pytest.raises(ValueError) as excinfo,
-    ):
-        clinvar_source_config.get_latest_version()
-
-    assert excinfo.value.args[0] == "Could not parse ClinVar version from https://example.com/clinvar.md5"
-
 
 def test_dbsnp_parse_ref_seq_invalid(dbsnp_source_conf):
     with pytest.raises(ValueError) as excinfo:
@@ -32,8 +13,8 @@ def test_dbsnp_parse_ref_seq_invalid(dbsnp_source_conf):
 @pytest.mark.parametrize(
     "filename, expected",
     [
-        ("GCF_012345678.1", {"prefix": "GCF", "digits": "012345678", "version": 1, "full": "GCF_012345678.1"}),
-        ("GCF_012345678.123", {"prefix": "GCF", "digits": "012345678", "version": 123, "full": "GCF_012345678.123"}),
+        ("GCF_000001405.1", {"accession": "GCF_000001405", "version": 1, "full": "GCF_000001405.1"}),
+        ("GCF_000001405.123", {"accession": "GCF_000001405", "version": 123, "full": "GCF_000001405.123"}),
     ],
 )
 def test_dbsnp_parse_ref_seq_ok(dbsnp_source_conf, filename, expected):
@@ -45,7 +26,7 @@ def test_dbsnp_get_latest_version(dbsnp_source_conf, dbsnp_valid_listing_html, d
     listing_response = Mock(text=dbsnp_valid_listing_html)
     md5_response = Mock(text=dbsnp_valid_md5_html)
     with patch(
-        "dags.lib.domain.sources_impl.http_get",
+        "dags.lib.domain.source_configs.dbsnp.http_get",
         side_effect=[listing_response, md5_response],
     ) as mock_http_get:
         version = dbsnp_source_conf.get_latest_version()
@@ -63,7 +44,7 @@ def test_dbsnp_get_latest_version_missing_md5_error(
     md5_response = Mock(text=dbsnp_valid_md5_html)
     with (
         patch(
-            "dags.lib.domain.sources_impl.http_get",
+            "dags.lib.domain.source_configs.dbsnp.http_get",
             side_effect=[listing_response, md5_response],
         ),
         pytest.raises(ValueError) as excinfo,
@@ -82,7 +63,7 @@ def test_dbsnp_get_latest_version_no_accessions_raises(dbsnp_source_conf):
     <a href="README.txt">README.txt</a>
     </body></html>"""
     with (
-        patch("dags.lib.domain.sources_impl.http_get", return_value=Mock(text=html_without_gz)),
+        patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=Mock(text=html_without_gz)),
         pytest.raises(ValueError) as excinfo,
     ):
         dbsnp_source_conf.get_latest_version()
@@ -102,7 +83,7 @@ def test_dbsnp_get_latest_version_picks_highest_version(dbsnp_source_conf, dbsnp
     listing_response = Mock(text=listing_html)
     md5_response = Mock(text=dbsnp_valid_md5_html)
     with patch(
-        "dags.lib.domain.sources_impl.http_get",
+        "dags.lib.domain.source_configs.dbsnp.http_get",
         side_effect=[listing_response, md5_response],
     ):
         version = dbsnp_source_conf.get_latest_version()
@@ -112,10 +93,10 @@ def test_dbsnp_get_latest_version_picks_highest_version(dbsnp_source_conf, dbsnp
 
 def test_dbsnp_verify_md5_digest_ok(dbsnp_source_conf, dbsnp_valid_md5_html):
     md5_response = Mock(text=dbsnp_valid_md5_html)
-    with patch("dags.lib.domain.sources_impl.http_get", return_value=md5_response) as mock_http_get:
+    with patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response) as mock_http_get:
         dbsnp_source_conf._verify_md5_digest(
             listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
-            accession="GCF_000001405.42",
+            version=42,
         )
 
     mock_http_get.assert_called_once_with("https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.42.gz.md5")
@@ -123,10 +104,10 @@ def test_dbsnp_verify_md5_digest_ok(dbsnp_source_conf, dbsnp_valid_md5_html):
 
 def test_dbsnp_verify_md5_digest_strips_trailing_slashes(dbsnp_source_conf, dbsnp_valid_md5_html):
     md5_response = Mock(text=dbsnp_valid_md5_html)
-    with patch("dags.lib.domain.sources_impl.http_get", return_value=md5_response) as mock_http_get:
+    with patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response) as mock_http_get:
         dbsnp_source_conf._verify_md5_digest(
             listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF///",
-            accession="GCF_000001405.42",
+            version=42,
         )
 
     mock_http_get.assert_called_once_with("https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.42.gz.md5")
@@ -136,12 +117,12 @@ def test_dbsnp_verify_md5_digest_invalid_raises(dbsnp_source_conf):
     invalid_body = "not-a-valid-md5-hash"
     md5_response = Mock(text=invalid_body)
     with (
-        patch("dags.lib.domain.sources_impl.http_get", return_value=md5_response),
+        patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response),
         pytest.raises(ValueError) as excinfo,
     ):
         dbsnp_source_conf._verify_md5_digest(
             listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
-            accession="GCF_000001405.42",
+            version=42,
         )
 
     assert excinfo.value.args[0] == f"Invalid MD5 digest retrieved from {invalid_body}"

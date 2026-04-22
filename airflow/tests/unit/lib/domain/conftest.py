@@ -1,7 +1,7 @@
 import pytest
 
 from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.sources_impl import ClinvarSourceConfig, DBSNPSourceConfig
+from dags.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
 
 
 @pytest.fixture
@@ -20,9 +20,15 @@ def dbsnp_source_conf() -> DBSNPSourceConfig:
         short_name="dbsnp",
         display_name="NCBI dbSNP",
         website="https://www.ncbi.nlm.nih.gov/snp/",
+        listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
         download_configs=[
             DownloadConfig(
-                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/{version}.gz",
+                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz",
+                md5_present=True,
+                label="test",
+            ),
+            DownloadConfig(
+                download_url=lambda version: f"https://ftp.ncbi.nih.gov/snp/latest_release/VCF/GCF_000001405.{version}.gz.tbi",
                 md5_present=True,
                 label="test",
             )

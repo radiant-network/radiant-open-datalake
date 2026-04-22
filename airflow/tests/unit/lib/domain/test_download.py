@@ -6,7 +6,7 @@ from dags.lib.domain.model.config import DownloadConfig
 
 
 def test_direct_upload(s3_hook):
-    download_config = DownloadConfig(download_url="http://example.com/file.txt", use_direct_upload=True)
+    download_config = DownloadConfig(download_url="http://example.com/file.txt", use_stream_upload=True)
 
     with (
         patch(
@@ -32,7 +32,7 @@ def test_direct_upload(s3_hook):
 
 def test_direct_upload_with_md5(s3_hook):
     download_config = DownloadConfig(
-        download_url="http://example.com/file.txt", use_direct_upload=True, md5_present=True
+        download_url="http://example.com/file.txt", use_stream_upload=True, md5_present=True
     )
     with (
         patch(
@@ -60,7 +60,7 @@ def test_direct_upload_with_md5(s3_hook):
 def test_direct_upload_with_configured_name_and_headers(s3_hook):
     download_config = DownloadConfig(
         download_url="http://example.com/file.txt",
-        use_direct_upload=True,
+        use_stream_upload=True,
         md5_present=False,
         name="custom_name.txt",
         headers={"myheader": "myvalue"},
@@ -90,7 +90,7 @@ def test_direct_upload_with_configured_name_and_headers(s3_hook):
 def test_direct_upload_with_dynamic_url(s3_hook):
     download_config = DownloadConfig(
         download_url=lambda version: f"http://example.com/file_{version}.txt",
-        use_direct_upload=True,
+        use_stream_upload=True,
         md5_present=False,
     )
 
@@ -114,7 +114,7 @@ def test_direct_upload_with_dynamic_url(s3_hook):
 
 
 def test_upload_via_local_copy(s3_hook):
-    download_config = DownloadConfig(download_url="http://example.com/file2.txt", use_direct_upload=False)
+    download_config = DownloadConfig(download_url="http://example.com/file2.txt", use_stream_upload=False)
 
     with (
         patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
@@ -142,7 +142,7 @@ def test_upload_via_local_copy(s3_hook):
 
 def test_upload_via_local_copy_with_md5(s3_hook):
     download_config = DownloadConfig(
-        download_url="http://example.com/file2.txt", use_direct_upload=False, md5_present=True
+        download_url="http://example.com/file2.txt", use_stream_upload=False, md5_present=True
     )
     with (
         patch(
@@ -175,7 +175,7 @@ def test_upload_via_local_copy_with_md5(s3_hook):
 def test_upload_via_local_copy_with_extract_members_no_md5(s3_hook):
     download_config = DownloadConfig(
         download_url="http://example.com/archive.tar.gz",
-        use_direct_upload=False,
+        use_stream_upload=False,
         md5_present=False,
         extract_members=["file1.txt", "file2.txt"],
     )
@@ -218,7 +218,7 @@ def test_upload_via_local_copy_with_extract_members_no_md5(s3_hook):
 def test_upload_via_local_copy_with_extract_members_with_md5(s3_hook):
     download_config = DownloadConfig(
         download_url="http://example.com/archive.tar.gz",
-        use_direct_upload=False,
+        use_stream_upload=False,
         md5_present=True,
         extract_members=["file1.txt", "file2.txt"],
     )
@@ -268,7 +268,7 @@ def test_upload_via_local_copy_with_extract_members_with_md5(s3_hook):
 def test_upload_via_local_copy_with_configured_name_and_headers(s3_hook):
     download_config = DownloadConfig(
         download_url="http://example.com/file2.txt",
-        use_direct_upload=False,
+        use_stream_upload=False,
         md5_present=False,
         name="custom_name.txt",
         headers={"myheader": "myvalue"},

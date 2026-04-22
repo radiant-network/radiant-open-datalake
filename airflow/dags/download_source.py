@@ -17,7 +17,7 @@ from dags.lib.operators.ecs import PythonScriptOperator
 from dags.lib.tasks import get_version
 
 
-@task(task_display_name="[PyOp] Direct Upload")
+@task
 def direct_upload(source: str, prefix: str, version: str, download_index: int):
     """
     Runs a direct upload for a given source and download config.
@@ -29,7 +29,7 @@ def direct_upload(source: str, prefix: str, version: str, download_index: int):
     downloader.direct_upload()
 
 
-def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, download_index: int):
+def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, download_index: int, label: str):
     """
     Creates a PythonScriptOperator to upload files via a local copy.
     Note: We pass only source and download config index (not the DownloadConfig object)
@@ -46,7 +46,7 @@ def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, 
         script_args=script_args,
         pool=config.DOWNLOAD_TASKS_POOL,
         task_id=task_id,
-        task_display_name="[ECS] Local Copy Upload",
+        task_display_name=f"[ECS] Local Copy Upload {label}/{download_index}",
     )
 
 
@@ -63,7 +63,7 @@ def _generate_download_task_id(download_conf: DownloadConfig, rank: int) -> str:
     sanitized_description = re.sub(r"[^A-Za-z0-9]+", "-", description).strip("-")[:max_length]
     description_part = f"_{sanitized_description}" if sanitized_description else ""
 
-    mode = "direct_upload" if download_conf.use_direct_upload else "local_upload"
+    mode = "direct_upload" if download_conf.use_stream_upload else "local_upload"
 
     return f"{rank}_{mode}{description_part}"
 
@@ -93,13 +93,13 @@ def _make_download_source_dag(source_id: str):
             tasks = []
             for i, download_conf in enumerate(get_download_configs(source_id)):
                 task_id = _generate_download_task_id(download_conf, i + 1)
-                if download_conf.use_direct_upload:
+                if download_conf.use_stream_upload:
                     task = direct_upload.override(
                         task_id=task_id,
-                        task_display_name="[PyOp] Direct Upload",
+                        task_display_name=f"[PyOp] Direct Upload {download_conf.label}/{i}",
                     )(source_id, prefix, version, i)
                 else:
-                    task = upload_via_local_copy(task_id, source_id, prefix, version, i)
+                    task = upload_via_local_copy(task_id, source_id, prefix, version, i, download_conf.label or "")
                 tasks.append(task)
             return tasks
 
