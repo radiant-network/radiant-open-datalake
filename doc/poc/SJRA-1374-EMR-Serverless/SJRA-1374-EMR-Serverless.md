@@ -22,7 +22,7 @@ ClinVar was chosen as the first dataset: small (~4M rows), self-contained, distr
 
 ## 2. Background
 
-### 2.1 What EMR is
+### 2.1 What is EMR?
 
 **Amazon EMR** (Elastic MapReduce) is AWS's managed runtime for the Hadoop/Spark ecosystem (Spark, Hive, Trino, Presto, HBase, Flink). 
 AWS distributes a curated **EMR release** (e.g. `emr-7.12.0`) bundling tested versions of those engines, the JDK, S3 connectors, and Glue/Lake Formation integrations. 
@@ -40,7 +40,7 @@ EMR offers three deployment modes:
 
 This POC uses **EMR Serverless**.
 
-### 2.2 Spark concepts and how EMR Serverless realizes them
+### 2.2 Spark concepts in EMR Serverless
 
 Plain Spark has three roles: a **driver** (orchestrates the job, holds the SparkContext), **executors** (run tasks), and a **cluster manager** (allocates resources — YARN, Kubernetes, Standalone…). 
 EMR Serverless plays the role of the cluster manager and supplies both the driver and executor processes from its own pool of workers.
@@ -66,56 +66,7 @@ This POC's app is `poc-emr-opendatalake`.
 - **Job Run** — a single `spark-submit` execution against an application. Carries the JAR, entry args, Spark conf, and per-job `configurationOverrides` (e.g. CloudWatch monitoring). 
 Job runs are the billable unit.
 
-```mermaid
-flowchart LR
-    subgraph App["EMR Serverless Application (template)"]
-        direction TB
-        A_REL["releaseLabel: emr-7.12.0"]
-        A_ENG["engine: SPARK"]
-        A_NET["VPC / subnets / SGs"]
-        A_CAP["maxCapacity (cap)"]
-        A_PRE["pre-init capacity (opt.)"]
-    end
-
-    JR1["Job Run #1<br/>StartJobRun"]
-    JR2["Job Run #2<br/>StartJobRun"]
-    JR3["Job Run #N..."]
-
-    App --> JR1 & JR2 & JR3
-
-    subgraph Workers["Workers provisioned per Job Run"]
-        D["1 driver worker"]
-        E["N executor workers<br/>(dynamic allocation)"]
-    end
-
-    JR1 -.-> Workers
-```
-
-Application states: `CREATING → CREATED → STARTING → STARTED → STOPPING → STOPPED`. The service auto-starts a stopped app on `StartJobRun` (this is why the Airflow IAM policy includes `emr-serverless:StartApplication`).
-
-Job-run states: `SUBMITTED → PENDING → SCHEDULED → RUNNING → SUCCESS | FAILED | CANCELLED`. Failed job runs **cannot be restarted** — the operator surface is to clone-and-resubmit, optionally driven by a retry policy on the application.
-
-### 2.4 Workers, sizing, and scaling
-
-- A **worker** is the smallest unit of capacity — one bundle of vCPU + memory + disk. Default: 4 vCPU / 14 GB / 20 GB. You can override per role (driver / executor) at job submit time.
-- A worker hosts exactly **one Spark process** (driver *or* executor); it is not a YARN node hosting multiple containers.
-- Spark **dynamic allocation is on by default**. Cap it with `spark.dynamicAllocation.maxExecutors` (job-level) and `maximumCapacity` (application-level).
-- Scaling is **fine-grained per stage**: the service adds workers when a stage needs more parallelism and releases them when it doesn't. Idle workers are decommissioned within seconds.
-- **Pre-initialized capacity** keeps a configurable number of workers warm on the application so jobs skip the ~30 s cold-start. Costs idle compute time. Useful only for time-sensitive or interactive paths — *not* used in this POC.
-
-### 2.5 Storage choice
-
-EMR Serverless offers three local-disk shapes for shuffle/spill:
-
-| Type                         | EMR release | Disk per worker     | Notes                                                                              |
-|------------------------------|-------------|---------------------|------------------------------------------------------------------------------------|
-| **Standard disks**           | ≤ 7.11      | 20–200 GB           | Simple; cheapest for small jobs                                                    |
-| **Shuffle-optimized disks**  | 7.1.0+      | 20–2,000 GB         | High IOPS / throughput; required worker size ≥ 4 vCPU                              |
-| **Serverless storage**       | 7.12+       | Auto-scaling, free  | Replaces local disk; no sizing; zero storage cost; recommended default             |
-
-We use **serverless storage**. Engaging it requires ≥ 4 vCPU per worker — which the §5 worker-sizing trap is about.
-
-### 2.6 Pricing model
+### 2.4 Pricing model
 
 EMR Serverless bills three meters per second, with a **1-minute minimum per worker**:
 
@@ -125,17 +76,19 @@ EMR Serverless bills three meters per second, with a **1-minute minimum per work
 
 There is no per-cluster, per-hour, or "EMR uplift" charge on top — workers are billed only while running. Idle applications cost nothing (unless pre-init capacity is enabled, in which case the warm pool is billed continuously).
 
-### 2.7 What this means for our ETL
-
-- Our Spark/Scala job (`org.radiant.opendatalake.ImportPublicTable`) is a normal `spark-submit`. It runs unchanged on EMR Serverless — only the **submission mechanism** (an Airflow operator that calls `StartJobRun`) and the **catalog wiring** (Iceberg + Glue) are EMR-specific.
-- Cluster management drops out of our concerns: no cluster create/terminate operators, no AMI/bootstrap scripts, no idle-time tuning.
-- The cost model is per-job — exactly what a daily/on-demand reference-data ingestion pattern wants.
-
-> Refs: [EMR Serverless User Guide](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/emr-serverless.html), [Spark application architecture](https://spark.apache.org/docs/latest/cluster-overview.html), [EMR release versions for Serverless](https://docs.aws.amazon.com/emr/latest/ReleaseGuide/emr-serverless-release-versions.html), [Pre-initialized capacity](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/application-behavior.html#pre-init-capacity).
-
 ## 3. Architecture
 
+The following diagram exposes at a logical level how EMR Serverless would fit into the Airflow + Spark ecosystem for this POC. 
+The custom operator `EmrServerlessStartJobWithLogsOperator` encapsulates the EMR Serverless job submission, monitoring, and log forwarding logic.
+
+> **Note:** 
+> 
+> For the purpose of this POC, the DAGs are unique for each source. This is not necessarily going to be the case in the production version of this system.
+> This simplification was used to make it easier to understand the data flow and logic of the ETL.
+
 ![architecture.png](architecture.png)
+
+More details about the oprations:
 
 ```
 Airflow (MWAA / local)
@@ -187,7 +140,9 @@ References:
 
 ## 4. IAM
 
-Two distinct policies are involved: one on the **EMR execution role** (what the Spark job can do) and one on the **Airflow caller** (what Airflow can do to submit/poll). A third set of perms — for **human users hitting the AWS console** — is documented in §9.3.
+Two distinct policies are involved: 
+- one on the **EMR execution role** (what the Spark job can do) 
+- one on the **Airflow caller** (what Airflow can do to submit/poll).
 
 ### 4.1 Execution role policy
 
@@ -328,121 +283,35 @@ Statements:
 }
 ```
 
-`iam:PassRole` is mandatory — `StartJobRun` passes the execution role to EMR Serverless on Airflow's behalf.
-
-### 4.3 IAM gotchas (learned the hard way)
-
-- The `catalog` resource ARN is **required** in every Glue statement. Glue authorizes write actions against catalog + database + table together; dropping the catalog ARN returns `AccessDenied`. Reference: [AWS Glue resource ARNs](https://docs.aws.amazon.com/glue/latest/dg/glue-specifying-resource-arns.html).
-- `database/default` is included in **read** because the AWS Glue Hive client factory (`AWSGlueDataCatalogHiveClientFactory`) probes `default` on init even when it isn't used. Without read access there, Spark fails at `SharedState` initialization. The §6.2 setting `spark.sql.catalogImplementation=in-memory` avoids this codepath, but the IAM grant remains as belt-and-suspenders.
-- `glue:GetDatabases` (list) crosses resource boundaries — an AWS API quirk. It returns metadata across all DBs in the catalog regardless of resource filter; minor information leak. Iceberg does not need it for normal read/write. Drop it if list-isolation is required.
-- Future maintenance ops on Iceberg (`expire_snapshots`, `remove_orphan_files`, `drop table`) need additional perms: `glue:DeleteTable`, `glue:DeletePartition`, `glue:BatchDeletePartition`, `glue:BatchDeleteTable`. Not granted in this POC.
-
-> Ref: [Iceberg AWS Glue catalog perms](https://iceberg.apache.org/docs/latest/aws/#glue-catalog).
-
 ## 5. Worker sizing
 
-The first job submission failed with:
+You can size the EMR Serverless worker by changing the Spark submit parameters.
 
-```
-botocore.errorfactory.ValidationException: An error occurred (ValidationException) when calling the StartJobRun operation: Serverless storage for EMR Serverless is not supported for 1 and 2 vCPU workers (drivers or executors).
-```
+The worker specification are available here: https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/app-behavior.html#worker-configs
 
-**Cause.** The `SHUFFLE_OPTIMIZED` disk type (a.k.a. EMR Serverless "serverless storage") requires **≥4 vCPU per worker**. The original config requested 1–2 vCPU.
+Sizes can be specified for both minimum and maximum capacity (limiting the Serverless scaling).
 
-**Fix.** Drop explicit driver/executor sizing entirely. EMR Serverless defaults to **4 vCPU / 14 GB RAM / 20 GB disk** on both driver and executor — which satisfies the floor and is appropriate for a small workload like ClinVar.
+It can be useful to specify the worker configuration in those scenarios:
 
-If a future job actually needs custom sizing:
+- Avoid under (introduces delays in the dynamic scaling) or over-provisioning (the default worker config might be too big already).
+- Avoid extra cost (by capping the worker size in the configuration)
 
-| Option | Effect |
-|---|---|
-| Bump to ≥4 vCPU and keep `diskType: SHUFFLE_OPTIMIZED` | Best for shuffle-heavy joins, wide variant ETL |
-| Stay at 1–2 vCPU and omit `diskType` (defaults to `STANDARD`) | Cheaper for light POCs, no shuffle optimization |
+> Ref.: https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/app-behavior.html#worker-configs
 
-> Ref: [EMR Serverless worker config](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/jobs-spark.html#spark-jobs-worker-configurations).
+## 6. DAG implementation
 
-### 5.1 Serverless storage quick-facts
+The following snippet contains the DAG used for the POC. It was deployed in CHOP's Airflow environment and ran successfully using Airflow 2.10.5.
+The goal was to test the integration of the custom Airflow operator for EMR Serverless and also validate that the Spark job is able to communicate to AWS Glue to store the data.
 
-- Managed temporary storage layer for Spark intermediate data (shuffle, spill, cache); auto-scales with workload.
-- In-job temporary data only — deleted when the job completes.
-- **Storage is free** — you pay only for compute and memory.
-- Replaces local-disk handling for Spark intermediates; avoids job failures from disk-fill.
-- Lets Spark release workers sooner → reduces compute cost.
-- Requires EMR release **7.12+**.
-
-## 6. Spark configuration
-
-### 6.1 Final `SPARK_CONF`
-
-```python
-SPARK_CONF = {
-    # Cap dynamic allocation — small dataset, prevent runaway cost
-    "spark.dynamicAllocation.maxExecutors": "4",
-    "spark.dynamicAllocation.initialExecutors": "1",
-
-    # Iceberg + Glue catalog
-    "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-    "spark.sql.catalogImplementation": "in-memory",
-    "spark.sql.catalog.opendatalake": "org.apache.iceberg.spark.SparkCatalog",
-    "spark.sql.catalog.opendatalake.default-namespace": "opendatalake_poc",
-    "spark.sql.catalog.opendatalake.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
-    "spark.sql.catalog.opendatalake.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
-    "spark.sql.catalog.opendatalake.glue.id": GLUE_CATALOG_ID,
-    "spark.sql.catalog.opendatalake.warehouse": WAREHOUSE_S3,
-    "spark.sql.catalog.opendatalake.client.region": AWS_REGION,
-    "spark.sql.defaultCatalog": "opendatalake",
-
-    # Small dataset — keep shuffle partitions modest
-    "spark.sql.shuffle.partitions": "16",
-}
-```
-
-### 6.2 Decision rationale
-
-| Setting                                                             | Why                                                                                                                                                                                                                                                                                                             |
-|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `spark.dynamicAllocation.maxExecutors=4`                            | Caps blast radius. Default is unbounded; ClinVar fits in single-digit executors.                                                                                                                                                                                                                                |
-| `spark.dynamicAllocation.initialExecutors=1`                        | Avoid over-provisioning at job start. Will scale up if shuffle stages need it.                                                                                                                                                                                                                                  |
-| `spark.sql.extensions=IcebergSparkSessionExtensions`                | Required for Iceberg DDL (`MERGE INTO`, `CREATE OR REPLACE`, branch/tag ops).                                                                                                                                                                                                                                   |
-| `spark.sql.catalogImplementation=in-memory`                         | **Critical.** EMR Serverless defaults to `hive`, which forces `AWSCatalogMetastoreClient` initialization and a Glue probe on `default` DB. With `in-memory`, Spark uses `InMemoryCatalog` for SessionCatalog; the Iceberg `opendatalake` catalog is unaffected. Avoids the IAM denial path entirely (see §9.4). |
-| `spark.sql.catalog.opendatalake.default-namespace=opendatalake_poc` | Unqualified table refs (`spark.table("clinvar")`) resolve to `opendatalake_poc.clinvar`. Defends against IAM denial if Scala code drops the database prefix.                                                                                                                                                    |
-| `spark.sql.catalog.opendatalake.glue.id=418295705741`               | Pins the Glue catalog ID. **Iceberg 1.10.x uses `glue.id`** (older versions used `glue.catalog-id`).                                                                                                                                                                                                            |
-| `spark.sql.catalog.opendatalake.io-impl=S3FileIO`                   | Native S3 I/O, bypasses Hadoop's S3A. Faster for Iceberg.                                                                                                                                                                                                                                                       |
-| `spark.sql.defaultCatalog=opendatalake`                             | Default catalog for unqualified table refs.                                                                                                                                                                                                                                                                     |
-| `spark.sql.shuffle.partitions=16`                                   | Default 200 is overkill for small datasets.                                                                                                                                                                                                                                                                     |
-
-> Refs: [Iceberg Spark catalog config](https://iceberg.apache.org/docs/latest/spark-configuration/#catalog-configuration), [Iceberg AWS Glue catalog (1.10.0)](https://iceberg.apache.org/docs/1.10.0/aws/#glue-catalog).
-
-### 6.3 Configuration tried and dropped
-
-- **`--packages org.apache.iceberg:...`** — initial approach. Adds 30–90 s of Ivy resolve at every job start and requires Maven Central egress from the VPC. Replaced after confirming the project ships a fat JAR with all deps bundled.
-- **`--jars s3://.../iceberg-*.jar`** — secondary approach with pre-uploaded jars. Also dropped after fat JAR confirmation.
-- **`spark.serializer=KryoSerializer`** — initially recommended as an "Iceberg best practice", but on verification this is a generic Spark recommendation (network-intensive workloads), not Iceberg-specific. ClinVar is small + low-shuffle, so the gain is negligible. Skipped.
-- **`spark.driver.extraJavaOptions=-Duser.language=en -Duser.country=US`** — Glow VCF reader locale workaround. Initially included, then removed under the mistaken assumption that ClinVar was TSV. ClinVar is in fact distributed as VCF (NCBI publishes `clinvar.vcf.gz` for both GRCh37/38), so Glow is exercised. Currently omitted; revisit if Glow throws locale-sensitive parse errors. See §11 for the quoted-value pattern.
-
-### 6.4 Application-level configuration (current)
-
-```json
-[
-  {
-    "classification": "spark-defaults",
-    "properties": {
-      "spark.aws.serverlessStorage.enabled": "true",
-      "spark.hadoop.hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
-    }
-  }
-]
-```
-
-The `hive.metastore.client.factory.class` only matters if the Hive client is constructed. With job-level `spark.sql.catalogImplementation=in-memory`, the Hive client is never created and the factory class is never invoked. Kept for compatibility with any future job that needs a hive-backed SessionCatalog.
-
-## 7. DAG implementation
-
-`radiant/dags/emr-poc.py`:
+> **Note**: 
+> The `"spark.sql.catalogImplementation": "in-memory"` to avoid using the Hive metastore client to simplify the POC. 
+> This is not necessarily going to be the case in the production version.
 
 ```python
 from airflow import DAG
 from radiant.dags.operators.emr import EmrServerlessStartJobWithLogsOperator
 
+# The following values are hardcoded, in a production setting they should be fetched from the environment (or Airflow variables / secrets)
 APPLICATION_ID = "00g59743sbl50409"
 EXECUTION_ROLE_ARN = "arn:aws:iam::418295705741:role/service-role/AmazonEMR-ExecutionRole-1777389601404"
 
@@ -457,12 +326,31 @@ LOG_STREAM_PREFIX = "poc_emr"
 ENTRY_CLASS = "org.radiant.opendatalake.ImportPublicTable"
 ENTRY_ARGS = [
     "clinvar",
-    "--config", "config/poc.conf",
+    "--config", "config/poc.conf",  # A specific config file was created for this POC, overloading some defaults to allow running ClinVar transformation with Glue
     "--steps", "default",
     "--app-name", "clinvar-poc",
 ]
 
-SPARK_CONF = { ... }  # see §6.1
+SPARK_CONF = {
+    # Cap dynamic allocation — small dataset, prevent runaway cost
+    "spark.dynamicAllocation.maxExecutors": "4",
+    "spark.dynamicAllocation.initialExecutors": "1",
+
+    # Iceberg + Glue catalog
+    "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
+    "spark.sql.catalogImplementation": "in-memory", 
+    "spark.sql.catalog.opendatalake": "org.apache.iceberg.spark.SparkCatalog",
+    "spark.sql.catalog.opendatalake.default-namespace": "opendatalake_poc",
+    "spark.sql.catalog.opendatalake.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
+    "spark.sql.catalog.opendatalake.io-impl": "org.apache.iceberg.aws.s3.S3FileIO",
+    "spark.sql.catalog.opendatalake.glue.id": GLUE_CATALOG_ID,
+    "spark.sql.catalog.opendatalake.warehouse": WAREHOUSE_S3,
+    "spark.sql.catalog.opendatalake.client.region": AWS_REGION,
+    "spark.sql.defaultCatalog": "opendatalake",
+
+    # Small dataset — keep shuffle partitions modest
+    "spark.sql.shuffle.partitions": "16",
+}
 
 SPARK_SUBMIT_PARAMS = " ".join(
     [f"--class {ENTRY_CLASS}"]
@@ -495,22 +383,18 @@ with DAG(
         enable_application_ui_links=True,
         waiter_delay=30,
         waiter_max_attempts=60,
-        pipe_stderr=True,
     )
 ```
 
-### 7.1 Notes
+## 7. Custom operator — `EmrServerlessStartJobWithLogsOperator`
 
-- `pipe_stderr=True` is essential — Spark driver logs go to **stderr** (log4j console appender), not stdout. Without this, the operator looks at an empty/missing stdout stream and reports `Stream not found`.
-- `waiter_delay=30, waiter_max_attempts=60` ⇒ 30-minute timeout. Re-tune for larger datasets.
-- `enable_application_ui_links=True` exposes the Spark UI / driver-log dashboard URL in the operator's task log.
-- `config/poc.conf` is referenced as a relative path. It must be loadable from the JAR classpath (e.g. via `Typesafe ConfigFactory.load("poc.conf")`) — EMR Serverless workers don't have it on a filesystem path.
+By default, the Airflow EMR Serverless operator doesn't forward driver logs into the task log.
+A custom operator was implemented to fetch the driver (`stdout` and `stderr`) logs from Cloudwatch to display them in Airflow.
+A caveat is that logs are only fetched after the job reaches a terminal state (success or failure), so they won't appear in real time during execution.
 
-## 8. Custom operator — `EmrServerlessStartJobWithLogsOperator`
+> **Note**: We could probably 
 
-Location: `radiant/dags/operators/emr.py`. Subclasses `airflow.providers.amazon.aws.operators.emr.EmrServerlessStartJobOperator`.
-
-### 8.1 Responsibilities
+### 7.1 Responsibilities
 
 1. **Inject CloudWatch monitoring config** into the `StartJobRun` request unless the caller already set one. Done by `_merge_monitoring`, which builds `configuration_overrides.monitoringConfiguration.cloudWatchLoggingConfiguration` with `enabled=true`, the configured log group, and stream prefix.
 2. **Wait for job completion** (default `wait_for_completion=True`).
@@ -527,6 +411,8 @@ sequenceDiagram
     Note over OP: _merge_monitoring()<br/>injects logGroupName + prefix
     OP->>EMR: StartJobRun(jobDriver, configurationOverrides)
     EMR-->>OP: jobRunId
+
+    EMR->>CW: PutLogEvents (driver stdout, stderr)
 
     loop wait_for_completion
         OP->>EMR: GetJobRun(jobRunId)
@@ -550,7 +436,7 @@ sequenceDiagram
     OP-->>T: return / re-raise
 ```
 
-### 8.2 CloudWatch stream naming
+### 7.2 CloudWatch stream naming
 
 Stream path constructed by EMR Serverless:
 
@@ -563,16 +449,20 @@ For this POC, the stderr stream lands at:
 
 Three streams are created per job run: driver stderr, driver stdout, and `job-metadata-log`.
 
-### 8.3 Constructor knobs
+### 7.3 Constructor knobs
 
-| Param | Default | Purpose |
-|---|---|---|
-| `cloudwatch_log_group` | required | Log group name |
-| `cloudwatch_log_stream_prefix` | `None` | Namespace within the log group |
-| `cloudwatch_region` | `None` | Passed to `AwsLogsHook`; falls back to boto/AWS default |
-| `pipe_stderr` | `False` | Also fetch stderr. **Should be `True` for Spark.** |
+| Param                          | Default  | Purpose                                                 |
+|--------------------------------|----------|---------------------------------------------------------|
+| `cloudwatch_log_group`         | required | Log group name                                          |
+| `cloudwatch_log_stream_prefix` | `None`   | Namespace within the log group                          |
+| `cloudwatch_region`            | `None`   | Passed to `AwsLogsHook`; falls back to boto/AWS default |
+| `pipe_stderr`                  | `False`  | Also fetch stderr. **Should be `True` for Spark.**      |
 
-### 8.4 Source
+### 7.4 Source
+
+The following is the full source code of the custom operator, which extends `EmrServerlessStartJobOperator` to add the monitoring config injection and log forwarding logic.
+
+> Note: This wasn't thoroughly tested, it's ai-generated prototype code, not production ready.
 
 ```python
 import logging
@@ -668,155 +558,49 @@ class EmrServerlessStartJobWithLogsOperator(EmrServerlessStartJobOperator):
                 log.warning("Stream not found: %s", stream)
 ```
 
-## 9. Issues encountered (chronological)
-
-### 9.1 Worker sizing (`ValidationException`)
-
-See §5. Fixed by removing custom worker sizing and relying on defaults.
-
-### 9.2 Logs missing in Airflow task log
-
-The first successful run reported `Stream not found: .../SPARK_DRIVER/stdout`. Two contributing causes:
-
-- The operator's default `pipe_stderr=False` only checked the `stdout` stream; Spark driver writes to `stderr`. Fixed by setting `pipe_stderr=True` in the DAG.
-- Possible secondary cause: log group did not exist or execution role lacked CloudWatch perms. Confirmed log group exists; execution-role IAM updated (§4.1).
-
-### 9.3 Console 401 fetching driver UI
-
-Manually accessing EMR Serverless logs via the AWS console returned HTTP 401. Caused by the **caller IAM principal** (the user/SSO role logged into the console) lacking `emr-serverless:GetDashboardForJobRun`. Required perms on the caller side:
-
-```json
-{
-    "Effect": "Allow",
-    "Action": [
-        "emr-serverless:GetDashboardForJobRun",
-        "emr-serverless:GetJobRun",
-        "emr-serverless:ListJobRuns",
-        "emr-serverless:GetApplication"
-    ],
-    "Resource": [
-        "arn:aws:emr-serverless:us-east-1:418295705741:/applications/00g59743sbl50409",
-        "arn:aws:emr-serverless:us-east-1:418295705741:/applications/00g59743sbl50409/jobruns/*"
-    ]
-}
-```
-
-### 9.4 `glue:GetDatabase` denied on `default` DB
-
-After a successful Iceberg write (4,185,298 records committed to `opendatalake_poc.clinvar`, snapshot `1556577534404968890`), the read-back path threw:
-
-```
-software.amazon.awssdk.services.glue.model.AccessDeniedException: User: arn:aws:sts::418295705741:assumed-role/AmazonEMR-ExecutionRole-1777389601404/...
-is not authorized to perform: glue:GetDatabase on resource: arn:aws:glue:us-east-1:418295705741:database/default
-```
-
-**Root cause.** Spark's `SessionCatalog` (separate from the Iceberg `opendatalake` catalog) lazily initializes the Hive metastore client when `spark.table(...)` is called. EMR Serverless defaults to `spark.sql.catalogImplementation=hive`, which routes the call through `AWSCatalogMetastoreClient`. The client probes `default` DB existence on init via `doesDefaultDBExist`, hitting Glue `GetDatabase`. IAM only allowed `database/opendatalake_poc`.
-
-**Fix.** Set `spark.sql.catalogImplementation=in-memory` in the job's SPARK_CONF. Spark uses `InMemoryCatalog` for SessionCatalog, the Hive client is never instantiated, and the `default` probe never happens. The Iceberg `opendatalake` catalog is independent and continues to work.
-
-**Belt-and-suspenders.** Also added `database/default` to the IAM read resources in case future EMR runtime changes invoke the Hive shim despite `in-memory`.
-
-```mermaid
-flowchart TD
-    APP["Spark application starts"]
-    DECISION{"spark.sql.<br/>catalogImplementation"}
-
-    HIVE["= hive (EMR default)"]
-    INMEM["= in-memory (our fix)"]
-
-    SHARED["SharedState init"]
-    HIVECLI["AWSCatalogMetastoreClient<br/>doesDefaultDBExist()"]
-    GLUEPROBE["glue:GetDatabase<br/>on database/default"]
-    DENY["AccessDeniedException<br/>(IAM only allows opendatalake_poc)"]
-
-    INMEMCAT["InMemoryCatalog<br/>(no Hive shim, no Glue probe)"]
-    ICEBERG["Iceberg 'opendatalake' catalog<br/>handles all writes/reads<br/>via SparkCatalog + GlueCatalog"]
-
-    APP --> DECISION
-    DECISION -->|hive| HIVE --> SHARED --> HIVECLI --> GLUEPROBE --> DENY
-    DECISION -->|in-memory| INMEM --> INMEMCAT --> ICEBERG
-
-    style DENY fill:#fdd,stroke:#c00
-    style ICEBERG fill:#dfd,stroke:#080
-```
-
-## 10. Successful run — ClinVar
+## 8. Run — ClinVar
 
 Driver-log timing for the run that committed successfully:
 
-| Stage | Duration |
-|---|---|
-| Pending → Scheduled | ~30 s |
-| Scheduled → Running | ~30 s |
-| VCF header parsing (Job 0, 12 tasks) | 8.2 s |
-| Variant transform (ShuffleMapStage 2, 12 tasks) | 26.4 s |
-| Iceberg write (Job 2, 1 task, coalesced) | 92.3 s |
-| Iceberg commit | 371 ms |
-| **Total job time** | **~2 min 30 s** |
+| Stage                                             | Start        | End          | Elapsed           |
+|---------------------------------------------------|--------------|--------------|-------------------|
+| Spark init & executor allocation                  | 00:01:44     | 00:02:21     | ~37 s             |
+| Extract (VCF header read — Job 0, stages 0 & 1)   | 00:02:21     | 00:02:30     | ~9 s (job: 8.4 s) |
+| Transform setup (Glue/Iceberg catalog load, plan) | 00:02:30     | 00:02:35     | ~5 s              |
+| Load — Stage 2 (read VCF + shuffle map)           | 00:02:35     | 00:03:11     | ~36 s             |
+| Load — Stage 4 (write Parquet / saveAsTable)      | 00:03:12     | 00:05:40     | ~148 s            |
+| Publish (Iceberg commit + Glue metadata refresh)  | 00:05:40     | 00:05:42     | ~2 s              |
+| Shutdown                                          | 00:05:42     | 00:05:42     | <1 s              |
+| **Total wall-clock**                              | **00:01:44** | **00:05:42** | **~3 min 58 s**   |
 
-Output:
 
-- Records written: **4,185,298**
-- Files written: **1** Parquet data file
-- Total size: **~165 MB** (165,060,724 bytes)
-- Table: `opendatalake.opendatalake_poc.clinvar`
-- Snapshot ID: `1556577534404968890`
-- Storage location: `s3a://radiant-tst-datalake-qa/opendatalake/normalized/clinvar`
-- Engine: `Spark 3.5.6-amzn-1`, Java 17
+The total run time of the job from the EMR Serverless console was **5 minutes and 9 seconds**.
 
-### 10.1 Cost reading
+The difference between the wall-clock time and the total run time is explained by:
+- Cold Start latency (EMR Serverless provisioning)
+- Driver JVM boot
+- Log upload (post-job completion)
 
-Resource utilization on a representative short run (2 min 41 s, *failed* job before the fix — kept for billing illustration only):
+### 8.1 Cost reading
 
-| Metric | Total used | Billed |
-|---|---|---|
-| vCPU-hours | 0.041 | 0.067 |
-| memoryGB-hours | 0.164 | 0.267 |
-| storageGB-hours | 0.206 | 0 |
+Running the successful ClinVar import job cost approximately **$0.06330**. 
 
-EMR Serverless bills *billed* utilization separately from *total*. Billed values reflect the **1-min minimum + brief scaling overhead**. Storage is **free** (serverless storage). At ~$0.0526/vCPU-hr + ~$0.0058/GB-hr (us-east-1, 2026 rates), this run cost ≈ **$0.005**.
+![cost.png](cost.png)
 
-## 11. Open items / follow-ups
+**Breakdown**:
 
-- [ ] Confirm the next run is fully clean (no `default` DB error) after `spark.sql.catalogImplementation=in-memory` was added.
-- [ ] Re-add Glow locale opts (`-Duser.language=en -Duser.country=US`) **with quoted values** if any locale-sensitive VCF parsing surfaces. Quoting is needed because spark-submit splits on whitespace; suggested pattern:
-  ```python
-  [f'--conf {k}={v}' if " " not in v else f'--conf "{k}={v}"' for k, v in SPARK_CONF.items()]
-  ```
-- [ ] Add Iceberg maintenance perms to IAM if the POC will run `expire_snapshots` / `remove_orphan_files` (`glue:DeleteTable`, `glue:DeletePartition`, `glue:BatchDeletePartition`, `glue:BatchDeleteTable`).
-- [ ] Decide whether `glue:GetDatabases` (list) stays in the read policy. Returns metadata across all DBs in the catalog regardless of resource filter — minor information leak.
-- [ ] Consider building a custom EMR Serverless image with the fat JAR and common dependencies pre-baked, eliminating the per-job S3 entryPoint download.
-- [ ] **Cost monitoring:** tag application + jobs (`Project=radiant`, `Env=qa`, `Owner=...`) so EMR Serverless costs land in the right cost-allocation buckets.
-- [ ] **Productionization:** replace `dag_id="x-emr-serverless-poc"` and `tags=[..., "poc", "manual"]` with proper naming + scheduling once promoted.
-- [ ] Verify the `config/poc.conf` resolution path in `ImportPublicTable` is classpath-based (not filesystem); document expected config layout.
-- [ ] Repeat the run with at least one additional dataset (Ensembl, gnomAD?) to validate the pattern generalizes.
-- [ ] Decide whether `enable_application_ui_links=True` stays in prod or is restricted to staging.
+| Resource | Billed Usage | Rate (USD) | Cost (USD) |
+|---|---|---|---|
+| vCPU | 0.836 vCPU-hours | $0.052624 / vCPU-hour | $0.04399 |
+| Memory | 3.342 GB-hours | $0.0057785 / GB-hour | $0.01931 |
+| Storage | 0 GB-hours | $0.000111 / GB-hour | $0.00000 |
+| **Total** | | | **$0.06330** |
 
-## 12. Best-practice notes (AWS Big Data Blog — Top 10)
+> **Note on storage**: From the [EMR Serverless pricing page](https://aws.amazon.com/emr/pricing/):
+> Pricing details (ephemeral storage)
+> Standard storage: The first 20 GB of ephemeral storage is available for all workers by default, and you pay only for any additional storage configured per worker.
 
-Selected items relevant to this POC. > Ref: [Top 10 best practices for Amazon EMR Serverless](https://aws.amazon.com/blogs/big-data/top-10-best-practices-for-amazon-emr-serverless/).
-
-- **Reuse applications.** Applications are cluster templates; without pre-initialized capacity, workers are released immediately on job completion. Pre-initialized capacity is only useful for time-sensitive jobs, interactive analytics, or high-frequency pipelines.
-- **Graviton.** ARM-based workers offer better performance/price; consider for prod.
-- **Start with defaults, right-size by workload.** Identify the vCPU:memory ratio (memory per core) before deviating from the 4 vCPU / 16 GB default.
-- **T-shirt-size scaling.** Set the upper bound via job-level `spark.dynamicAllocation.maxExecutors` *and* application-level max capacity. Suggested starting points: small (50), medium (200), large (500).
-- **Storage choice.** EMR 7.12+ → use serverless storage (free, auto-scaling, recommended). Standard disks (≤7.11) for small workloads; shuffle-optimized for multi-TB ETL.
-- **Multi-AZ resiliency** is automatic when pre-initialized capacity is *not* enabled. Configure retry policy for job resiliency.
-- **VPC integration.** Each worker uses 1 IP per subnet — plan IP space. Use S3 Gateway endpoints in private subnets to avoid NAT data-transfer cost. Manage AWS Config costs via resource exclusions/tagging (each worker creates an ENI record).
-- **Concurrency control** (EMR 7.0.0+): `--scheduler-configuration '{"maxConcurrentRuns": 5, "queueTimeoutMinutes": 30}'`.
-- **Account-level guard rail.** Use the *Max concurrent vCPUs per account* service quota to prevent cross-app spikes.
-- **Monitor.** CloudWatch / Prometheus / Grafana — track completion times, success rate, worker utilization, scaling events, shuffle volumes, memory.
-
-## 13. Key takeaways
-
-- **Pattern works.** Existing fat JAR + `ImportPublicTable` runs unmodified on EMR Serverless. ClinVar imports in ~2.5 min for ~$0.005.
-- **Storage choice.** EMR 7.12+ → serverless storage is the right default (no cost, auto-scales).
-- **Cost model.** Billed > total utilization (1-min minimum); storage free; expect cents per small job.
-- **Airflow integration.** Runtime role + `iam:PassRole` + CloudWatch log read; stream driver logs to CloudWatch for Airflow UI visibility. Custom operator handles the "stream stderr into task log" gap.
-- **Catalog.** Glue write strictly scoped to `opendatalake_poc`; reads broader (`default`, `global_temp`) to satisfy Hive-shim probes.
-- **Watch out.** `spark.sql.catalogImplementation=in-memory` is non-obvious but mandatory unless you want to grant Glue read on `default`. Worker sizing must respect the ≥4 vCPU floor when using shuffle-optimized disks. Failed jobs cannot be restarted — clone & resubmit (or rely on the configured retry policy).
-
-## 14. References
+## 9. References
 
 - [EMR Serverless User Guide](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/emr-serverless.html)
 - [EMR Serverless worker config](https://docs.aws.amazon.com/emr/latest/EMR-Serverless-UserGuide/jobs-spark.html#spark-jobs-worker-configurations)
@@ -833,7 +617,189 @@ Selected items relevant to this POC. > Ref: [Top 10 best practices for Amazon EM
 - [VPC S3 Gateway endpoints](https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints-s3.html)
 - [Top 10 best practices for EMR Serverless](https://aws.amazon.com/blogs/big-data/top-10-best-practices-for-amazon-emr-serverless/)
 
-## Appendix: Airflow logs
+
+# Appendix
+
+The following appendices provide additional context and artifacts from the POC runs.
+
+- [Appendix A: `clinvar` Iceberg metadata and metrics](#appendix-a-clinvar-iceberg-metadata-and-metrics) — snapshot of the `clinvar` table metadata after the Spark job committed, showing the schema, partitioning, and snapshot details.
+- [Appendix B: Airflow logs](#appendix-a-airflow-logs) — example Airflow task log showing the operator successfully reading and forwarding CloudWatch logs.
+
+## Appendix A: `clinvar` Iceberg metadata and metrics
+
+Snapshot of the `clinvar` Iceberg table state after the Spark job committed (timestamp `2026-05-04 00:05:30.921 UTC`, snapshot `8067143916351935291`).
+
+### B.1 Identity
+
+| Property            | Value                                                                                                                                  |
+|---------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| Identifier          | `opendatalake_poc.clinvar`                                                                                                             |
+| Format version      | `2`                                                                                                                                    |
+| Table UUID          | `edc3978f-3d5d-4dc0-bf33-385995e7080f`                                                                                                 |
+| Data location       | `s3a://radiant-tst-datalake-qa/opendatalake/normalized/clinvar`                                                                        |
+| Metadata location   | `…/normalized/clinvar/metadata/00009-15949d46-55b0-47c9-b54e-c64698434059.metadata.json`                                               |
+| Last updated        | `1777853130921` ms (`2026-05-04 00:05:30.921 UTC`)                                                                                     |
+
+### B.2 Schema
+
+> Schema id `0` (current) · field count `47` · no identifier fields · all columns `optional`.
+
+<details>
+<summary>Full column list (47 fields) — click to expand</summary>
+
+| #   | Column                | Type            |
+|-----|-----------------------|-----------------|
+| 1   | `chromosome`          | `string`        |
+| 2   | `start`               | `long`          |
+| 3   | `end`                 | `long`          |
+| 4   | `reference`           | `string`        |
+| 5   | `alternate`           | `string`        |
+| 6   | `interpretations`     | `list<string>`  |
+| 7   | `name`                | `string`        |
+| 8   | `clin_sig`            | `list<string>`  |
+| 9   | `clin_sig_conflict`   | `list<string>`  |
+| 10  | `af_exac`             | `double`        |
+| 11  | `clnvcso`             | `string`        |
+| 12  | `sciscv`              | `list<string>`  |
+| 13  | `geneinfo`            | `string`        |
+| 14  | `clnsigincl`          | `list<string>`  |
+| 15  | `oncdn`               | `list<string>`  |
+| 16  | `clnvi`               | `list<string>`  |
+| 17  | `clndisdb`            | `list<string>`  |
+| 18  | `sciincl`             | `list<string>`  |
+| 19  | `clnrevstat`          | `list<string>`  |
+| 20  | `onc`                 | `list<string>`  |
+| 21  | `oncdnincl`           | `list<string>`  |
+| 22  | `alleleid`            | `int`           |
+| 23  | `scidisdbincl`        | `list<string>`  |
+| 24  | `origin`              | `list<string>`  |
+| 25  | `scidisdb`            | `list<string>`  |
+| 26  | `clnsigscv`           | `list<string>`  |
+| 27  | `clndnincl`           | `list<string>`  |
+| 28  | `oncscv`              | `list<string>`  |
+| 29  | `scirevstat`          | `list<string>`  |
+| 30  | `sci`                 | `list<string>`  |
+| 31  | `rs`                  | `list<string>`  |
+| 32  | `dbvarid`             | `list<string>`  |
+| 33  | `af_tgp`              | `double`        |
+| 34  | `oncdisdb`            | `list<string>`  |
+| 35  | `clnvc`               | `string`        |
+| 36  | `clnhgvs`             | `list<string>`  |
+| 37  | `mc`                  | `list<string>`  |
+| 38  | `oncincl`             | `list<string>`  |
+| 39  | `oncconf`             | `list<string>`  |
+| 40  | `af_esp`              | `double`        |
+| 41  | `scidn`               | `list<string>`  |
+| 42  | `clndisdbincl`        | `list<string>`  |
+| 43  | `scidnincl`           | `list<string>`  |
+| 44  | `oncdisdbincl`        | `list<string>`  |
+| 45  | `oncrevstat`          | `list<string>`  |
+| 46  | `conditions`          | `list<string>`  |
+| 47  | `inheritance`         | `list<string>`  |
+
+</details>
+
+Only one schema in history (`schema_id=0`, current).
+
+### B.3 Layout — partitioning, sort order, properties
+
+| Aspect          | Value                                                                                            |
+|-----------------|--------------------------------------------------------------------------------------------------|
+| Partition spec  | *(empty)* — unpartitioned (`spec_id=0`)                                                          |
+| Sort order      | *(empty)* — unsorted (`order_id=0`)                                                              |
+| Properties      | `owner=hadoop`, `write.parquet.compression-codec=zstd`                                           |
+| Refs            | `main` → branch → snapshot `8067143916351935291`                                                 |
+
+### B.4 Current snapshot
+
+> **`8067143916351935291`** · `OVERWRITE` · committed `2026-05-04 00:05:30.921 UTC` · `parent_id=None` · `schema_id=0`
+
+### B.5 Snapshot history (10 commits)
+
+All commits to date were `OVERWRITE` operations with no parent (each rewrote the table from scratch); the current branch tip is the last row.
+
+| #  | Committed at (UTC)          | Snapshot ID            | Op          | Spark app id        |
+|----|-----------------------------|------------------------|-------------|---------------------|
+| 0  | 2026-05-01 15:30:36.871     | `7670193727697618001`  | overwrite   | `00g5bknbcgfq5o0b`  |
+| 1  | 2026-05-01 15:55:23.822     | `1556577534404968890`  | overwrite   | `00g5bl63tc6r280b`  |
+| 2  | 2026-05-01 16:07:44.075     | `728937993639078359`   | overwrite   | `00g5blccsssd780b`  |
+| 3  | 2026-05-01 16:54:07.857     | `7243006493393104399`  | overwrite   | `00g5bm7dh670lg0b`  |
+| 4  | 2026-05-01 17:32:39.384     | `6731003876887496818`  | overwrite   | `00g5bmt21kl4io0b`  |
+| 5  | 2026-05-01 17:51:21.083     | `353372119837653765`   | overwrite   | `00g5bn7par4uq00b`  |
+| 6  | 2026-05-01 18:54:36.038     | `7702257049510211058`  | overwrite   | `00g5bocf1lvd700b`  |
+| 7  | 2026-05-02 00:05:30.063     | `857993956772901117`   | overwrite   | `00g5bttu7snli00b`  |
+| 8  | 2026-05-03 00:05:26.905     | `6269319172384720034`  | overwrite   | `00g5cnlsu08pt00b`  |
+| 9  | **2026-05-04 00:05:30.921** | **`8067143916351935291`** | overwrite   | `00g5dhds4t4hvo0b`  |
+
+`inspect.history()` flags only row 9 with `is_current_ancestor=True` — confirming each `OVERWRITE` orphans the previous snapshots from the `main` branch lineage.
+
+### B.6 Files and partitions (current snapshot)
+
+#### Manifest
+
+| Field                          | Value                            |
+|--------------------------------|----------------------------------|
+| Manifest length                | 12,522 bytes                     |
+| Added snapshot                 | `8067143916351935291`            |
+| Added data files               | 1                                |
+| Existing / deleted data files  | 0 / 0                            |
+| Delete files (added/exist/del) | 0 / 0 / 0                        |
+| Partition summaries            | *(empty — unpartitioned)*        |
+
+#### Single (unpartitioned) bucket
+
+| Metric                          | Value                                |
+|---------------------------------|--------------------------------------|
+| Record count                    | **4,185,298**                        |
+| File count                      | **1**                                |
+| Total data-file size            | **165,060,724 bytes** (~0.17 GB)     |
+| Position-delete records / files | 0 / 0                                |
+| Equality-delete records / files | 0 / 0                                |
+| Last updated                    | 2026-05-04 00:05:30.921 UTC          |
+
+#### Data file
+
+| Field             | Value                                                                  |
+|-------------------|------------------------------------------------------------------------|
+| Format            | `PARQUET`                                                              |
+| Path              | `…/normalized/clinvar/data/<single-file>.parquet`                      |
+| Spec / partition  | `spec_id=0`, partition `{}`                                            |
+| Record count      | 4,185,298                                                              |
+| Split offsets     | `[4, 132040507]`                                                       |
+| Sort order id     | `0`                                                                    |
+| Upper bounds      | `chromosome → 'Y'`, `af_tgp → 1.0`, …                                  |
+| Key metadata      | `None`                                                                 |
+
+### B.7 Sample rows (first 10 of 4,185,298)
+
+Subset of columns shown (full row is 47 wide). All sampled rows are chromosome 1 SNVs with germline origin.
+
+| #  | chrom | start  | end    | ref | alt | interpretations           | conditions                          | inheritance  |
+|----|-------|--------|--------|-----|-----|---------------------------|-------------------------------------|--------------|
+| 0  | 1     | 926018 | 926019 | G   | A   | Uncertain_significance    | not provided                        | germline     |
+| 1  | 1     | 930199 | 930200 | C   | T   | Likely_benign             | not provided                        | germline     |
+| 2  | 1     | 930201 | 930202 | C   | T   | Uncertain_significance    | not provided                        | germline     |
+| 3  | 1     | 930323 | 930324 | A   | G   | Uncertain_significance    | not provided, not specified         | germline     |
+| 4  | 1     | 930347 | 930348 | C   | G   | Likely_benign             | not provided                        | germline     |
+| 5  | 1     | 931041 | 931042 | T   | C   | Uncertain_significance    | not provided                        | germline     |
+| 6  | 1     | 931089 | 931090 | G   | A   | Uncertain_significance    | not provided                        | germline     |
+| 7  | 1     | 931108 | 931109 | G   | A   | Likely_benign             | not provided                        | germline     |
+| 8  | 1     | 935793 | 935794 | C   | T   | Likely_benign             | not provided                        | germline     |
+| 9  | 1     | 935819 | 935820 | G   | T   | Uncertain_significance    | not provided, not specified         | germline     |
+
+### B.8 Headline numbers
+
+| Metric                          | Value                            |
+|---------------------------------|----------------------------------|
+| Total rows                      | **4,185,298**                    |
+| Total data files                | **1** Parquet (zstd)             |
+| Total size on S3                | **~165 MB**                      |
+| Schema fields                   | 47 (all optional)                |
+| Snapshots in history            | 10 (all `OVERWRITE`)             |
+| Current branch                  | `main` → `8067143916351935291`   |
+
+
+## Appendix B: Airflow logs
 
 The following is an example of the Airflow task log for a run with `pipe_stderr=True`, showing the operator successfully reading and forwarding both stdout and stderr from the CloudWatch driver logs:
 

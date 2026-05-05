@@ -26,7 +26,6 @@ class EmrServerlessStartJobWithLogsOperator(EmrServerlessStartJobOperator):
         cloudwatch_log_group: str,
         cloudwatch_log_stream_prefix: str | None = None,
         cloudwatch_region: str | None = None,
-        pipe_stderr: bool = False,
         **kwargs,
     ):
         kwargs.setdefault("wait_for_completion", True)
@@ -39,7 +38,6 @@ class EmrServerlessStartJobWithLogsOperator(EmrServerlessStartJobOperator):
         self.cloudwatch_log_group = cloudwatch_log_group
         self.cloudwatch_log_stream_prefix = cloudwatch_log_stream_prefix
         self.cloudwatch_region = cloudwatch_region
-        self.pipe_stderr = pipe_stderr
 
     @staticmethod
     def _merge_monitoring(overrides: dict | None, log_group: str, stream_prefix: str | None) -> dict:
@@ -73,11 +71,7 @@ class EmrServerlessStartJobWithLogsOperator(EmrServerlessStartJobOperator):
             base = f"{self.cloudwatch_log_stream_prefix}/{base}"
         not_found = hook.get_conn().exceptions.ResourceNotFoundException
 
-        kinds = ["stdout"]
-        if self.pipe_stderr:
-            kinds.append("stderr")
-
-        for kind in kinds:
+        for kind in ["stdout", "stderr"]:
             stream = f"{base}/{kind}"
             log.info("===== SPARK_DRIVER/%s (%s) =====", kind, stream)
             try:
