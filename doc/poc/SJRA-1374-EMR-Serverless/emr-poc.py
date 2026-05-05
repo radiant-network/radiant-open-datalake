@@ -2,12 +2,12 @@ from airflow import DAG
 
 from radiant.dags.operators.emr import EmrServerlessStartJobWithLogsOperator
 
-APPLICATION_ID = "00g59743sbl50409"
-EXECUTION_ROLE_ARN = "arn:aws:iam::418295705741:role/service-role/AmazonEMR-ExecutionRole-1777389601404"
+APPLICATION_ID = "****"
+EXECUTION_ROLE_ARN = "arn:aws:iam::****:role/service-role/AmazonEMR-ExecutionRole-****"
 
-JAR_S3 = "s3://radiant-tst-datalake-qa/opendatalake/jars/radiant-open-datalake-spark.jar"
-WAREHOUSE_S3 = "s3://radiant-tst-datalake-qa/opendatalake/"
-GLUE_CATALOG_ID = "418295705741"
+JAR_S3 = "s3://****/opendatalake/jars/radiant-open-datalake-spark.jar"
+WAREHOUSE_S3 = "s3://****/opendatalake/"
+GLUE_CATALOG_ID = "****"
 AWS_REGION = "us-east-1"
 
 LOG_GROUP_NAME = "/aws/emr-serverless/poc-emr-opendatalake"
