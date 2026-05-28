@@ -306,8 +306,6 @@ def basic_scenario():
     append_rows(table, "branch_B", new_data)
     checkpoint_branches(table, caption="After appending new data to 'branch_B' branch..:")
 
-    checkpoint_branches(table, caption="After tagging 'branch_B' branch to v1.1.0..:")
-
     # Delete a column in branch_B
     with table.update_schema() as update:
         update.delete_column("sample_id")
@@ -329,6 +327,7 @@ def basic_scenario():
     checkpoint_branches(table, caption="After appending new 'deleted' data to 'branch_B' branch..:")
 
     create_tag(table, snapshot_id=table.refs()["branch_B"].snapshot_id, tag_name="v1.1.0")
+    checkpoint_branches(table, caption="After tagging 'branch_B' branch to v1.1.0..:")
 
     # Delete some data in branch_B, should not cause the tag to have delete data as well
     table.delete(delete_filter="id = 1", branch="branch_B")

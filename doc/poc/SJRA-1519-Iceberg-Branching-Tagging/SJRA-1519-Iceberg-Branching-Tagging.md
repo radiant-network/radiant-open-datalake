@@ -21,7 +21,7 @@ The `main` branch is the primary, default branch of an Iceberg table. There are 
 
 > **Note**
 > 
-> There exist several lifecyle management options for branches and tags, but they are not detailed here.
+> There exist several lifecycle management options for branches and tags, but they are not detailed here.
 >
 > Check the official docs.
 
@@ -502,14 +502,14 @@ id|chromosome|start|ref|alt|sample_id|
 
 ## 5. Discussion
 
-### 5.1 Limitation of StarRocks inferring schema versions**
+### 5.1 Limitation of StarRocks inferring schema versions
 
 **Problem**:
 
 In Spark, when querying a specific snapshot in Iceberg, it will use the snapshot's schema to read the data (source: https://iceberg.apache.org/docs/latest/spark-queries/?h=schema#schema-selection-in-time-travel-queries)
 
 The current limitations in StarRocks prevents the usage of branches alone for a Write-Audit-Publish (WAP) workflow. 
-StarRocks always infer the latest schema and applies it to any snapshot. 
+StarRocks always infers the latest schema and applies it to any snapshot. 
 
 Source: https://docs.starrocks.io/docs/data_source/catalog/iceberg/iceberg_timetravel/#query-with-time-travel
 
