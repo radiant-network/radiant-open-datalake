@@ -308,25 +308,25 @@ def basic_scenario():
 
     checkpoint_branches(table, caption="After tagging 'branch_B' branch to v1.1.0..:")
 
-    # # Delete a column in branch_B
-    # with table.update_schema() as update:
-    #     update.delete_column("sample_id")
-    #
-    # table.refresh()
-    # checkpoint_branches(table, caption="After deleting `sample_id` from 'branch_B'..:")
-    #
-    # new_data = pa.table(
-    #     {
-    #         "id": [8],
-    #         "chromosome": ["chr8"],
-    #         "start": [8000],
-    #         "ref": ["A"],
-    #         "alt": ["TT"],
-    #     },
-    #     schema=ARROW_UPDATED_SCHEMA_NO_SAMPLE_ID,
-    # )
-    # append_rows(table, "branch_B", new_data)
-    # checkpoint_branches(table, caption="After appending new 'deleted' data to 'branch_B' branch..:")
+    # Delete a column in branch_B
+    with table.update_schema() as update:
+        update.delete_column("sample_id")
+
+    table.refresh()
+    checkpoint_branches(table, caption="After deleting `sample_id` from 'branch_B'..:")
+
+    new_data = pa.table(
+        {
+            "id": [8],
+            "chromosome": ["chr8"],
+            "start": [8000],
+            "ref": ["A"],
+            "alt": ["TT"],
+        },
+        schema=ARROW_UPDATED_SCHEMA_NO_SAMPLE_ID,
+    )
+    append_rows(table, "branch_B", new_data)
+    checkpoint_branches(table, caption="After appending new 'deleted' data to 'branch_B' branch..:")
 
     create_tag(table, snapshot_id=table.refs()["branch_B"].snapshot_id, tag_name="v1.1.0")
 
@@ -339,6 +339,8 @@ def basic_scenario():
     # table.manage_snapshots().rollback_to_snapshot(table.refs()["branch_B"].snapshot_id).commit()
 
     table.manage_snapshots().rollback_to_snapshot(original_main_snapshot_id).commit()
+    checkpoint_branches(table, caption="After rolling back main:")
+
 
 
 def main() -> None:

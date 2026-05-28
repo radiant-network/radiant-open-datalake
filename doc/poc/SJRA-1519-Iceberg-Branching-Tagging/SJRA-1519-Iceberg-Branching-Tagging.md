@@ -506,6 +506,8 @@ id|chromosome|start|ref|alt|sample_id|
 
 **Problem**:
 
+In Spark, when querying a specific snapshot in Iceberg, it will use the snapshot's schema to read the data (source: https://iceberg.apache.org/docs/latest/spark-queries/?h=schema#schema-selection-in-time-travel-queries)
+
 The current limitations in StarRocks prevents the usage of branches alone for a Write-Audit-Publish (WAP) workflow. 
 StarRocks always infer the latest schema and applies it to any snapshot. 
 
