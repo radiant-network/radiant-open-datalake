@@ -551,11 +551,6 @@ update, requirement = self._transaction._set_ref_snapshot(
 ## X. References
 
 - [Iceberg — Branching and Tagging](https://iceberg.apache.org/docs/latest/branching/)
-- [Iceberg — Spark DDL: branches & tags](https://iceberg.apache.org/docs/latest/spark-ddl/#branching-and-tagging-ddl)
-- [Iceberg — Spark procedures: `fast_forward`, `expire_snapshots`](https://iceberg.apache.org/docs/latest/spark-procedures/)
-- [Iceberg — Schema evolution (schema-on-read)](https://iceberg.apache.org/docs/latest/evolution/#schema-evolution)
 - [PyIceberg — Snapshot management (branches/tags)](https://py.iceberg.apache.org/api/#snapshot-management)
-- [PyIceberg — REST catalog configuration](https://py.iceberg.apache.org/configuration/#rest-catalog)
-- [Apache Polaris — documentation](https://polaris.apache.org/)
 - [StarRocks — Iceberg catalog](https://docs.starrocks.io/docs/data_source/catalog/iceberg_catalog/)
 - [StarRocks — Time travel with Iceberg (`FOR VERSION/TIMESTAMP AS OF`)](https://docs.starrocks.io/docs/data_source/catalog/iceberg_catalog/#time-travel)

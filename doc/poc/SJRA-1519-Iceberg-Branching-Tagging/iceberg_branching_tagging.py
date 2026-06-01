@@ -1,22 +1,7 @@
 #!/usr/bin/env python3
-"""POC: create Iceberg table via PyIceberg against Polaris REST catalog (SJRA-1519).
-
-Polaris in-cluster at radiant-polaris:8181, MinIO at radiant-minio:9000.
-For local runs, port-forward all three:
-  kubectl port-forward svc/radiant-polaris 8181:8181
-  kubectl port-forward svc/radiant-minio  9000:9000
-  kubectl port-forward svc/postgres       5432:5432
-
-Realm bootstrap shells out to apache/polaris-admin-tool docker image
-(only way to create a realm — Polaris management API does not expose it).
-Requires docker daemon reachable. On macOS/Windows host.docker.internal
-resolves to the host's port-forwarded postgres.
-
-Install:
-  pip install "pyiceberg[pyarrow,s3fs]"
-
-Run:
-  python iceberg_branching_tagging.py
+"""
+This script is for reference only.
+See SJRA-1519-Iceberg-Branching-Tagging.md for experimental notes and discussion.
 """
 
 import os
@@ -140,7 +125,7 @@ def create_basic_table():
         },
         schema=ARROW_SCHEMA,
     )
-    table.append(rows)
+    table.append(rows, snapshot_properties={"dataset_version": "1.0", "gencode_version": "105"})
 
 def create_tag(table: Table, snapshot_id: int, tag_name: str, max_ref_age_ms: int | None = None) -> None:
     table.manage_snapshots().create_tag(
@@ -181,8 +166,8 @@ def table_scan(table: Table, branch_name: str) -> None:
     print(scan.to_pandas().to_string(index=False))
 
 
-def append_rows(table, branch_name: str, entries: pa.Table):
-    table.append(entries, branch=branch_name)
+def append_rows(table, branch_name: str, entries: pa.Table, snapshot_properties: dict | None = None) -> None:
+    table.append(entries, snapshot_properties=snapshot_properties, branch=branch_name)
     table.refresh()
 
 
@@ -218,7 +203,7 @@ def clinvar_scenario():
 
     # Read first 100 rows from clinvar (main) and re-inject into the 'audit' branch
     first_100 = clinvar_table.scan(limit=100).to_arrow()
-    append_rows(clinvar_table, "audit", first_100)
+    append_rows(clinvar_table, "audit", first_100, snapshot_properties={"dataset_version": "1.0", "gencode_version": "105"})
 
     checkpoint_branches(clinvar_table, caption="After re-injecting first 100 rows into 'audit' branch..:")
 
@@ -257,7 +242,7 @@ def basic_scenario():
         },
         schema=ARROW_SCHEMA,
     )
-    append_rows(table, "branch_A", new_data)
+    append_rows(table, "branch_A", new_data, snapshot_properties={"dataset_version": "2.0", "gencode_version": "105"})
 
     print("\nAfter adding new data to 'branch_A' branch..:")
     checkpoint_branches(table, caption="After adding new data to 'branch_A' branch..:")
@@ -282,7 +267,7 @@ def basic_scenario():
         },
         schema=ARROW_SCHEMA,
     )
-    append_rows(table, "main", new_data)
+    append_rows(table, "main", new_data, snapshot_properties={"dataset_version": "3.0", "gencode_version": "105"})
     checkpoint_branches(table, caption="After adding new data to 'main' branch..:")
 
     # Add a column in branch_B
@@ -303,7 +288,7 @@ def basic_scenario():
         },
         schema=ARROW_UPDATED_SCHEMA,
     )
-    append_rows(table, "branch_B", new_data)
+    append_rows(table, "branch_B", new_data, snapshot_properties={"dataset_version": "4.0", "gencode_version": "105"})
     checkpoint_branches(table, caption="After appending new data to 'branch_B' branch..:")
 
     # Delete a column in branch_B
@@ -323,7 +308,7 @@ def basic_scenario():
         },
         schema=ARROW_UPDATED_SCHEMA_NO_SAMPLE_ID,
     )
-    append_rows(table, "branch_B", new_data)
+    append_rows(table, "branch_B", new_data, snapshot_properties={"dataset_version": "5.0", "gencode_version": "111"})
     checkpoint_branches(table, caption="After appending new 'deleted' data to 'branch_B' branch..:")
 
     create_tag(table, snapshot_id=table.refs()["branch_B"].snapshot_id, tag_name="v1.1.0")
