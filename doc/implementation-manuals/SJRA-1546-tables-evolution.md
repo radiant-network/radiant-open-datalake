@@ -84,6 +84,13 @@ The following diagram describes the high-level data flow through the different m
 
 ![data_flow.png](data_flow.png)
 
+### 2.3 Tagging the snapshots
+
+Each new Iceberg snapshot will be tagged with the latest contract's `MAJOR.MINOR.PATCH` as well as the `latest` tag. 
+
+This will allow us to apply lifecycle policies specifically on each tags. 
+(We might want to keep certain specific versions for historical or audit purposes)
+
 ## 3. Implementation details
 
 ### 3.1 `contract_version` configuration stored in `contracts.yml` 
