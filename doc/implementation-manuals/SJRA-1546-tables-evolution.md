@@ -13,7 +13,7 @@ The Open DataLake provides Open Datasets in a consumable fashion for developers 
 The evolution specification for those Open Datasets was defined in https://www.notion.so/ferlab/POC-open-datalake-versioning-360b0fcecb3d8050b64ccde3c3ccaa5c. 
 
 - This manual contains the system architecture and defines the technical aspect of the evolution specification.
-- It is intended to serve as the reference for developer's implementing the solution.
+- It is intended to serve as the reference for developers implementing the solution.
 
 ### 1.2 Assumptions and Constraints
 
@@ -53,9 +53,9 @@ And at the same time, another Iceberg table `Example_v2` (schema `MAJOR` version
 
 ---
 
-## 3. Data Architecture
+## 2. Data Architecture
 
-### 3.1 Medallion Architecture
+### 2.1 Medallion Architecture
 
 3-layer separation:
 
@@ -68,7 +68,7 @@ And at the same time, another Iceberg table `Example_v2` (schema `MAJOR` version
 - **Silver** is an internal/private table used for ETL purposes.
 - **Gold** is the user facing, "safe" (validated) release of the data set. 
 
-### 3.2 Write-Audit-Publish (WAP) ingestion pattern
+### 2.2 Write-Audit-Publish (WAP) ingestion pattern
 
 The Write-Audit-Pattern is a standard pattern supported by most Iceberg's catalog implementations. (At least the ones we are interested in)
 (https://aws.amazon.com/fr/blogs/big-data/build-write-audit-publish-pattern-with-apache-iceberg-branching-and-aws-glue-data-quality/)
@@ -137,8 +137,8 @@ it originated from. This is the source of truth for "which dataset versions are 
   SELECT DISTINCT dataset_version FROM opendatalake.reference.clinvar;   -- full set present
   SELECT MAX(dataset_version)     FROM opendatalake.reference.clinvar;   -- latest present
   ```
-- The cardinality is small (a few versions). Parquet dictionary + RLE encoding make the size on disk negligible for a low cardinality field. 
-  Iceberg also keeps per-column min/max in the manifests, so `MAX(dataset_version)` can resolve from metadata without scanning data files.
+- The cardinality is small (a few versions). Parquet dictionary + RLE encoding make the size on disk negligible for a low cardinality field. (Source: https://parquet.apache.org/docs/file-format/data-pages/encodings/)
+  Iceberg also keeps per-column min/max in the manifests, so `MAX(dataset_version)` can resolve from metadata without scanning data files. (Source: https://iceberg.apache.org/docs/latest/performance/)
 - Unlike a snapshot `summary`, the column is not lost when snapshots are expired or when files are compacted/rewritten.
 - A single `contract_version` table can hold rows from multiple `dataset_version`s
 
@@ -147,7 +147,7 @@ it originated from. This is the source of truth for "which dataset versions are 
 #### 3.2.1 Spark-based fan-out
 
 Airflow should have no knowledge of `contract_version`. Airflow's responsibility is to verify if a source has changed based on its `dataset_version` only since 
-`contract_version` is an implementation detail useful only for the ETL's code to handle schema drift.
+`contract_version` is useful for identifying schema drift for ETL or consumption purposes, not orchestration.
 
 Therefore, Airflow will only inject the `dataset_version` (from the Asset event). The ETL writes that value into the
 `dataset_version` column of every row it produces for that run.
@@ -255,17 +255,14 @@ At a minimum, they are available by browsing Github's `Releases` section.
 
 **Idempotency & restart**
 - [ ] Implement idempotent overwrite per `dataset_version` (delete `WHERE dataset_version = X` + append, single transaction) so re-runs converge without duplicates.
-- [ ] Implement resume logic: `last_run > last_successful_run` ⇒ retry-from-failure; skip contracts already successful for the current `dataset_version`.
-- [ ] Implement the `v{MAJOR}.{MINOR}.{PATCH}` Iceberg tagging, idempotent per `dataset_version` (no duplicate tag / no PATCH inflation on retry).
-- [ ] Auto-increment PATCH only on a genuinely new successful commit, derived from the `versions` table (PATCH reserved to automation).
+- [ ] Implement resume logic: `last_run > last_successful_run` -> retry-from-failure; 
+- [ ] Implement the `v{MAJOR}.{MINOR}.{PATCH}` Iceberg tagging, idempotent per `dataset_version` (no duplicate tag / no PATCH incrementation on retry).
+- [ ] Auto-increment `PATCH` only on a new successful commit, derived from the `versions` table (`PATCH` reserved to automation).
 
 **Schema validation & failure handling**
-- [ ] Implement in-normalizer schema validation classifying the run as PATCH / MINOR / MAJOR.
-- [ ] On a breaking change (or other failure), set `status=ERROR` in the `versions` table before exiting; halt further updates to that contract.
-- [ ] Define the MINOR (schema evolution: add columns) and MAJOR (new table + new normalizer class) write paths.
-
-**Docs**
-- [ ] Add release-notes scaffolding at `doc/release-notes/{dataset_name}/v{MAJOR}.md`.
+- [ ] Implement in-normalizer schema validation classifying the run as `PATCH` / `MINOR` / `MAJOR`.
+- [ ] On a breaking change (or other failure), set `status=ERROR` in the `versions` table before exiting; block further updates to that contract.
+- [ ] Define the `MINOR` (schema evolution: add columns) and `MAJOR` (new table + new normalizer class) implementations.
 
 ## 5. References
 
