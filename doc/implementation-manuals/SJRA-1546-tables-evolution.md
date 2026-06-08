@@ -2,7 +2,8 @@
 
 ## Versions
 
-- 2026-06-02: Initial draft
+- 2026-06-08: Update post-initial draft review.
+- 2026-06-02: Initial draft.
 
 ## 1. Introduction
 
@@ -55,36 +56,36 @@ And at the same time, another Iceberg table `Example_v2` (schema `MAJOR` version
 
 ## 2. Data Architecture
 
-### 2.1 Medallion Architecture
+### 2.1 Using Iceberg branches for each `dataset_version`
 
-3-layer separation:
+Each `dataset_version` will be stored as a unique branch of a table.
 
-- **Bronze**: (Object store/S3) Raw files and artifacts.
-- **Silver**: (Iceberg) Space where transformations and enrichments take place. 
-- **Gold**: (Iceberg) Holds the consumable release of the data set (with all the transformations and enrichments applied).
+**Data Updates using Write-Audit-Publish pattern (WAP)**:
 
-**Important points**:
-- Both **Silver** and **Gold** have their own Iceberg tables. 
-- **Silver** is an internal/private table used for ETL purposes.
-- **Gold** is the user facing, "safe" (validated) release of the data set. 
-
-### 2.2 Write-Audit-Publish (WAP) ingestion pattern
-
-The Write-Audit-Pattern is a standard pattern supported by most Iceberg's catalog implementations. (At least the ones we are interested in)
+The WAP pattern is a standard pattern supported by most Iceberg's catalog implementations. (At least the ones we are interested in)
 (https://aws.amazon.com/fr/blogs/big-data/build-write-audit-publish-pattern-with-apache-iceberg-branching-and-aws-glue-data-quality/)
 
-The concept is simple, it uses two branches, `audit` and `main`. 
+The concept is simple, it uses two branches, for example `temporary-branch` and `permanent-branch`. 
 
-- `audit`: Staging area where changes take place. This is a temporary transient branch that is deleted once the changes are committed to `main`.
-- `main`: Area where changes end up. 
+- `temporary-branch`: Staging area where changes take place. This is a temporary transient branch that is created ad-hoc and deleted once the changes are committed to the permanent branch.
+- `permanent-branch`: Area where changes end up. This keeps the lineage.
 
-In the context of our medallion architecture, both **Silver** and **Gold** layers will have their separate WAP branches.
+**Important points**:
+
+- The `main` branch is an empty branch, used as the origin of new `dataset_version` based branches.
+
+**Import flow**:
+
+1. A new `audit` branch (temporary) is created from this empty `main` branch.
+2. Necessary operations (transforms, validations, enrichments, etc...) are executed on the `audit` branch.
+3. A new `v1` branch (permanent) is created from `audit` latest snapshot. 
+4. Branch `audit` is deleted.
 
 The following diagram describes the high-level data flow through the different medallion layers using the WAP pattern:
 
 ![data_flow.png](data_flow.png)
 
-### 2.3 Tagging the snapshots
+### 2.2 Tagging the snapshots
 
 Each new Iceberg snapshot will be tagged with the latest contract's `MAJOR.MINOR.PATCH` as well as the `latest` tag. 
 
