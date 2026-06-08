@@ -103,33 +103,10 @@ For the example above, all the normalizers are executed every time a new `clinva
 > while being transformed. Different contracts will yield different tables, but if their intermediate transformation steps
 > can be shared, it is highly encouraged.
 
-### 3.2 `dataset_version` storage
-
-The `dataset_version` is stored as a regular column on each Iceberg table. Every row carries the `dataset_version`
-it originated from. This is the source of truth for "which dataset versions are present in this table".
-
-**Rationale (why a column over snapshot summary / table properties / partitioning):**
-
-- **Directly readable in StarRocks.** SQL, no dependency on metadata tables (the Iceberg metadata tables,
-  e.g. `table$snapshots`/`table$refs`, only became available in StarRocks v3.4.1).
-  ```sql
-  SELECT DISTINCT dataset_version FROM opendatalake.reference.clinvar;   -- full set present
-  SELECT MAX(dataset_version)     FROM opendatalake.reference.clinvar;   -- latest present
-  ```
-- The cardinality is small (a few versions). Parquet dictionary + RLE encoding make the size on disk negligible for a low cardinality field. (Source: https://parquet.apache.org/docs/file-format/data-pages/encodings/)
-  Iceberg also keeps per-column min/max in the manifests, so `MAX(dataset_version)` can resolve from metadata without scanning data files. (Source: https://iceberg.apache.org/docs/latest/performance/)
-- Unlike a snapshot `summary`, the column is not lost when snapshots are expired or when files are compacted/rewritten.
-- A single `contract_version` table can hold rows from multiple `dataset_version`s
-
-`dataset_version` is to be injected as a `STRING` type from the Airflow DAG. It will be set as is for each new row corresponding to that specific version. 
-
-#### 3.2.1 Spark-based fan-out
+#### 3.2 Spark-based fan-out
 
 Airflow should have no knowledge of `contract_version`. Airflow's responsibility is to verify if a source has changed based on its `dataset_version` only since 
 `contract_version` is useful for identifying schema drift for ETL or consumption purposes, not orchestration.
-
-Therefore, Airflow will only inject the `dataset_version` (from the Asset event). The ETL writes that value into the
-`dataset_version` column of every row it produces for that run.
 
 ### 3.3 Versions table to keep track of contracts
 
@@ -224,7 +201,6 @@ At a minimum, they are available by browsing Github's `Releases` section.
 **Contracts & fan-out**
 - [ ] Add the `contracts.yml` file to the ETL repository and a loader/parser for it.
 - [ ] Implement the `spark` operator that submits one job per active contract and injects the `dataset_version` (from the Asset event).
-- [ ] Write `dataset_version` (STRING) as a column on every row of each Iceberg table.
 
 **Versions table**
 - [ ] Create the `versions` table (StarRocks-readable) with the defined columns.
