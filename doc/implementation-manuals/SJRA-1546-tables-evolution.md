@@ -21,36 +21,7 @@ The evolution specification for those Open Datasets was defined in https://www.n
 We use two independent version types:
 
 - `contract_version`: Defines a specific data schema for a given dataset.
-- `dataset_version`: Identifies the Open dataset from the 3rd parties (the original owners of the dataset). 
-
-Important:
-
-- Reading data from a specific `contract_version` can contain data from multiple `dataset_version` if there was no schema changes.
-- Data rows for a specific `dataset_version` can exist in multiple `contract_version` if they have different schemas.
-
-Example for an Iceberg table `Example_v1` (schema `MAJOR` version `1` for `Example` dataset):
-
-| `dataset_version` | `col_A` | `col_B` |
-|-------------------|---------|---------|
-| 1                 | foo1    | bar1    |
-| 1                 | foo2    | bar2    |
-| 1                 | foo3    | bar3    |
-| 2                 | alice1  | bob1    |
-| 2                 | alice2  | bob2    |
-| 2                 | alice3  | bob3    |
-
-And at the same time, another Iceberg table `Example_v2` (schema `MAJOR` version `2` for `Example` dataset):
-
-(In this new schema, the `col_B` was renamed `col_C`, which is a breaking change of schema)
-
-| `dataset_version` | `col_A` | `col_C` |
-|-------------------|---------|---------|
-| 1                 | foo1    | bar1    |
-| 1                 | foo2    | bar2    |
-| 1                 | foo3    | bar3    |
-| 2                 | alice1  | bob1    |
-| 2                 | alice2  | bob2    |
-| 2                 | alice3  | bob3    |
+- `dataset_version`: Identifies the Open dataset from the 3rd parties (the original owners of the dataset).
 
 ---
 
