@@ -103,10 +103,12 @@ For the example above, all the normalizers are executed every time a new `clinva
 > while being transformed. Different contracts will yield different tables, but if their intermediate transformation steps
 > can be shared, it is highly encouraged.
 
-#### 3.2 Spark-based fan-out
+### 3.2 Spark-based fan-out
 
 Airflow should have no knowledge of `contract_version`. Airflow's responsibility is to verify if a source has changed based on its `dataset_version` only since 
 `contract_version` is useful for identifying schema drift for ETL or consumption purposes, not orchestration.
+
+More details about how schemas are handled in section 3.4.
 
 ### 3.3 Versions table to keep track of contracts
 
@@ -115,6 +117,7 @@ Contract versions history will be kept in a `versions` Iceberg table with the fo
 | Column Name         | Type     | Description                                                                                                 |
 |---------------------|----------|-------------------------------------------------------------------------------------------------------------|
 | dataset_name        | String   | Identifier of the data set (e.g.: `clinvar`).                                                               |
+| dataset_version     | String   | Latest upstream version for this data set.                                                                  |
 | contract_version    | String   | Keeps the MAJOR.MINOR.PATCH of the current dataset.                                                         |
 | active              | Boolean  | If the contract is active or not (non-active could mean the ETL is broken, it will be skipped at next run). |
 | status              | String   | The current status of the contract (See `statuses` sub-section for details).                                |  
@@ -128,13 +131,19 @@ Contract versions history will be kept in a `versions` Iceberg table with the fo
 - The `versions` table contains the "what's in Iceberg", meaning the contracts for which there was at least 1 successful run. It tracks what currently exist in Iceberg, not the work to do. 
 - The `contracts.yml` file contains the "what needs to be done", meaning that it is the source of truth to define which contracts are executed by the ETL.
 
+**ETL phases**:
+
+- `init`: States are initialized and prepared for the upcoming ETL execution phase.
+- `execution`: Data is extracted from the raw files into Iceberg.
+- `cleanup`: Update the states based on the outcome of the `execution` phase.
+
 **Important points:**
 
-- At ETL run time, the `contract_version` existing in the `versions` table, but not in the `contracts.yml` will be set to `active=FALSE` and `status=STOPPED` at the corresponding row.
-- At ETL run time, the `contract_version` existing in the `contracts.yml`, but not in the `versions` table will be created as a new row and set to `active=TRUE` and `status=NORMAL`.
+- During `init` phase, the `contract_version` existing in the `versions` table, but not in the `contracts.yml` will be set to `active=FALSE` and `status=STOPPED` at the corresponding row.
+- During `init` phase, the `contract_version` existing in the `contracts.yml`, but not in the `versions` table will be created as a new row and set to `active=TRUE` and `status=NORMAL`.
 - This table is available to consumers. This serve as the "status page" for each data sets, with which they can validate if the table can be imported or not.
 - `last_run` and `last_successful_run` are used to handle ETL failures. A `last_run > last_successful_run` means we are retrying from a previous failure. 
-- The `versions` table is updated **ONLY AFTER A SUCCESSFUL COMMIT** (Except for the `last_run` and `UPDATING` status, see detail below). This means:
+- The rest of the `versions` columns are updated during the `cleanup` phase. This means:
    - `PATCH` is not incremented at each attempt. 
    - A new `MINOR` or `MAJOR` doesn't appear in the `versions` table if a failure occurred.
    - **Exception**: `last_run` and `status=UPDATING` are set before doing any changes to the data set's Iceberg table. 
@@ -200,12 +209,10 @@ At a minimum, they are available by browsing Github's `Releases` section.
 
 **Contracts & fan-out**
 - [ ] Add the `contracts.yml` file to the ETL repository and a loader/parser for it.
-- [ ] Implement the `spark` operator that submits one job per active contract and injects the `dataset_version` (from the Asset event).
+- [ ] Implement the operator that Airflow to inject the `dataset_version` (from the Asset event) and trigger spark runs.
 
 **Versions table**
 - [ ] Create the `versions` table (StarRocks-readable) with the defined columns.
-- [ ] Reconcile against `contracts.yml` at run time: row in `versions` but not in `contracts.yml` → `active=FALSE`, `status=STOPPED`; row in `contracts.yml` but not in `versions` → new row, `active=TRUE`, `status=NORMAL`.
-- [ ] Set `last_run` + `status=UPDATING` (acquire lock) before touching the table; commit the rest of the row only after a successful Iceberg commit.
 - [ ] Expose the table to consumers as the per-dataset status page.
 
 **Idempotency & restart**
