@@ -1,13 +1,15 @@
 import os
 from unittest.mock import MagicMock, patch
 
+import pytest
+from airflow.exceptions import AirflowException
+
 from dags.lib.operators.ecs import EcsConfig, PythonScriptOperator
 
 TEST_ECS_CONFIG = EcsConfig(
     cluster="test-cluster",
-    subnets=["subnet-1"],
-    security_groups=["sg-1"],
-    s3_workspace="s3://test-workspace",
+    subnets=("subnet-1",),
+    security_groups=("sg-1",),
     container_name="test-container",
     task_definition="test-task-def",
     awslogs_group="test-log-group",
@@ -21,7 +23,6 @@ def test_ecs_config_from_env_reads_environment_variables():
         "OPENDATALAKE_ECS_CLUSTER": "my-cluster",
         "OPENDATALAKE_ECS_SUBNETS": "subnet-a, subnet-b",
         "OPENDATALAKE_ECS_SECURITY_GROUPS": "sg-a,sg-b",
-        "OPENDATALAKE_ECS_S3_WORKSPACE": "s3://workspace",
         "OPENDATALAKE_TASK_OPERATOR_TASK_DEFINITION": "my-task-def",
         "OPENDATALAKE_TASK_OPERATOR_LOG_GROUP": "my-log-group",
         "OPENDATALAKE_TASK_OPERATOR_LOG_REGION": "us-east-1",
@@ -33,15 +34,40 @@ def test_ecs_config_from_env_reads_environment_variables():
             cfg = EcsConfig.from_env()
 
         assert cfg.cluster == "my-cluster"
-        assert cfg.subnets == ["subnet-a", "subnet-b"]
-        assert cfg.security_groups == ["sg-a", "sg-b"]
-        assert cfg.s3_workspace == "s3://workspace"
+        assert cfg.subnets == ("subnet-a", "subnet-b")
+        assert cfg.security_groups == ("sg-a", "sg-b")
         assert cfg.task_definition == "my-task-def"
         assert cfg.awslogs_group == "my-log-group"
         assert cfg.awslogs_region == "us-east-1"
         assert cfg.awslogs_stream_prefix == "my-prefix"
+        assert cfg.missing_required() == {}
     finally:
         EcsConfig.from_env.cache_clear()
+
+
+def test_python_script_operator_fails_at_construction_on_incomplete_config():
+    incomplete_config = EcsConfig(
+        cluster="",
+        subnets=(),
+        security_groups=("sg-1",),
+        container_name="test-container",
+        task_definition=None,
+        awslogs_group=None,
+        awslogs_region=None,
+        awslogs_stream_prefix=None,
+    )
+
+    with pytest.raises(AirflowException, match="Incomplete ECS configuration") as exc_info:
+        PythonScriptOperator(
+            task_id="test_task", script_name="myscript.py", script_args={}, ecs_config=incomplete_config
+        )
+
+    message = str(exc_info.value)
+    assert "cluster" in message
+    assert "OPENDATALAKE_ECS_CLUSTER" in message
+    assert "OPENDATALAKE_ECS_SUBNETS" in message
+    assert "OPENDATALAKE_TASK_OPERATOR_TASK_DEFINITION" in message
+    assert "OPENDATALAKE_ECS_SECURITY_GROUPS" not in message
 
 
 def test_python_script_operator_inject_command_correctly():

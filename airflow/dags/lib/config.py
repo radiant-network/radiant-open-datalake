@@ -10,8 +10,6 @@ all variables to be present.
 # This is fixed in newer Airflow versions, so you can switch back to airflow.sdk if we upgrade.
 from airflow.models import Variable
 
-_MISSING_VARIABLE = "MISSING"
-
 # S3 settings
 environment = Variable.get("environment", "dev")
 s3_conn_id = "opendatalake_s3"
