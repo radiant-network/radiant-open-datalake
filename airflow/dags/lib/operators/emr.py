@@ -14,9 +14,8 @@ from dags.lib import config
 DEFAULT_ENTRY_CLASS = "org.radiant.opendatalake.ImportPublicTable"
 SPARK_CONF_CATALOG_NAME = "opendatalake"
 
-# These should never be set directly when using the Airflow operator. Those are infrastructure
-# specific variables and should be inferred from elsewhere. Manually setting those means you are
-# doing something that is not intended.
+# These come from EmrServerlessConfig, not the caller. Passing them directly is almost always a
+# mistake, so the operator rejects them.
 _RESERVED_KWARGS = ("application_id", "execution_role_arn", "job_driver", "region_name")
 
 
@@ -74,17 +73,15 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
     (and optional Spark tuning); everything else is derived from config.
 
     Configuration:
-        Infra config comes from a colocated `EmrServerlessConfig`.
-        It is used to build the Iceberg/Glue Spark configuration and the spark-submit `job_driver`.
+        Settings come from `EmrServerlessConfig` (read from environment variables) and build the
+        Spark/Iceberg config plus the job definition sent to EMR.
 
     Spark conf overrides:
-        You can override any base configuration (overloading the `key` in the configuration mapping).
-        Use at your own risk.
+        `spark_conf` overrides any default Spark setting and wins over the defaults — use carefully.
 
     Driver logs:
-        Forwarded into the Airflow task log by default. A CloudWatch monitoring config is injected
-        (unless the caller already set one), and SPARK_DRIVER stdout/stderr are streamed into the
-        task log once the job reaches a terminal state — even on failure.
+        The Spark driver's output is copied into the Airflow task log once the job finishes (success
+        or failure). The operator enables CloudWatch logging for the job unless you already set it.
     """
 
     template_fields = (
@@ -182,7 +179,7 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
         try:
             return super().execute_complete(context, event)
         finally:
-            # self.job_id is not restored across deferral; read it from the job-completion event.
+            # After a deferral the job id is no longer on the operator, so read it from the event.
             self._forward_driver_logs(self._event_job_run_id(event))
 
     @staticmethod
