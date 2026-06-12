@@ -31,6 +31,8 @@ Run a single test by name:
 cd airflow && python -m pytest -k "test_function_name" -v
 ```
 
+Local setup gotchas: use Python 3.12 (matches AWS), and set `export AIRFLOW_HOME=$(pwd)/.airflow_home` before `make install-dev` (which runs `airflow db reset`). A local sandbox for running DAGs is in `airflow/sandbox/` (Kubernetes-based) — it cannot run the AWS operators (ECS/EMR).
+
 ## Spark Commands
 
 All commands run from the `spark/` directory.
@@ -63,6 +65,15 @@ The main DAG (`discover_new_source_versions.py`) uses Airflow 3.0.6 asset-based 
 
 S3 transfers use multipart upload with resume support (`lib/s3_transfer.py`). The Airflow connection ID for S3 is `aws_default`; bucket name comes from the `environment` Airflow variable.
 
+### Custom Operators & Configuration
+
+Custom operators live in `dags/lib/operators/` and are re-exported from its `__init__.py` (the discoverable list). Import them as `from dags.lib.operators import PythonScriptOperator, EmrServerlessJobOperator`.
+
+- **`PythonScriptOperator`** (`ecs.py`) — runs a Python download script on ECS Fargate.
+- **`EmrServerlessJobOperator`** (`emr.py`) — launches the Spark fat JAR (`org.radiant.opendatalake.ImportPublicTable`) on EMR Serverless. Deferrable by default; forwards SPARK_DRIVER logs to the Airflow task log; builds the Iceberg/Glue Spark conf from config.
+
+**Colocated env-var config pattern** (introduced SJRA-1570 — prefer this over Airflow Variables for new operators): each operator owns a frozen `@dataclass` config (`EcsConfig`, `EmrServerlessConfig`) with a module-level `_REQUIRED_ENV_VARS` map, a `@lru_cache`'d `from_env()` reading `os.getenv`, and `missing_required()`. Infra config is injected via `OPENDATALAKE_*` environment variables (set at deploy time, e.g. Terraform), validated at construction (raises `AirflowException` listing missing vars). Tests inject a config object directly and seed env defaults in `tests/unit/conftest.py` from each operator's `_REQUIRED_ENV_VARS`.
+
 ### Spark ETL Structure
 
 - **`ImportPublicTable.scala`** — command registry; each dataset is a named `App` object
@@ -91,3 +102,7 @@ The ETL framework is `bio.ferlab:datalake-spark3` (FerLab commons). All jobs use
 2. Create a corresponding Spark normalization class in `spark/src/main/scala/org/radiant/opendatalake/normalized/`
 3. Register the table in `EtlConfiguration.scala` and regenerate configs via `sbt runMain`
 4. Register the Spark command in `ImportPublicTable.scala`
+
+## Documentation
+
+`doc/` holds longer-form docs: `doc/poc/` (proof-of-concept write-ups per ticket, e.g. EMR Serverless, Iceberg branching), `doc/implementation-manuals/` (operational guides), and `doc/usage/` (operator usage guides). The architecture ADR is linked from the root `README.md`.
