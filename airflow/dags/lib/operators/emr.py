@@ -14,11 +14,14 @@ from dags.lib import config
 DEFAULT_ENTRY_CLASS = "org.radiant.opendatalake.ImportPublicTable"
 SPARK_CONF_CATALOG_NAME = "opendatalake"
 
-# These should never be set by Airflow operator users. It should always be inferred from the environment.
+# These should never be set directly when using the Airflow operator. Those are infrastructure
+# specific variables and should be inferred from elsewhere. Manually setting those means you are
+# doing something that is not intended.
 _RESERVED_KWARGS = ("application_id", "execution_role_arn", "job_driver", "region_name")
 
 
-# The following environment variables need to be available in Airflow's environment
+# The following environment variables need to be available in Airflow's environment.
+# Instantiating the class will fail if any of those are missing.
 _REQUIRED_ENV_VARS = {
     "application_id": "OPENDATALAKE_EMR_APPLICATION_ID",
     "execution_role_arn": "OPENDATALAKE_EMR_EXECUTION_ROLE_ARN",
@@ -65,16 +68,23 @@ class EmrServerlessConfig:
 
 
 class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
-    """Launch the opendatalake Spark ETL (`ImportPublicTable`) on EMR Serverless.
+    """Launch the opendatalake Spark ETL on EMR Serverless.
 
-    Single entrypoint for EMR Serverless jobs. Builds the Iceberg/Glue Spark configuration and the
-    spark-submit `job_driver` from a colocated `EmrServerlessConfig` (sourced from `OPENDATALAKE_EMR_*`
-    environment variables); DAG authors pass only the dataset arguments and optional `spark_conf` tuning
-    overrides. `spark_conf` is merged over the base config and wins on conflict, so it can override any
-    base key — including the load-bearing catalog/region wiring — at the caller's own risk. Driver logs
-    are forwarded into the Airflow task log by default — a CloudWatch monitoring config is injected
-    (unless the caller set one) and SPARK_DRIVER stdout/stderr are streamed into the task log when the
-    job reaches a terminal state, even on failure.
+    Single entrypoint for EMR Serverless jobs: DAG authors pass only the dataset arguments
+    (and optional Spark tuning); everything else is derived from config.
+
+    Configuration:
+        Infra config comes from a colocated `EmrServerlessConfig`.
+        It is used to build the Iceberg/Glue Spark configuration and the spark-submit `job_driver`.
+
+    Spark conf overrides:
+        You can override any base configuration (overloading the `key` in the configuration mapping).
+        Use at your own risk.
+
+    Driver logs:
+        Forwarded into the Airflow task log by default. A CloudWatch monitoring config is injected
+        (unless the caller already set one), and SPARK_DRIVER stdout/stderr are streamed into the
+        task log once the job reaches a terminal state — even on failure.
     """
 
     template_fields = (
@@ -162,7 +172,7 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
 
     def execute(self, context: Context, event: dict | None = None) -> Any:
         if self.deferrable:
-            return super().execute(context, event)  # This event will be used to get the job_id in `execute_complete`
+            return super().execute(context, event)
         try:
             return super().execute(context)
         finally:
@@ -172,6 +182,7 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
         try:
             return super().execute_complete(context, event)
         finally:
+            # self.job_id is not restored across deferral; read it from the job-completion event.
             self._forward_driver_logs(self._event_job_run_id(event))
 
     @staticmethod
@@ -180,8 +191,7 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
 
     def _forward_driver_logs(self, job_run_id: str | None = None) -> None:
         log = logging.getLogger("airflow.task")
-        # Runs in execute()/execute_complete()'s finally: it must never raise, or a CloudWatch
-        # error (e.g. missing logs:GetLogEvents) would mask the job's real success or failure.
+        # Try/Catch to avoid failing the Airflow task because of CloudWatch errors.
         try:
             job_run_id = job_run_id or getattr(self, "job_id", None)
             if not job_run_id:
@@ -215,9 +225,6 @@ def _base_spark_conf(cfg: EmrServerlessConfig) -> dict[str, str]:
         "spark.dynamicAllocation.maxExecutors": "4",
         "spark.dynamicAllocation.initialExecutors": "1",
         "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-        # Use the deployed AWS Glue Data Catalog as the Spark session metastore (instead of an
-        # ephemeral in-memory catalog), so the default `spark_catalog` and non-Iceberg lookups
-        # resolve against Glue. The Iceberg `opendatalake` catalog below is also Glue-backed.
         "spark.sql.catalogImplementation": "hive",
         "spark.hadoop.hive.metastore.client.factory.class": (
             "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
@@ -236,10 +243,7 @@ def _base_spark_conf(cfg: EmrServerlessConfig) -> dict[str, str]:
 
 
 def _build_job_driver(jar_s3_path: str, entry_class: str, args: list[str], conf: dict[str, str]) -> dict:
-    # sparkSubmitParameters is a flat, whitespace-split string built at construction, so Jinja in conf
-    # values is not templated (only job_driver.entryPointArguments is rendered by Airflow at execute
-    # time) and a value containing spaces (e.g. extraJavaOptions) must be quoted or spark-submit would
-    # split it into separate arguments.
+    # Add quotes "" to conf values with whitespaces because spark-submit splits its params on whitespace.
     parts = [f"--class {entry_class}"]
     for k, v in conf.items():
         token = f"{k}={v}"
