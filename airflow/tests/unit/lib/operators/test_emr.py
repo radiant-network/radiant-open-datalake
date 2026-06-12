@@ -107,17 +107,6 @@ def test_job_driver_construction_uses_config_and_default_entry_class():
     assert f"--conf spark.sql.catalog.opendatalake.client.region={TEST_EMR_CONFIG.region}" in params
 
 
-def test_uses_deployed_glue_data_catalog_as_session_metastore():
-    params = _operator().job_driver["sparkSubmit"]["sparkSubmitParameters"]
-    assert "--conf spark.sql.catalogImplementation=hive" in params
-    assert "--conf spark.sql.catalogImplementation=in-memory" not in params
-    assert (
-        "--conf spark.hadoop.hive.metastore.client.factory.class="
-        "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory" in params
-    )
-    assert f"--conf spark.hadoop.hive.metastore.glue.catalogid={TEST_EMR_CONFIG.glue_catalog_id}" in params
-
-
 def test_custom_entry_class():
     op = _operator(entry_class="org.example.OtherJob")
     assert "--class org.example.OtherJob" in op.job_driver["sparkSubmit"]["sparkSubmitParameters"]

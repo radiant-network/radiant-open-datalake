@@ -222,11 +222,6 @@ def _base_spark_conf(cfg: EmrServerlessConfig) -> dict[str, str]:
         "spark.dynamicAllocation.maxExecutors": "4",
         "spark.dynamicAllocation.initialExecutors": "1",
         "spark.sql.extensions": "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions",
-        "spark.sql.catalogImplementation": "hive",
-        "spark.hadoop.hive.metastore.client.factory.class": (
-            "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
-        ),
-        "spark.hadoop.hive.metastore.glue.catalogid": cfg.glue_catalog_id,
         f"spark.sql.catalog.{SPARK_CONF_CATALOG_NAME}": "org.apache.iceberg.spark.SparkCatalog",
         f"spark.sql.catalog.{SPARK_CONF_CATALOG_NAME}.default-namespace": cfg.glue_database,
         f"spark.sql.catalog.{SPARK_CONF_CATALOG_NAME}.catalog-impl": "org.apache.iceberg.aws.glue.GlueCatalog",
