@@ -7,10 +7,43 @@ This directory contains Airflow DAGs and related code for orchestrating workflow
 
 ### ECS Operator
 
-- All required Airflow variables and environment variables must be set. See [dags.lib.config](dags/lib/config.py) for details.
+- All required Airflow variables and environment variables must be set. See [opendatalake.lib.config](opendatalake/lib/config.py) for details.
 
 - The ECS container must be pre-configured so that S3 credentials and connection info are available at runtime (e.g., via environment variables or IAM roles) to allow the S3 hook to function properly.
 
+
+## Operations
+
+Manual deployment (no CI automation yet). 
+
+### Deploy DAGs + library to MWAA
+
+From `airflow/`:
+
+(Make sure your AWS credentials for CHOP's Cloud are loaded into your environment.)
+```sh
+# Login into CHOP's Cloud, example with SSO login
+aws sso login --{Your Radiant-TST Profile}
+
+# MWAA DAGs bucket — confirm name with infra
+aws s3 sync opendatalake s3://radiant-tst-airflow-qa/dags/opendatalake --exclude "__pycache__/*" --exclude "*.pyc"
+```
+
+- [ ] Target is `dags/opendatalake/` — required so `from opendatalake.lib ...`
+      imports resolve. Same layout as the sandbox mount.
+- [ ] `opendatalake/lib/` ships in the same sync — no separate step.
+- [ ] MWAA picks up changes in ~30s, no restart.
+
+### Deploy Spark JAR (for the EMR operator)
+
+From repo root:
+
+```sh
+(cd spark && sbt assembly)   # -> spark/target/scala-2.12/radiant-open-datalake-spark.jar
+
+aws s3 cp spark/target/scala-2.12/radiant-open-datalake-spark.jar \
+  s3://<bucket>/<prefix>/   # path must equal OPENDATALAKE_EMR_JAR_S3_PATH
+```
 
 ## Developpers
 

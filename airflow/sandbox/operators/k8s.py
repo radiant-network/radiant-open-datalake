@@ -2,7 +2,7 @@ from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperato
 
 import os
 
-from dags.lib import config
+from opendatalake.lib import config
 
 
 def _get_k8s_context():

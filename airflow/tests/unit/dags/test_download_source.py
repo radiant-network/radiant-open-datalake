@@ -1,6 +1,6 @@
 from unittest.mock import MagicMock, patch
 
-from dags.download_source import direct_upload
+from opendatalake.dags.download_source import direct_upload
 
 
 def test_dag_loads_without_errors(dag_bag):
@@ -26,9 +26,11 @@ def test_direct_upload_calls_s3_downloader():
     fake_downloader = MagicMock()
     with (
         patch(
-            "dags.download_source.get_download_config_at_index", return_value=fake_download_conf
+            "opendatalake.dags.download_source.get_download_config_at_index", return_value=fake_download_conf
         ) as mock_get_download_conf,
-        patch("dags.download_source.S3Downloader", return_value=fake_downloader) as mock_downloader_constructor,
+        patch(
+            "opendatalake.dags.download_source.S3Downloader", return_value=fake_downloader
+        ) as mock_downloader_constructor,
     ):
         direct_upload.function(source, prefix, version, download_index)
 
@@ -40,7 +42,7 @@ def test_direct_upload_calls_s3_downloader():
 
 
 def test_upload_via_local_copy_task_build_python_script_operator():
-    from dags.download_source import upload_via_local_copy
+    from opendatalake.dags.download_source import upload_via_local_copy
 
     operator = upload_via_local_copy(
         task_id="test_task",

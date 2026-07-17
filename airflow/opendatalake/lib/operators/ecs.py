@@ -7,7 +7,7 @@ from functools import lru_cache
 from airflow.exceptions import AirflowException
 from airflow.providers.amazon.aws.operators import ecs
 
-from dags.lib import config
+from opendatalake.lib import config
 
 
 def _parse_csv(env_val):

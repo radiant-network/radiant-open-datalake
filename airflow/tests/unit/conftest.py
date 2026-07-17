@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 from airflow.models import DagBag
 
-from dags.lib.operators.ecs import _REQUIRED_ENV_VARS as _ECS_REQUIRED_ENV_VARS
-from dags.lib.operators.emr import _REQUIRED_ENV_VARS as _EMR_REQUIRED_ENV_VARS
+from opendatalake.lib.operators.ecs import _REQUIRED_ENV_VARS as _ECS_REQUIRED_ENV_VARS
+from opendatalake.lib.operators.emr import _REQUIRED_ENV_VARS as _EMR_REQUIRED_ENV_VARS
 
 for _env_var in (*_ECS_REQUIRED_ENV_VARS.values(), *_EMR_REQUIRED_ENV_VARS.values()):
     os.environ.setdefault(_env_var, f"test-{_env_var.lower()}")
@@ -26,4 +26,4 @@ def s3_client(s3_hook):
 
 @pytest.fixture
 def dag_bag():
-    return DagBag(dag_folder=pathlib.Path("dags"), include_examples=False)
+    return DagBag(dag_folder=pathlib.Path("opendatalake/dags"), include_examples=False)

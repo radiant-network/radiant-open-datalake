@@ -2,8 +2,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.model.sources import (
+from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
+from opendatalake.lib.domain.model.sources import (
     _Source,
     get_auto_update_source_ids,
     get_download_config_at_index,
@@ -41,7 +41,7 @@ def test_get_auto_update_source_ids():
 def test_get_latest_version():
     mock_response = Mock()
     mock_response.text = "sometext clinvar_20240327.vcf"
-    with patch("dags.lib.domain.source_configs.clinvar.http_get", return_value=mock_response):
+    with patch("opendatalake.lib.domain.source_configs.clinvar.http_get", return_value=mock_response):
         assert get_latest_version("clinvar") == "20240327"
         assert get_latest_version("Clinvar") == "20240327"
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from airflow.exceptions import AirflowException
 
-from dags.lib.operators.emr import (
+from opendatalake.lib.operators.emr import (
     DEFAULT_ENTRY_CLASS,
     EmrServerlessConfig,
     EmrServerlessJobOperator,
@@ -167,9 +167,9 @@ def test_execute_complete_forwards_driver_logs_from_event():
     event = {"status": "success", "job_details": {"job_id": "job-xyz", "application_id": "app-123"}}
 
     with (
-        patch("dags.lib.operators.emr.AwsLogsHook", return_value=hook),
+        patch("opendatalake.lib.operators.emr.AwsLogsHook", return_value=hook),
         patch(
-            "dags.lib.operators.emr.EmrServerlessStartJobOperator.execute_complete",
+            "opendatalake.lib.operators.emr.EmrServerlessStartJobOperator.execute_complete",
             return_value="job-xyz",
         ) as mock_super,
     ):
@@ -188,9 +188,9 @@ def test_execute_complete_forwards_driver_logs_from_event():
 def test_execute_complete_does_not_mask_result_on_log_forwarding_failure():
     event = {"status": "success", "job_details": {"job_id": "job-xyz", "application_id": "app-123"}}
     with (
-        patch("dags.lib.operators.emr.AwsLogsHook", side_effect=Exception("cloudwatch down")),
+        patch("opendatalake.lib.operators.emr.AwsLogsHook", side_effect=Exception("cloudwatch down")),
         patch(
-            "dags.lib.operators.emr.EmrServerlessStartJobOperator.execute_complete",
+            "opendatalake.lib.operators.emr.EmrServerlessStartJobOperator.execute_complete",
             return_value="job-xyz",
         ),
     ):
@@ -201,7 +201,7 @@ def test_execute_complete_does_not_mask_result_on_log_forwarding_failure():
 
 
 def test_sync_path_forwards_logs_in_finally():
-    with patch("dags.lib.operators.emr.EmrServerlessStartJobOperator.execute", return_value="job-1"):
+    with patch("opendatalake.lib.operators.emr.EmrServerlessStartJobOperator.execute", return_value="job-1"):
         op = _operator(deferrable=False)
         with patch.object(op, "_forward_driver_logs") as fwd:
             op.execute(MagicMock())

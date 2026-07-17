@@ -9,7 +9,7 @@ from airflow.providers.amazon.aws.hooks.logs import AwsLogsHook
 from airflow.providers.amazon.aws.operators.emr import EmrServerlessStartJobOperator
 from airflow.utils.context import Context
 
-from dags.lib import config
+from opendatalake.lib import config
 
 DEFAULT_ENTRY_CLASS = "org.radiant.opendatalake.ImportPublicTable"
 SPARK_CONF_CATALOG_NAME = "opendatalake"

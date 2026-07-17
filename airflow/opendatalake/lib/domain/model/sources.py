@@ -1,7 +1,7 @@
 from enum import Enum
 
-from dags.lib.domain.model.config import DownloadConfig, UpdateMode
-from dags.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
+from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
+from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
 
 _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"

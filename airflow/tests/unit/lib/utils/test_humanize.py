@@ -1,6 +1,6 @@
 import pytest
 
-from dags.lib.utils.humanize import bytes_to_human_readable
+from opendatalake.lib.utils.humanize import bytes_to_human_readable
 
 
 @pytest.mark.parametrize(

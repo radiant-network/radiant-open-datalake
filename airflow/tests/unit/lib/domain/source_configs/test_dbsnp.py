@@ -25,7 +25,7 @@ def test_dbsnp_get_latest_version(dbsnp_source_conf, dbsnp_valid_listing_html, d
     listing_response = Mock(text=dbsnp_valid_listing_html)
     md5_response = Mock(text=dbsnp_valid_md5_html)
     with patch(
-        "dags.lib.domain.source_configs.dbsnp.http_get",
+        "opendatalake.lib.domain.source_configs.dbsnp.http_get",
         side_effect=[listing_response, md5_response],
     ) as mock_http_get:
         version = dbsnp_source_conf.get_latest_version()
@@ -43,7 +43,7 @@ def test_dbsnp_get_latest_version_missing_md5_error(
     md5_response = Mock(text=dbsnp_valid_md5_html)
     with (
         patch(
-            "dags.lib.domain.source_configs.dbsnp.http_get",
+            "opendatalake.lib.domain.source_configs.dbsnp.http_get",
             side_effect=[listing_response, md5_response],
         ),
         pytest.raises(ValueError) as excinfo,
@@ -62,7 +62,7 @@ def test_dbsnp_get_latest_version_no_accessions_raises(dbsnp_source_conf):
     <a href="README.txt">README.txt</a>
     </body></html>"""
     with (
-        patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=Mock(text=html_without_gz)),
+        patch("opendatalake.lib.domain.source_configs.dbsnp.http_get", return_value=Mock(text=html_without_gz)),
         pytest.raises(ValueError) as excinfo,
     ):
         dbsnp_source_conf.get_latest_version()
@@ -82,7 +82,7 @@ def test_dbsnp_get_latest_version_picks_highest_version(dbsnp_source_conf, dbsnp
     listing_response = Mock(text=listing_html)
     md5_response = Mock(text=dbsnp_valid_md5_html)
     with patch(
-        "dags.lib.domain.source_configs.dbsnp.http_get",
+        "opendatalake.lib.domain.source_configs.dbsnp.http_get",
         side_effect=[listing_response, md5_response],
     ):
         version = dbsnp_source_conf.get_latest_version()
@@ -92,7 +92,7 @@ def test_dbsnp_get_latest_version_picks_highest_version(dbsnp_source_conf, dbsnp
 
 def test_dbsnp_verify_md5_digest_ok(dbsnp_source_conf, dbsnp_valid_md5_html):
     md5_response = Mock(text=dbsnp_valid_md5_html)
-    with patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response) as mock_http_get:
         dbsnp_source_conf._verify_md5_digest(
             listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF/",
             version=42,
@@ -103,7 +103,7 @@ def test_dbsnp_verify_md5_digest_ok(dbsnp_source_conf, dbsnp_valid_md5_html):
 
 def test_dbsnp_verify_md5_digest_strips_trailing_slashes(dbsnp_source_conf, dbsnp_valid_md5_html):
     md5_response = Mock(text=dbsnp_valid_md5_html)
-    with patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response) as mock_http_get:
         dbsnp_source_conf._verify_md5_digest(
             listing_url="https://ftp.ncbi.nih.gov/snp/latest_release/VCF///",
             version=42,
@@ -116,7 +116,7 @@ def test_dbsnp_verify_md5_digest_invalid_raises(dbsnp_source_conf):
     invalid_body = "not-a-valid-md5-hash"
     md5_response = Mock(text=invalid_body)
     with (
-        patch("dags.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response),
+        patch("opendatalake.lib.domain.source_configs.dbsnp.http_get", return_value=md5_response),
         pytest.raises(ValueError) as excinfo,
     ):
         dbsnp_source_conf._verify_md5_digest(

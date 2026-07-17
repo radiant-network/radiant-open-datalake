@@ -1,8 +1,8 @@
 import re
 from typing import override
 
-from dags.lib.domain.model.config import SourceConfig
-from dags.lib.utils.http import http_get
+from opendatalake.lib.domain.model.config import SourceConfig
+from opendatalake.lib.utils.http import http_get
 
 
 class ClinvarSourceConfig(SourceConfig):
