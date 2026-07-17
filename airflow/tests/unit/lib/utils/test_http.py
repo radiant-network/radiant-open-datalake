@@ -4,7 +4,7 @@ import pytest
 import requests
 import requests_mock
 
-from dags.lib.utils.http import http_get, stream_download_file
+from opendatalake.lib.utils.http import http_get, stream_download_file
 
 
 def test_http_get_successful_response():

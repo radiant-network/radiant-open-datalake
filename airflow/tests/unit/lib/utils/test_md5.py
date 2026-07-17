@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dags.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
+from opendatalake.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
 
 
 def test_compute_file_md5_returns_correct_hash(tmp_path):

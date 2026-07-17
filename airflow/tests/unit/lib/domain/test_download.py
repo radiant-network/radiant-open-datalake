@@ -1,8 +1,8 @@
 from unittest.mock import ANY, MagicMock, call, patch
 
-from dags.lib.config import raw_datalake_bucket
-from dags.lib.domain.download import S3Downloader
-from dags.lib.domain.model.config import DownloadConfig
+from opendatalake.lib.config import raw_datalake_bucket
+from opendatalake.lib.domain.download import S3Downloader
+from opendatalake.lib.domain.model.config import DownloadConfig
 
 
 def test_direct_upload(s3_hook):
@@ -10,10 +10,10 @@ def test_direct_upload(s3_hook):
 
     with (
         patch(
-            "dags.lib.domain.download.http_get",
+            "opendatalake.lib.domain.download.http_get",
             return_value=MagicMock(text="938c2cc0dcc05f2b68c4287040cfcf71  file.txt"),
         ),
-        patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
+        patch("opendatalake.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
     ):
         downloader = S3Downloader(
             s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
@@ -36,10 +36,10 @@ def test_direct_upload_with_md5(s3_hook):
     )
     with (
         patch(
-            "dags.lib.domain.download.http_get",
+            "opendatalake.lib.domain.download.http_get",
             return_value=MagicMock(text="938c2cc0dcc05f2b68c4287040cfcf71  file.txt"),
         ),
-        patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
+        patch("opendatalake.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
     ):
         downloader = S3Downloader(
             s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
@@ -68,10 +68,10 @@ def test_direct_upload_with_configured_name_and_headers(s3_hook):
 
     with (
         patch(
-            "dags.lib.domain.download.http_get",
+            "opendatalake.lib.domain.download.http_get",
             return_value=MagicMock(text="938c2cc0dcc05f2b68c4287040cfcf71  file.txt"),
         ),
-        patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
+        patch("opendatalake.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
     ):
         downloader = S3Downloader(
             s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
@@ -96,10 +96,10 @@ def test_direct_upload_with_dynamic_url(s3_hook):
 
     with (
         patch(
-            "dags.lib.domain.download.http_get",
+            "opendatalake.lib.domain.download.http_get",
             return_value=MagicMock(text="938c2cc0dcc05f2b68c4287040cfcf71  file_1.1.0.txt"),
         ),
-        patch("dags.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
+        patch("opendatalake.lib.domain.download.multipart_upload_with_resume") as mock_multipart,
     ):
         downloader = S3Downloader(s3=s3_hook, s3_prefix="prefix", version="1.1.0", download_conf=download_config)
         downloader.direct_upload()
@@ -117,10 +117,10 @@ def test_upload_via_local_copy(s3_hook):
     download_config = DownloadConfig(download_url="http://example.com/file2.txt", use_stream_upload=False)
 
     with (
-        patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
-        patch("dags.lib.domain.download.check_md5") as mock_check_md5,
-        patch("dags.lib.domain.download.load_file") as mock_load,
-        patch("dags.lib.domain.download.tarfile") as tarfile_mock,
+        patch("opendatalake.lib.domain.download.stream_download_file") as mock_stream_download_file,
+        patch("opendatalake.lib.domain.download.check_md5") as mock_check_md5,
+        patch("opendatalake.lib.domain.download.load_file") as mock_load,
+        patch("opendatalake.lib.domain.download.tarfile") as tarfile_mock,
     ):
         downloader = S3Downloader(
             s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
@@ -146,13 +146,13 @@ def test_upload_via_local_copy_with_md5(s3_hook):
     )
     with (
         patch(
-            "dags.lib.domain.download.http_get",
+            "opendatalake.lib.domain.download.http_get",
             return_value=MagicMock(text="938c2cc0dcc05f2b68c4287040cfcf71  file2.txt"),
         ),
-        patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
-        patch("dags.lib.domain.download.check_md5") as mock_check_md5,
-        patch("dags.lib.domain.download.load_file") as mock_load,
-        patch("dags.lib.domain.download.tarfile") as tarfile_mock,
+        patch("opendatalake.lib.domain.download.stream_download_file") as mock_stream_download_file,
+        patch("opendatalake.lib.domain.download.check_md5") as mock_check_md5,
+        patch("opendatalake.lib.domain.download.load_file") as mock_load,
+        patch("opendatalake.lib.domain.download.tarfile") as tarfile_mock,
     ):
         downloader = S3Downloader(
             s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config
@@ -180,9 +180,9 @@ def test_upload_via_local_copy_with_extract_members_no_md5(s3_hook):
         extract_members=["file1.txt", "file2.txt"],
     )
     with (
-        patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
-        patch("dags.lib.domain.download.load_file") as mock_load,
-        patch("dags.lib.domain.download.tarfile.open") as mock_tarfile_open,
+        patch("opendatalake.lib.domain.download.stream_download_file") as mock_stream_download_file,
+        patch("opendatalake.lib.domain.download.load_file") as mock_load,
+        patch("opendatalake.lib.domain.download.tarfile.open") as mock_tarfile_open,
     ):
         mock_tar = MagicMock()
         mock_tarfile_open.return_value.__enter__.return_value = mock_tar
@@ -224,14 +224,14 @@ def test_upload_via_local_copy_with_extract_members_with_md5(s3_hook):
     )
     with (
         patch(
-            "dags.lib.domain.download.http_get",
+            "opendatalake.lib.domain.download.http_get",
             return_value=MagicMock(text="938c2cc0dcc05f2b68c4287040cfcf71  archive.tar"),
         ),
-        patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
-        patch("dags.lib.domain.download.compute_file_md5", side_effect=["abcde", "fghij"]),
-        patch("dags.lib.domain.download.check_md5"),
-        patch("dags.lib.domain.download.load_file") as mock_load,
-        patch("dags.lib.domain.download.tarfile.open") as mock_tarfile_open,
+        patch("opendatalake.lib.domain.download.stream_download_file") as mock_stream_download_file,
+        patch("opendatalake.lib.domain.download.compute_file_md5", side_effect=["abcde", "fghij"]),
+        patch("opendatalake.lib.domain.download.check_md5"),
+        patch("opendatalake.lib.domain.download.load_file") as mock_load,
+        patch("opendatalake.lib.domain.download.tarfile.open") as mock_tarfile_open,
     ):
         mock_tar = MagicMock()
         mock_tarfile_open.return_value.__enter__.return_value = mock_tar
@@ -274,9 +274,9 @@ def test_upload_via_local_copy_with_configured_name_and_headers(s3_hook):
         headers={"myheader": "myvalue"},
     )
     with (
-        patch("dags.lib.domain.download.stream_download_file") as mock_stream_download_file,
-        patch("dags.lib.domain.download.check_md5") as mock_check_md5,
-        patch("dags.lib.domain.download.load_file") as mock_load,
+        patch("opendatalake.lib.domain.download.stream_download_file") as mock_stream_download_file,
+        patch("opendatalake.lib.domain.download.check_md5") as mock_check_md5,
+        patch("opendatalake.lib.domain.download.load_file") as mock_load,
     ):
         downloader = S3Downloader(
             s3=s3_hook, s3_prefix="prefix", version="some_version", download_conf=download_config

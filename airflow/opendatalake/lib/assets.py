@@ -2,7 +2,7 @@
 
 from airflow.sdk import Asset, AssetAlias
 
-from dags.lib.config import ASSETS_URI_PREFIX
+from opendatalake.lib.config import ASSETS_URI_PREFIX
 
 new_source_version_asset_alias = AssetAlias(f"x-{ASSETS_URI_PREFIX}-new-source-version-alias")
 

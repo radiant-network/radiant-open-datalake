@@ -2,7 +2,7 @@ import pytest
 import requests
 import requests_mock
 
-from dags.lib.s3_transfer import multipart_upload_with_resume
+from opendatalake.lib.s3_transfer import multipart_upload_with_resume
 
 
 def test_multipart_upload_with_resume_new_upload(s3_hook, s3_client):

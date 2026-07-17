@@ -1,6 +1,6 @@
 import pytest
 
-from dags.lib.domain.model.config import DownloadConfig, SourceConfig, UpdateMode
+from opendatalake.lib.domain.model.config import DownloadConfig, SourceConfig, UpdateMode
 
 
 def test_download_config_with_fixed_url():

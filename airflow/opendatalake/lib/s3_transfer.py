@@ -11,8 +11,8 @@ import logging
 import requests
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from dags.lib.utils.humanize import bytes_to_human_readable as human_readable
-from dags.lib.utils.s3 import MultipartUpload
+from opendatalake.lib.utils.humanize import bytes_to_human_readable as human_readable
+from opendatalake.lib.utils.s3 import MultipartUpload
 
 
 def multipart_upload_with_resume(

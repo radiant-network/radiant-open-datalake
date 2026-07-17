@@ -9,7 +9,7 @@ install-dev:
 	airflow db reset -y
 
 test-static:
-	ruff check dags/
+	ruff check opendatalake/
 
 test-unit:
 	pytest tests/unit/
@@ -17,7 +17,7 @@ test-unit:
 test: test-static test-unit
 
 format:
-	ruff format dags/ tests/ scripts/
-	ruff check --fix dags/ tests/ scripts/
+	ruff format opendatalake/ tests/ scripts/
+	ruff check --fix opendatalake/ tests/ scripts/
 
 

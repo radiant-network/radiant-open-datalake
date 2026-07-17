@@ -4,17 +4,17 @@ from pathlib import Path
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.sdk import Metadata, dag, task, task_group
 
-from dags.lib import config
-from dags.lib.assets import downloaded_source_asset, new_source_version_asset
-from dags.lib.domain.download import S3Downloader
-from dags.lib.domain.model.config import DownloadConfig
-from dags.lib.domain.model.sources import (
+from opendatalake.lib import config
+from opendatalake.lib.assets import downloaded_source_asset, new_source_version_asset
+from opendatalake.lib.domain.download import S3Downloader
+from opendatalake.lib.domain.model.config import DownloadConfig
+from opendatalake.lib.domain.model.sources import (
     get_auto_update_source_ids,
     get_download_config_at_index,
     get_download_configs,
 )
-from dags.lib.operators.ecs import PythonScriptOperator
-from dags.lib.tasks import get_version
+from opendatalake.lib.operators.ecs import PythonScriptOperator
+from opendatalake.lib.tasks import get_version
 
 
 @task

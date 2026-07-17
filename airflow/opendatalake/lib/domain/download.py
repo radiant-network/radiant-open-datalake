@@ -4,11 +4,11 @@ from pathlib import Path
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
-from dags.lib.config import raw_datalake_bucket, s3_conn_id
-from dags.lib.s3_transfer import multipart_upload_with_resume
-from dags.lib.utils.http import http_get, stream_download_file
-from dags.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
-from dags.lib.utils.s3 import load_file
+from opendatalake.lib.config import raw_datalake_bucket, s3_conn_id
+from opendatalake.lib.s3_transfer import multipart_upload_with_resume
+from opendatalake.lib.utils.http import http_get, stream_download_file
+from opendatalake.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
+from opendatalake.lib.utils.s3 import load_file
 
 
 class S3Downloader:

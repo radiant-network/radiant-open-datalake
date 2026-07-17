@@ -2,8 +2,8 @@ import argparse
 import logging
 import sys
 
-from dags.lib.domain.download import S3Downloader
-from dags.lib.domain.model.sources import get_download_config_at_index
+from opendatalake.lib.domain.download import S3Downloader
+from opendatalake.lib.domain.model.sources import get_download_config_at_index
 
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger(__name__)

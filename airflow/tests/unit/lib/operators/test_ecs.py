@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from airflow.exceptions import AirflowException
 
-from dags.lib.operators.ecs import EcsConfig, PythonScriptOperator
+from opendatalake.lib.operators.ecs import EcsConfig, PythonScriptOperator
 
 TEST_ECS_CONFIG = EcsConfig(
     cluster="test-cluster",
@@ -73,7 +73,9 @@ def test_python_script_operator_fails_at_construction_on_incomplete_config():
 def test_python_script_operator_inject_command_correctly():
     script_name = "myscript.py"
     script_args = {"foo": "bar", "num": 42}
-    with patch("dags.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done") as mock_super_execute:
+    with patch(
+        "opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"
+    ) as mock_super_execute:
         op = PythonScriptOperator(
             task_id="test_task", script_name=script_name, script_args=script_args, ecs_config=TEST_ECS_CONFIG
         )
@@ -92,7 +94,7 @@ def test_python_script_operator_inject_command_correctly():
 
 
 def test_python_script_operator_uses_injected_config():
-    with patch("dags.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"):
+    with patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"):
         op = PythonScriptOperator(
             task_id="test_task", script_name="myscript.py", script_args={}, ecs_config=TEST_ECS_CONFIG
         )
@@ -109,7 +111,9 @@ def test_python_script_operator_appends_to_user_container_overrides():
     script_name = "myscript.py"
     script_args = {"foo": "bar"}
 
-    with patch("dags.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done") as mock_super_execute:
+    with patch(
+        "opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"
+    ) as mock_super_execute:
         op = PythonScriptOperator(
             task_id="test_task",
             script_name=script_name,

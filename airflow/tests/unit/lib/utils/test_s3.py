@@ -1,4 +1,4 @@
-from dags.lib.utils.s3 import load_file
+from opendatalake.lib.utils.s3 import load_file
 
 
 def test_load_file_uploads_file_to_s3(s3_hook):

@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dags.lib.tasks import get_version
+from opendatalake.lib.tasks import get_version
 
 
 class DummyAsset:
@@ -21,7 +21,7 @@ class DummyAsset:
 
 @pytest.fixture(autouse=True)
 def patch_task_decorator():
-    with patch("dags.lib.tasks.task", lambda *a, **k: lambda f: f):
+    with patch("opendatalake.lib.tasks.task", lambda *a, **k: lambda f: f):
         yield
 
 
