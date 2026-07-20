@@ -82,7 +82,7 @@ def _make_download_source_dag(source_id: str):
     def _download():
         @task(task_display_name="[PyOp] Get S3 Prefix")
         def get_prefix(version):
-            return f"raw/{source_id}/{version}"
+            return config.raw_landing_prefix(source_id, version)
 
         @task_group(group_id="download_files")
         def download_files(prefix, version):

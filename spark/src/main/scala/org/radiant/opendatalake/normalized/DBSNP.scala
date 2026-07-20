@@ -5,13 +5,14 @@ import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, Ru
 import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
 import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
-import mainargs.{ParserForMethods, main}
+import org.radiant.opendatalake.config.RawInput
+import mainargs.{ParserForMethods, arg, main}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
 import java.time.LocalDateTime
 
-case class DBSNP(rc: RuntimeETLContext) extends SimpleETLP(rc)  {
+case class DBSNP(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc)  {
 
   override val mainDestination: DatasetConf = conf.getDataset("normalized_dbsnp")
 
@@ -19,7 +20,7 @@ case class DBSNP(rc: RuntimeETLContext) extends SimpleETLP(rc)  {
 
   override def extract(lastRunValue: LocalDateTime = minValue,
                        currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
-    Map(raw_dbsnp.id -> raw_dbsnp.read)
+    Map(raw_dbsnp.id -> RawInput.readVersioned(rc, raw_dbsnp.id, version, rawStorage))
   }
 
   override def transformSingle(data: Map[String, DataFrame],
@@ -50,8 +51,11 @@ case class DBSNP(rc: RuntimeETLContext) extends SimpleETLP(rc)  {
 
 object DBSNP {
   @main
-  def run(rc: RuntimeETLContext): Unit = {
-    DBSNP(rc).run()
+  def run(rc: RuntimeETLContext,
+          @arg(name = "version", doc = "Source version, substituted into the raw read path") version: String,
+          @arg(name = "raw-storage", doc = "s3a root for raw input, overrides the config storage root")
+          rawStorage: String): Unit = {
+    DBSNP(rc, version, rawStorage).run()
   }
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)

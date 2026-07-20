@@ -7,7 +7,7 @@ import org.radiant.opendatalake.normalized.gnomad._
 import org.radiant.opendatalake.normalized.omim.OmimGeneSet
 import org.radiant.opendatalake.normalized.orphanet.OrphanetGeneSet
 import org.radiant.opendatalake.normalized.refseq.{RefSeqAnnotation, RefSeqHumanGenes}
-import mainargs.{ParserForMethods, main}
+import mainargs.{ParserForMethods, arg, main}
 
 object ImportPublicTable {
 
@@ -15,7 +15,10 @@ object ImportPublicTable {
   def annovar_scores(rc: RuntimeETLContext): Unit = AnnovarScores.run(rc)
 
   @main
-  def clinvar(rc: RuntimeETLContext): Unit = Clinvar.run(rc)
+  def clinvar(rc: RuntimeETLContext,
+              @arg(name = "version", doc = "Source version") version: String,
+              @arg(name = "raw-storage", doc = "s3a root for raw input") rawStorage: String): Unit =
+    Clinvar.run(rc, version, rawStorage)
 
   @main
   def dbnsfp_raw(rc: RuntimeETLContext): Unit = DBNSFPRaw.run(rc)
@@ -24,7 +27,10 @@ object ImportPublicTable {
   def dbnsfp(rc: RuntimeETLContext): Unit = DBNSFP.run(rc)
 
   @main
-  def dbsnp(rc: RuntimeETLContext): Unit = DBSNP.run(rc)
+  def dbsnp(rc: RuntimeETLContext,
+            @arg(name = "version", doc = "Source version") version: String,
+            @arg(name = "raw-storage", doc = "s3a root for raw input") rawStorage: String): Unit =
+    DBSNP.run(rc, version, rawStorage)
 
   @main
   def ddd(rc: RuntimeETLContext): Unit = DDDGeneSet.run(rc)

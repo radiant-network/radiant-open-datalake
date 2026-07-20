@@ -2,9 +2,11 @@ import logging
 
 from airflow.sdk import Asset, task
 
+GET_VERSION_TASK_ID = "get_version"
+
 
 def get_version(asset: Asset, **kwargs):
-    @task(task_id="get_version", task_display_name="[PyOp] Get Version", inlets=[asset])
+    @task(task_id=GET_VERSION_TASK_ID, task_display_name="[PyOp] Get Version", inlets=[asset])
     def _get_version(triggering_asset_events):
         events = triggering_asset_events[asset]
         if not events:

@@ -6,7 +6,8 @@ import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
 import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import bio.ferlab.datalake.spark3.implicits.SparkUtils._
-import mainargs.{ParserForMethods, main}
+import org.radiant.opendatalake.config.RawInput
+import mainargs.{ParserForMethods, arg, main}
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
@@ -14,7 +15,7 @@ import org.apache.spark.sql.functions._
 import java.time.LocalDateTime
 import scala.collection.mutable
 
-case class Clinvar(rc: RuntimeETLContext) extends SimpleETLP(rc) {
+case class Clinvar(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc) {
 
   override val mainDestination: DatasetConf = conf.getDataset("normalized_clinvar")
 
@@ -22,7 +23,7 @@ case class Clinvar(rc: RuntimeETLContext) extends SimpleETLP(rc) {
 
   override def extract(lastRunValue: LocalDateTime,
                        currentRunValue: LocalDateTime): Map[String, DataFrame] = {
-    Map(clinvar_vcf.id -> clinvar_vcf.read)
+    Map(clinvar_vcf.id -> RawInput.readVersioned(rc, clinvar_vcf.id, version, rawStorage))
   }
 
   override def transformSingle(data: Map[String, DataFrame],
@@ -140,8 +141,11 @@ case class Clinvar(rc: RuntimeETLContext) extends SimpleETLP(rc) {
 
 object Clinvar {
   @main
-  def run(rc: RuntimeETLContext): Unit = {
-    Clinvar(rc).run()
+  def run(rc: RuntimeETLContext,
+          @arg(name = "version", doc = "Source version, substituted into the raw read path") version: String,
+          @arg(name = "raw-storage", doc = "s3a root for raw input, overrides the config storage root")
+          rawStorage: String): Unit = {
+    Clinvar(rc, version, rawStorage).run()
   }
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)

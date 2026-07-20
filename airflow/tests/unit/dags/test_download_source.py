@@ -41,6 +41,12 @@ def test_direct_upload_calls_s3_downloader():
         fake_downloader.direct_upload.assert_called_once()
 
 
+def test_get_prefix_uses_raw_landing(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-download-clinvar")
+    get_prefix = dag.get_task("get_prefix").python_callable
+    assert get_prefix("v1") == "raw/landing/clinvar/v1"
+
+
 def test_upload_via_local_copy_task_build_python_script_operator():
     from opendatalake.dags.download_source import upload_via_local_copy
 
