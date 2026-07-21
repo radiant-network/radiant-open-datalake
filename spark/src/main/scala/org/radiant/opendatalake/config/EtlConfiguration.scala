@@ -9,7 +9,7 @@ import bio.ferlab.datalake.commons.file.FileSystemType.S3
 import pureconfig.generic.auto._
 
 object EtlConfiguration extends App {
-  val raw_storage_id = EtlConstants.RawStorageId
+  val raw_storage_id = "raw_storage"
   val iceberg_storage_id = "iceberg_storage"
   val iceberg_database = "reference"
 
@@ -51,8 +51,8 @@ object EtlConfiguration extends App {
 
   val sources = List(
     //raw
-    DatasetConf("raw_clinvar", raw_storage_id, s"/clinvar/${EtlConstants.VersionPlaceholder}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_dbsnp", raw_storage_id, s"/dbsnp/${EtlConstants.VersionPlaceholder}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/{{VERSION}}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_genomes_v3", raw_storage_id, "/gnomad_v3/release/3.1/vcf/genomes/gnomad.genomes.v3.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")).copy(storageid = gnomad_storage_id),
     DatasetConf("raw_gnomad_joint_v4", raw_storage_id, "/gnomad_v4/release/4.1/vcf/joint/gnomad.joint.v4.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_cnv_v4", raw_storage_id, "/gnomad_v4/release/4.1/exome_cnv/gnomad.v4.1.cnv.all.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),

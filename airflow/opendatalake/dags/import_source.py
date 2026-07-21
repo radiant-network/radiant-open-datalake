@@ -1,22 +1,18 @@
 from airflow.exceptions import AirflowException
-from airflow.sdk import dag
+from airflow.sdk import XComArg, dag
 
 from opendatalake.lib import config
 from opendatalake.lib.assets import downloaded_source_asset
 from opendatalake.lib.domain.model.sources import get_auto_update_source_ids
 from opendatalake.lib.operators.emr import EmrServerlessJobOperator
-from opendatalake.lib.tasks import GET_VERSION_TASK_ID, get_version
-
-# Jinja pull of the version produced upstream by the ``get_version`` task.
-# ``job_driver`` is a template field, so this renders at execute time inside entry_point_arguments.
-_VERSION_TEMPLATE = f"{{{{ ti.xcom_pull(task_ids='{GET_VERSION_TASK_ID}') }}}}"
+from opendatalake.lib.tasks import get_version
 
 _SPARK_COMMAND = {
     "clinvar": "clinvar",
     "dbsnp": "dbsnp",
 }
 
-_SOURCE_TUNING = {
+_SOURCES_OVERRIDES = {
     "dbsnp": {
         "spark_conf": {"spark.dynamicAllocation.maxExecutors": "16"},
         "waiter_max_attempts": 960,  # ~16h
@@ -33,9 +29,9 @@ def _spark_command_for(source_id: str) -> str:
         ) from None
 
 
-def build_import_operator(source_id: str) -> EmrServerlessJobOperator:
+def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobOperator:
     command = _spark_command_for(source_id)
-    tuning = _SOURCE_TUNING.get(source_id, {})
+    tuning = _SOURCES_OVERRIDES.get(source_id, {})
     return EmrServerlessJobOperator(
         task_id="run_spark_import",
         task_display_name=f"[EMR] Import {source_id.capitalize()}",
@@ -47,7 +43,7 @@ def build_import_operator(source_id: str) -> EmrServerlessJobOperator:
             "--steps",
             "default",
             "--version",
-            _VERSION_TEMPLATE,
+            version,
             "--raw-storage",
             config.raw_storage_uri(),
         ],
@@ -67,8 +63,7 @@ def _make_import_source_dag(source_id: str):
     )
     def _import():
         version = get_version(input_asset)
-        run_spark = build_import_operator(source_id)
-        version >> run_spark
+        build_import_operator(source_id, version)
 
     _import()
 

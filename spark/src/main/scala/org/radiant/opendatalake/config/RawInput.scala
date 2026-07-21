@@ -12,14 +12,14 @@ object RawInput {
   def readVersioned(rc: RuntimeETLContext, datasetId: String, version: String, rawStorage: String)(
       implicit spark: SparkSession
   ): DataFrame = {
+    val dataset = rc.config.getDataset(datasetId)
     val overridden = SimpleConfiguration(
       rc.config.datalake.copy(storages = rc.config.storages.map { storage =>
-        if (storage.id == EtlConstants.RawStorageId) storage.copy(path = rawStorage) else storage
+        if (storage.id == dataset.storageid) storage.copy(path = rawStorage) else storage
       })
     )
-    rc.config
-      .getDataset(datasetId)
-      .replacePath(EtlConstants.VersionPlaceholder, version)
+    dataset
+      .replacePath("{{VERSION}}", version)
       .read(overridden, spark)
   }
 }

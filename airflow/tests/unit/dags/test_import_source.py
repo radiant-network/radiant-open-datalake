@@ -1,8 +1,16 @@
 import pytest
 from airflow.exceptions import AirflowException
+from airflow.providers.standard.operators.empty import EmptyOperator
+from airflow.sdk import DAG
 
 from opendatalake.dags.import_source import _spark_command_for, build_import_operator
 from opendatalake.lib.operators.emr import DEFAULT_ENTRY_CLASS, EmrServerlessConfig
+
+
+def _build_operator(source_id: str):
+    with DAG(dag_id="test_import", schedule=None):
+        version = EmptyOperator(task_id="get_version").output
+        return build_import_operator(source_id, version), version
 
 
 def test_dag_loads_without_errors(dag_bag):
@@ -17,31 +25,31 @@ def test_dag_has_expected_tasks(dag_bag):
     assert dag.task_ids == ["get_version", "run_spark_import"]
 
 
+def test_version_xcomarg_wires_dependency(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-clinvar")
+    assert dag.get_task("run_spark_import").upstream_task_ids == {"get_version"}
+
+
 def test_import_dbsnp_dag_exists(dag_bag):
     assert dag_bag.get_dag(dag_id="opendatalake-import-dbsnp") is not None
 
 
 def test_entry_point_arguments():
-    operator = build_import_operator("clinvar")
+    operator, version = _build_operator("clinvar")
     spark_submit = operator.job_driver["sparkSubmit"]
+    args = spark_submit["entryPointArguments"]
 
-    assert spark_submit["entryPointArguments"] == [
-        "clinvar",
-        "--config",
-        "config/dev.conf",
-        "--steps",
-        "default",
-        "--version",
-        "{{ ti.xcom_pull(task_ids='get_version') }}",
-        "--raw-storage",
-        "s3a://opendatalake-dev/raw/landing",
-    ]
+    version_at = args.index("--version")
+    assert args[version_at + 1] is version
+    assert args[:version_at] == ["clinvar", "--config", "config/dev.conf", "--steps", "default"]
+    assert args[version_at + 2 :] == ["--raw-storage", "s3a://opendatalake-dev/raw/landing"]
+
     assert spark_submit["entryPoint"] == EmrServerlessConfig.from_env().jar_s3_path
     assert f"--class {DEFAULT_ENTRY_CLASS}" in spark_submit["sparkSubmitParameters"]
 
 
 def test_dbsnp_tuning_applied():
-    operator = build_import_operator("dbsnp")
+    operator, _ = _build_operator("dbsnp")
     spark_submit = operator.job_driver["sparkSubmit"]
 
     assert operator.waiter_max_attempts == 960
@@ -49,7 +57,7 @@ def test_dbsnp_tuning_applied():
 
 
 def test_clinvar_uses_default_tuning():
-    operator = build_import_operator("clinvar")
+    operator, _ = _build_operator("clinvar")
     spark_submit = operator.job_driver["sparkSubmit"]
 
     assert operator.waiter_max_attempts == 480
