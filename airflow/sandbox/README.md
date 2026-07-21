@@ -41,6 +41,32 @@ opendatalake-minio-58c696c58c-2hkqz        1/1     Running     0          85s
 opendatalake-minio-bucket-init-job-5hp2b   0/1     Completed   0          85s
 ```
 
+## Install Apache Polaris (Iceberg catalog)
+
+The Spark import jobs write Iceberg tables through a REST catalog. Deploy [Apache Polaris](https://polaris.apache.org/) (in-memory metastore, backed by the MinIO installed above) and bootstrap the `opendatalake` catalog. Requires MinIO to be running (the `opendatalake-dev` bucket must exist).
+
+```
+kubectl apply -f sandbox/k8s/polaris/
+```
+
+This starts Polaris (realm `POLARIS`, root principal `root`/`s3cr3t`) and runs a one-shot Job that creates the `opendatalake` catalog (`default-base-location` `s3://opendatalake-dev/iceberg`, path-style MinIO, no STS — Polaris vends the static MinIO credentials) plus the `reference` namespace.
+
+## Monitor Polaris is running and the catalog was created (1 minute)
+```
+kubectl get po | grep polaris
+```
+Results 1 pod running and 1 pod completed:
+```
+polaris-6b7c9d5f8c-abcde           1/1     Running     0          60s
+polaris-catalog-init-job-xxxxx     0/1     Completed   0          60s
+```
+Check the init job logs to confirm the catalog/namespace calls returned `200`/`201` (or `409` if already created):
+```
+kubectl logs job/polaris-catalog-init-job
+```
+
+Note: Polaris uses an in-memory metastore here — catalog metadata is lost if the Polaris pod restarts. Re-run `kubectl delete job polaris-catalog-init-job && kubectl apply -f sandbox/k8s/polaris/` to re-bootstrap.
+
 ## Install postgres
 ```
 kubectl apply -f sandbox/k8s/postgres/
@@ -58,9 +84,12 @@ postgres-init-job-fhtgf               0/1     Completed   0          23s
 
 ## Mount volume for dags in minikube
 
-In a new terminal, run the following command to mount the dags directory in minikube:
+In a new terminal, run the following command to mount the `opendatalake` package into the Airflow
+DAGs folder in minikube. The package is mounted *under* the DAGs folder (not the DAGs folder
+itself) so the DAG files' `from opendatalake... import` statements resolve — the DAGs folder
+(`/opt/airflow/dags`) is on `PYTHONPATH`, and it must contain the `opendatalake/` package root.
 ```
-minikube mount $(pwd)/dags:/opt/airflow/dags/dags
+minikube mount $(pwd)/opendatalake:/opt/airflow/dags/opendatalake
 ```
 
 ## Pre-building the Open Datalake ECS task operator image (~6 minutes)
@@ -72,14 +101,34 @@ eval $(minikube -p minikube docker-env)  # To ensure the image is built inside m
 docker build -t ghcr.io/radiant-network/opendatalake-airflow-task-operator:latest -f Dockerfile.opendatalake.operator .
 ```
 
+## Building the Spark ETL image (~10 minutes)
+
+To let Airflow run the import (Spark) jobs on local Spark, build the Scala fat JAR and bake it into a Spark image inside minikube's docker environment. The image (`Dockerfile.opendatalake.spark`, in the `spark/` directory) is `apache/spark:3.5.5` + the fat JAR; jobs run as `spark-submit --master local[*]`.
+
+Run from the `spark/` directory:
+```sh
+cd ../spark
+
+# Build the fat JAR -> target/scala-2.12/radiant-open-datalake-spark.jar
+sbt clean assembly
+
+# Build the image inside minikube's docker so the KubernetesPodOperator can pull it locally
+eval $(minikube -p minikube docker-env)
+docker build -t ghcr.io/radiant-network/opendatalake-spark:latest -f Dockerfile.opendatalake.spark .
+
+cd ../airflow
+```
+
+Note: `spark-sql`/`hadoop-client` are `Provided` (supplied by the base image); `hadoop-aws`, Iceberg and Glow are shaded into the JAR, so no `--packages` are needed at runtime.
+
 ## Switch download_source DAG from ECS to K8s operator (Optional)
 
 You can swap the ECS operator for the K8s operator in the `download_source` DAG for local testing.
 
 Run the following commands to switch:
 ```sh
-cp sandbox/operators/k8s.py dags/lib/operators/k8s.py
-sed -i '' 's/operators\.ecs/operators\.k8s/g'  dags/download_source.py
+cp sandbox/operators/k8s.py opendatalake/lib/operators/k8s.py
+sed -i '' 's/operators\.ecs/operators\.k8s/g'  opendatalake/dags/download_source.py
 ```
 
 To revert back to the ECS operator:
@@ -87,6 +136,26 @@ To revert back to the ECS operator:
 rm dags/lib/operators/k8s.py
 sed -i '' 's/operators\.k8s/operators\.ecs/g'  dags/download_source.py
 ```
+
+Note: The swap commands will modify your code copy. Make sure you do not commit the operator swap to version control.
+
+## Switch import_source DAG from EMR to local Spark (Optional)
+
+Swap the EMR Serverless operator for the local-Spark K8s operator so the `import_source` DAG runs `spark-submit` in a pod (against MinIO + Polaris) instead of AWS EMR. Requires the Spark image (built above) and Polaris (installed above).
+
+Run the following commands to switch:
+```sh
+cp sandbox/operators/spark_k8s.py opendatalake/lib/operators/spark_k8s.py
+sed -i '' 's/operators\.emr/operators\.spark_k8s/g' opendatalake/dags/import_source.py
+```
+
+To revert back to the EMR operator:
+```sh
+rm opendatalake/lib/operators/spark_k8s.py
+sed -i '' 's/operators\.spark_k8s/operators\.emr/g' opendatalake/dags/import_source.py
+```
+
+The swap keeps the `EmrServerlessJobOperator` class name, so only the import path changes — DAG code is otherwise untouched. Raw files are read from MinIO via Hadoop S3A; Iceberg tables are written through Polaris (credential vending) to `s3://opendatalake-dev/iceberg/reference/`.
 
 Note: The swap commands will modify your code copy. Make sure you do not commit the operator swap to version control.
 
@@ -129,3 +198,48 @@ Connect to the Airflow UI at http://localhost:8080
 ## Create Pool
 
 In the airflow UI, using the Admin tab, create pool "opendatalake_download_tasks_pool" with 1 slots.
+
+## Browse the Iceberg catalog with StarRocks (Optional)
+
+Deploy StarRocks (single-container `allin1`: 1 FE + 1 BE) and attach the Polaris/Iceberg tables as an external catalog so you can browse the imported data with SQL. Requires MinIO + Polaris running and at least one Import DAG succeeded.
+
+```
+kubectl apply -f sandbox/k8s/starrocks/
+```
+
+### Wait for StarRocks to be ready (~1-2 minutes)
+```
+kubectl get po | grep starrocks
+```
+The FE accepts connections ~40s after the pod is Running; the BE self-registers a few seconds later. Confirm both are alive:
+```
+kubectl exec -it deploy/opendatalake-starrocks -- mysql -P9030 -h127.0.0.1 -uroot -e "SHOW BACKENDS\G"
+```
+Wait until `Alive: true`.
+
+Note: StarRocks BE needs `vm.max_map_count >= 262144`. The deployment sets it via a privileged init container; if the BE still won't stay alive, set it on the node directly: `minikube ssh -- sudo sysctl -w vm.max_map_count=262144`.
+
+### Create the external catalog
+Run the catalog definition (`sandbox/starrocks/create_iceberg_catalog.sql`) — Polaris serves metadata over REST (OAuth2), StarRocks reads data files straight from MinIO with static creds:
+```sh
+kubectl exec -i deploy/opendatalake-starrocks -- mysql -P9030 -h127.0.0.1 -uroot \
+  < sandbox/starrocks/create_iceberg_catalog.sql
+```
+
+### Browse
+```sh
+kubectl exec -it deploy/opendatalake-starrocks -- mysql -P9030 -h127.0.0.1 -uroot
+```
+```sql
+SHOW CATALOGS;              -- default_catalog + opendatalake
+SET CATALOG opendatalake;
+SHOW DATABASES;             -- Iceberg namespaces (e.g. reference)
+USE reference;
+SHOW TABLES;
+SELECT * FROM clinvar LIMIT 10;
+```
+
+### Connect a GUI (optional)
+With `minikube tunnel` running, point any MySQL client (DBeaver, TablePlus, `mysql`) at `127.0.0.1:9030`, user `root`, empty password.
+
+Note: allin1 is pinned to `4.0.13` — Iceberg REST-catalog OAuth2 was buggy in 3.4/3.5 (StarRocks #57766, #61253). If catalog creation fails with an OAuth2 / `invalid scope` error on another tag, that's the cause.

@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: opendatalake-starrocks
+  name: opendatalake-starrocks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opendatalake-starrocks
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: opendatalake-starrocks
+    spec:
+      initContainers:
+        # StarRocks BE requires vm.max_map_count >= 262144 or it crash-loops / fails scans.
+        # vm.max_map_count is a node-level sysctl; set it from a privileged init container so it
+        # survives pod restarts (alternative: `minikube ssh -- sudo sysctl -w vm.max_map_count=262144`).
+        - name: sysctl
+          image: busybox:1.36
+          command: ["sh", "-c", "sysctl -w vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+      containers:
+        # allin1 runs a full 1-FE + 1-BE cluster in one container and auto-registers the BE.
+        - name: starrocks
+          image: starrocks/allin1-ubuntu:4.0.13
+          ports:
+            - containerPort: 9030  # FE MySQL protocol (SQL)
+              protocol: TCP
+            - containerPort: 8030  # FE HTTP / web UI
+              protocol: TCP
+            - containerPort: 8040  # BE HTTP
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "1"
+              memory: "4Gi"
+            limits:
+              cpu: "3"
+              memory: "6Gi"
+          readinessProbe:
+            tcpSocket:
+              port: 9030
+            initialDelaySeconds: 40
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 9030
+            initialDelaySeconds: 120
+            periodSeconds: 15
+      restartPolicy: Always
