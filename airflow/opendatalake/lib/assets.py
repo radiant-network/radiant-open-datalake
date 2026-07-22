@@ -19,3 +19,10 @@ def downloaded_source_asset(source):
         uri=f"{ASSETS_URI_PREFIX}-downloaded-{source}",
         name=f"{ASSETS_URI_PREFIX} - downloaded {source}",
     )
+
+
+def imported_source_asset(source):
+    return Asset(
+        uri=f"{ASSETS_URI_PREFIX}-imported-{source}",
+        name=f"{ASSETS_URI_PREFIX} - imported {source}",
+    )

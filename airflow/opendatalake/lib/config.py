@@ -8,12 +8,30 @@ all variables to be present.
 
 # Importing from airflow.models instead of airflow.sdk to avoid test initialization issues.
 # This is fixed in newer Airflow versions, so you can switch back to airflow.sdk if we upgrade.
+import os
+
 from airflow.models import Variable
 
 # S3 settings
 environment = Variable.get("environment", "dev")
 s3_conn_id = "opendatalake_s3"
-raw_datalake_bucket = f"opendatalake-{environment}"
+
+raw_datalake_bucket = os.getenv("OPENDATALAKE_RAW_BUCKET", f"opendatalake-{environment}")
+
+# Root under the bucket where raw source files land. (passed to Spark as --raw-storage).
+# Keep in sync with the Spark raw_storage root.
+_raw_landing_root = os.getenv("OPENDATALAKE_RAW_LANDING_ROOT", "raw/landing")
+
+
+def raw_landing_prefix(source: str, version: str) -> str:
+    """S3 key prefix (within raw_datalake_bucket) for a source version's raw files."""
+    return f"{_raw_landing_root}/{source}/{version}"
+
+
+def raw_storage_uri() -> str:
+    """Full s3a:// root the Spark job reads raw data from (overrides the baked config at runtime)."""
+    return f"s3a://{raw_datalake_bucket}/{_raw_landing_root}"
+
 
 # DAGs settings
 

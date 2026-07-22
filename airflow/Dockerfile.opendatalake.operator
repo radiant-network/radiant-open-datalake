@@ -10,8 +10,7 @@ COPY constraints-python3.12.txt /opt/opendatalake/constraints-python3.12.txt
 
 RUN pip install -r /opt/opendatalake/requirements.txt --constraint /opt/opendatalake/constraints-python3.12.txt
 
-# Setup Open Datalake code
-COPY dags /opt/opendatalake/dags
+COPY opendatalake /opt/opendatalake/opendatalake
 
 # Necessary to have those scripts when running in AWS ECS
 COPY scripts/ecs/ /opt/opendatalake/

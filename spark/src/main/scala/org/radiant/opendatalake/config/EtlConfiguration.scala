@@ -25,17 +25,9 @@ object EtlConfiguration extends App {
    *   s3://opendatalake-<env>/iceberg/reference/                                               *
                                                                                                 *
    **********************************************************************************************/
-  val qa_storage = List(
-    StorageConf(iceberg_storage_id, s"s3a://opendatalake-qa/iceberg/${iceberg_database}", S3),
-    StorageConf(raw_storage_id, "s3a://opendatalake-qa/raw/landing", S3)
-  )
-  val staging_storage = List(
-    StorageConf(iceberg_storage_id, s"s3a://opendatalake-staging/iceberg/${iceberg_database}", S3),
-    StorageConf(raw_storage_id, "s3a://opendatalake-staging/raw/landing", S3)
-  )
   val prd_storage = List(
-    StorageConf(iceberg_storage_id, s"s3a://opendatalake-prod/iceberg/${iceberg_database}", S3),
-    StorageConf(raw_storage_id, "s3a://opendatalake-prod/raw/landing", S3)
+    StorageConf(iceberg_storage_id, s"s3a://opendatalake-prd/iceberg/${iceberg_database}", S3),
+    StorageConf(raw_storage_id, "s3a://opendatalake-prd/raw/landing", S3)
   )
 
   /*
@@ -59,8 +51,8 @@ object EtlConfiguration extends App {
 
   val sources = List(
     //raw
-    DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/clinvar.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/GCF_000001405.40.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/{{VERSION}}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_genomes_v3", raw_storage_id, "/gnomad_v3/release/3.1/vcf/genomes/gnomad.genomes.v3.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")).copy(storageid = gnomad_storage_id),
     DatasetConf("raw_gnomad_joint_v4", raw_storage_id, "/gnomad_v4/release/4.1/vcf/joint/gnomad.joint.v4.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_cnv_v4", raw_storage_id, "/gnomad_v4/release/4.1/exome_cnv/gnomad.v4.1.cnv.all.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
@@ -122,18 +114,6 @@ object EtlConfiguration extends App {
     DatasetConf("enriched_rare_variant", iceberg_storage_id, "/enriched/rare_variant", ICEBERG, OverWrite, partitionby = List("chromosome", "is_rare"), table = table("rare_variant_enriched"))
   )
 
-  val qa_conf = SimpleConfiguration(DatalakeConf(
-    storages = qa_storage,
-    sources = sources,
-    sparkconf = spark_conf
-  ))
-
-  val staging_conf = SimpleConfiguration(DatalakeConf(
-    storages = staging_storage,
-    sources = sources,
-    sparkconf = spark_conf
-  ))
-
   val prd_conf = SimpleConfiguration(DatalakeConf(
     storages = prd_storage,
     sources = sources,
@@ -153,8 +133,6 @@ object EtlConfiguration extends App {
     sparkconf = spark_conf
   ))
 
-  ConfigurationWriter.writeTo("src/main/resources/config/qa.conf", qa_conf)
-  ConfigurationWriter.writeTo("src/main/resources/config/staging.conf", staging_conf)
-  ConfigurationWriter.writeTo("src/main/resources/config/prod.conf", prd_conf)
+  ConfigurationWriter.writeTo("src/main/resources/config/prd.conf", prd_conf)
   ConfigurationWriter.writeTo("src/test/resources/config/test.conf", test_conf)
 }

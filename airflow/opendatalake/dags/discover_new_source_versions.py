@@ -29,7 +29,7 @@ def discover_new_source_versions():
             logging.warning(f"Could not determine latest version for source {source}, skipping update check")
             return
 
-        prefix = f"raw/{source}/{latest_version}"
+        prefix = config.raw_landing_prefix(source, latest_version)
 
         s3_hook = S3Hook(config.s3_conn_id)
 
