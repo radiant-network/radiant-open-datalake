@@ -32,6 +32,7 @@ def raw_storage_uri() -> str:
     """Full s3a:// root the Spark job reads raw data from (overrides the baked config at runtime)."""
     return f"s3a://{raw_datalake_bucket}/{_raw_landing_root}"
 
+
 # DAGs settings
 
 DAG_ID_PREFIX = "opendatalake"
