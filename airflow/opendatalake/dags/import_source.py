@@ -1,43 +1,35 @@
-from airflow.exceptions import AirflowException
-from airflow.sdk import XComArg, dag
+from airflow.sdk import Metadata, XComArg, dag, task
 
 from opendatalake.lib import config
-from opendatalake.lib.assets import downloaded_source_asset
-from opendatalake.lib.domain.model.sources import get_auto_update_source_ids
+from opendatalake.lib.assets import downloaded_source_asset, imported_source_asset
+from opendatalake.lib.domain.model.sources import (
+    get_auto_update_source_ids,
+    get_display_name,
+    get_import_config,
+)
 from opendatalake.lib.operators.emr import EmrServerlessJobOperator
 from opendatalake.lib.tasks import get_version
 
-_SPARK_COMMAND = {
-    "clinvar": "clinvar",
-    "dbsnp": "dbsnp",
-}
-
-_SOURCES_OVERRIDES = {
-    "dbsnp": {
-        "spark_conf": {"spark.dynamicAllocation.maxExecutors": "16"},
-        "waiter_max_attempts": 960,  # ~16h
-    },
-}
-
-
-def _spark_command_for(source_id: str) -> str:
-    try:
-        return _SPARK_COMMAND[source_id]
-    except KeyError:
-        raise AirflowException(
-            f"No Spark command mapped for source '{source_id}'. Add it to _SPARK_COMMAND in import_source.py."
-        ) from None
-
 
 def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobOperator:
-    command = _spark_command_for(source_id)
-    tuning = _SOURCES_OVERRIDES.get(source_id, {})
+    import_config = get_import_config(source_id)
+    display_name = get_display_name(source_id)
+
+    tuning = {
+        k: v
+        for k, v in (
+            ("spark_conf", import_config.spark_conf),
+            ("waiter_max_attempts", import_config.waiter_max_attempts),
+        )
+        if v is not None
+    }
+
     return EmrServerlessJobOperator(
         task_id="run_spark_import",
-        task_display_name=f"[EMR] Import {source_id.capitalize()}",
+        task_display_name=f"[EMR] Import {display_name}",
         name=f"opendatalake-{config.environment}-import-{source_id}-{{{{ ts_nodash }}}}",
         entry_point_arguments=[
-            command,
+            import_config.spark_command,
             "--config",
             f"config/{config.environment}.conf",
             "--steps",
@@ -53,17 +45,24 @@ def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobO
 
 def _make_import_source_dag(source_id: str):
     input_asset = downloaded_source_asset(source_id)
+    output_asset = imported_source_asset(source_id)
+    display_name = get_display_name(source_id)
 
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-import-{source_id}",
-        dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Import {source_id.capitalize()}",
+        dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Import {display_name}",
         schedule=input_asset,
         tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "import"]],
         catchup=False,
     )
     def _import():
+        @task(outlets=[output_asset], task_display_name="[PyOp] Finalize Import")
+        def finalize_import(version):
+            yield Metadata(asset=output_asset, extra={"version": version})
+
         version = get_version(input_asset)
-        build_import_operator(source_id, version)
+        import_task = build_import_operator(source_id, version)
+        import_task >> finalize_import(version)
 
     _import()
 

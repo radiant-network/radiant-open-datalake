@@ -3,14 +3,14 @@ package org.radiant.opendatalake.normalized
 
 import bio.ferlab.datalake.commons.config.{Coalesce, DatasetConf, RuntimeETLContext}
 import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import bio.ferlab.datalake.spark3.implicits.SparkUtils._
-import org.radiant.opendatalake.config.RawInput
-import mainargs.{ParserForMethods, arg, main}
+import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
+import org.radiant.opendatalake.mainutils.{RawStorage, Version}
+import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 import scala.collection.mutable
@@ -23,7 +23,7 @@ case class Clinvar(rc: RuntimeETLContext, version: String, rawStorage: String) e
 
   override def extract(lastRunValue: LocalDateTime,
                        currentRunValue: LocalDateTime): Map[String, DataFrame] = {
-    Map(clinvar_vcf.id -> RawInput.readVersioned(rc, clinvar_vcf.id, version, rawStorage))
+    Map(clinvar_vcf.id -> RawInput.readVersioned(clinvar_vcf.id, version, rawStorage))
   }
 
   override def transformSingle(data: Map[String, DataFrame],
@@ -141,11 +141,8 @@ case class Clinvar(rc: RuntimeETLContext, version: String, rawStorage: String) e
 
 object Clinvar {
   @main
-  def run(rc: RuntimeETLContext,
-          @arg(name = "version", doc = "Source version, substituted into the raw read path") version: String,
-          @arg(name = "raw-storage", doc = "s3a root for raw input, overrides the config storage root")
-          rawStorage: String): Unit = {
-    Clinvar(rc, version, rawStorage).run()
+  def run(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit = {
+    Clinvar(rc, version.value, rawStorage.value).run()
   }
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)

@@ -50,12 +50,20 @@ class UpdateMode(Enum):
 
 
 @dataclass(frozen=True)
+class ImportConfig:
+    spark_command: str
+    spark_conf: dict[str, str] | None = None
+    waiter_max_attempts: int | None = None
+
+
+@dataclass(frozen=True)
 class SourceConfig:
     short_name: str
     display_name: str
     website: str
     download_configs: list[DownloadConfig]
     update_mode: UpdateMode = UpdateMode.MANUAL
+    import_config: ImportConfig | None = None
 
     def get_latest_version(self) -> str:
         """Override this method to specify how to retrieve the latest version for a source.
