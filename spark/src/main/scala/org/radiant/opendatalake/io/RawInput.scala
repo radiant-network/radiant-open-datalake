@@ -1,4 +1,4 @@
-package org.radiant.opendatalake.config
+package org.radiant.opendatalake.io
 
 import bio.ferlab.datalake.commons.config.{RuntimeETLContext, SimpleConfiguration}
 import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._

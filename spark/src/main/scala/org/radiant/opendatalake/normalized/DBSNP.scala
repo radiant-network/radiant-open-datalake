@@ -5,7 +5,7 @@ import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, Ru
 import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
 import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
-import org.radiant.opendatalake.config.RawInput
+import org.radiant.opendatalake.io.RawInput
 import mainargs.{ParserForMethods, arg, main}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
