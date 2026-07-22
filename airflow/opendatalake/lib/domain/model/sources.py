@@ -1,6 +1,6 @@
 from enum import Enum
 
-from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
+from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
 
 _VCF_LABEL = "vcf"
@@ -22,6 +22,7 @@ class _Source(Enum):
             )
         ],
         update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="clinvar"),
     )
     DBSNP = DBSNPSourceConfig(
         short_name="dbsnp",
@@ -42,6 +43,11 @@ class _Source(Enum):
             ),
         ],
         update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(
+            spark_command="dbsnp",
+            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            waiter_max_attempts=960,  # ~16h
+        ),
     )
 
 
@@ -62,6 +68,18 @@ def get_download_config_at_index(source: str, index: int) -> DownloadConfig:
             f"Download config index {index} invalid for '{source}' (allowed: 0–{len(download_configs) - 1})"
         )
     return download_configs[index]
+
+
+def get_display_name(source: str) -> str:
+    return _Source[source.upper()].value.display_name
+
+
+def get_import_config(source: str) -> ImportConfig:
+    source_enum = _Source[source.upper()]
+    import_config = source_enum.value.import_config
+    if import_config is None:
+        raise ValueError(f"Source '{source}' has no import_config; declare one in sources.py to import it.")
+    return import_config
 
 
 def get_auto_update_source_ids() -> list[str]:
