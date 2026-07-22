@@ -31,14 +31,14 @@ kubectl config set-context --current --namespace=opendatalake
 kubectl apply -f sandbox/k8s/minio/
 ```
 
-## Monitor Minio pods are running (1 minutes)
+## Monitor Minio pods are running
 ```
 kubectl get po | grep minio
 ```
 Results 1 pod running and 1 pod completed:
 ```
-opendatalake-minio-58c696c58c-2hkqz        1/1     Running     0          85s
-opendatalake-minio-bucket-init-job-5hp2b   0/1     Completed   0          85s
+opendatalake-minio-xxxxxxxxxx-xxxxx        1/1     Running     0          85s
+opendatalake-minio-bucket-init-job-xxxxx   0/1     Completed   0          85s
 ```
 
 ## Install Apache Polaris (Iceberg catalog)
@@ -51,13 +51,13 @@ kubectl apply -f sandbox/k8s/polaris/
 
 This starts Polaris (realm `POLARIS`, root principal `root`/`s3cr3t`) and runs a one-shot Job that creates the `opendatalake` catalog (`default-base-location` `s3://opendatalake-dev/iceberg`, path-style MinIO, no STS — Polaris vends the static MinIO credentials) plus the `reference` namespace.
 
-## Monitor Polaris is running and the catalog was created (1 minute)
+## Monitor Polaris is running and the catalog was created
 ```
 kubectl get po | grep polaris
 ```
 Results 1 pod running and 1 pod completed:
 ```
-polaris-6b7c9d5f8c-abcde           1/1     Running     0          60s
+polaris-xxxxxxxxxx-xxxxx           1/1     Running     0          60s
 polaris-catalog-init-job-xxxxx     0/1     Completed   0          60s
 ```
 Check the init job logs to confirm the catalog/namespace calls returned `200`/`201` (or `409` if already created):
@@ -72,14 +72,14 @@ Note: Polaris uses an in-memory metastore here — catalog metadata is lost if t
 kubectl apply -f sandbox/k8s/postgres/
 ```
 
-## Monitor Postgres pods are running (1 minutes)
+## Monitor Postgres pods are running
 ```
 kubectl get po | grep postgres
 ```
 Results 1 pod running and 1 pod completed:
 ```
-postgres-585445b9cc-gxnvx             1/1     Running     0          23s
-postgres-init-job-fhtgf               0/1     Completed   0          23s
+postgres-xxxxxxxxxx-xxxxx             1/1     Running     0          23s
+postgres-init-job-xxxxx               0/1     Completed   0          23s
 ```
 
 ## Mount volume for dags in minikube
@@ -92,7 +92,7 @@ itself) so the DAG files' `from opendatalake... import` statements resolve — t
 minikube mount $(pwd)/opendatalake:/opt/airflow/dags/opendatalake
 ```
 
-## Pre-building the Open Datalake ECS task operator image (~6 minutes)
+## Pre-building the Open Datalake ECS task operator image
 
 Run the following command to build the image:
 
@@ -101,7 +101,7 @@ eval $(minikube -p minikube docker-env)  # To ensure the image is built inside m
 docker build -t ghcr.io/radiant-network/opendatalake-airflow-task-operator:latest -f Dockerfile.opendatalake.operator .
 ```
 
-## Building the Spark ETL image (~10 minutes)
+## Building the Spark ETL image
 
 To let Airflow run the import (Spark) jobs on local Spark, build the Scala fat JAR and bake it into a Spark image inside minikube's docker environment. The image (`Dockerfile.opendatalake.spark`, in the `spark/` directory) is `apache/spark:3.5.5` + the fat JAR; jobs run as `spark-submit --master local[*]`.
 
@@ -133,8 +133,8 @@ sed -i '' 's/operators\.ecs/operators\.k8s/g'  opendatalake/dags/download_source
 
 To revert back to the ECS operator:
 ```sh
-rm dags/lib/operators/k8s.py
-sed -i '' 's/operators\.k8s/operators\.ecs/g'  dags/download_source.py
+rm opendatalake/lib/operators/k8s.py
+sed -i '' 's/operators\.k8s/operators\.ecs/g'  opendatalake/dags/download_source.py
 ```
 
 Note: The swap commands will modify your code copy. Make sure you do not commit the operator swap to version control.
@@ -173,17 +173,17 @@ helm upgrade --install airflow apache-airflow/airflow -f sandbox/values/airflow-
 ```
 Took 5 minutes to install Airflow
 
-## Monitor Airflow pod are running (5 minutes)
+## Monitor Airflow pod are running
 ```
 kubectl get po | grep airflow
 ```
 Results 6 pods running:
 ```
-airflow-api-server-6466bc98bd-gq7bj      1/1     Running     0          2m11s
-airflow-dag-processor-58fcdfdb65-4rdkf   2/2     Running     0          2m11s
+airflow-api-server-xxxxxxxxxx-xxxxx      1/1     Running     0          2m11s
+airflow-dag-processor-xxxxxxxxxx-xxxxx   2/2     Running     0          2m11s
 airflow-redis-0                          1/1     Running     0          2m11s
-airflow-scheduler-f5df7bc8c-rpz25        2/2     Running     0          2m11s
-airflow-statsd-688b56dc48-flndk          1/1     Running     0          2m11s
+airflow-scheduler-xxxxxxxxx-xxxxx        2/2     Running     0          2m11s
+airflow-statsd-xxxxxxxxxx-xxxxx          1/1     Running     0          2m11s
 airflow-triggerer-0                      2/2     Running     0          2m11s
 airflow-worker-0                         2/2     Running     0          2m11s
 ```
@@ -199,6 +199,12 @@ Connect to the Airflow UI at http://localhost:8080
 
 In the airflow UI, using the Admin tab, create pool "opendatalake_download_tasks_pool" with 1 slots.
 
+## Ensure DAGs are activated before running
+
+In the airflow UI, toggle the activation for every DAG you want to import before triggering the `Open Datalake - Discover New Source Version` DAG.
+
+![activate_dags.png](docs/activate_dags.png)
+
 ## Browse the Iceberg catalog with StarRocks (Optional)
 
 Deploy StarRocks (single-container `allin1`: 1 FE + 1 BE) and attach the Polaris/Iceberg tables as an external catalog so you can browse the imported data with SQL. Requires MinIO + Polaris running and at least one Import DAG succeeded.
@@ -207,7 +213,7 @@ Deploy StarRocks (single-container `allin1`: 1 FE + 1 BE) and attach the Polaris
 kubectl apply -f sandbox/k8s/starrocks/
 ```
 
-### Wait for StarRocks to be ready (~1-2 minutes)
+### Wait for StarRocks to be ready
 ```
 kubectl get po | grep starrocks
 ```
@@ -238,8 +244,3 @@ USE reference;
 SHOW TABLES;
 SELECT * FROM clinvar LIMIT 10;
 ```
-
-### Connect a GUI (optional)
-With `minikube tunnel` running, point any MySQL client (DBeaver, TablePlus, `mysql`) at `127.0.0.1:9030`, user `root`, empty password.
-
-Note: allin1 is pinned to `4.0.13` — Iceberg REST-catalog OAuth2 was buggy in 3.4/3.5 (StarRocks #57766, #61253). If catalog creation fails with an OAuth2 / `invalid scope` error on another tag, that's the cause.
