@@ -3,12 +3,12 @@ package org.radiant.opendatalake.normalized
 
 import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, RuntimeETLContext}
 import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
-import org.radiant.opendatalake.io.RawInput
-import mainargs.{ParserForMethods, arg, main}
+import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
+import org.radiant.opendatalake.mainutils.{RawStorage, Version}
+import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
@@ -20,7 +20,7 @@ case class DBSNP(rc: RuntimeETLContext, version: String, rawStorage: String) ext
 
   override def extract(lastRunValue: LocalDateTime = minValue,
                        currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
-    Map(raw_dbsnp.id -> RawInput.readVersioned(rc, raw_dbsnp.id, version, rawStorage))
+    Map(raw_dbsnp.id -> RawInput.readVersioned(raw_dbsnp.id, version, rawStorage))
   }
 
   override def transformSingle(data: Map[String, DataFrame],
@@ -51,11 +51,8 @@ case class DBSNP(rc: RuntimeETLContext, version: String, rawStorage: String) ext
 
 object DBSNP {
   @main
-  def run(rc: RuntimeETLContext,
-          @arg(name = "version", doc = "Source version, substituted into the raw read path") version: String,
-          @arg(name = "raw-storage", doc = "s3a root for raw input, overrides the config storage root")
-          rawStorage: String): Unit = {
-    DBSNP(rc, version, rawStorage).run()
+  def run(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit = {
+    DBSNP(rc, version.value, rawStorage.value).run()
   }
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
