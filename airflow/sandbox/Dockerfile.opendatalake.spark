@@ -1,0 +1,32 @@
+# Local sandbox image: bundles the Open Datalake fat JAR on top of Apache Spark 3.5.5 so the
+# Airflow KubernetesPodOperator can run `spark-submit --master local[*]` inside minikube.
+#
+# This Dockerfile lives in `airflow/sandbox/`, but its build context is the `spark/` directory
+# (COPY paths are relative to `spark/`). Build the JAR first with `sbt clean assembly`, then from
+# `airflow/`: `docker build -f sandbox/Dockerfile.opendatalake.spark ../spark`.
+FROM apache/spark:3.5.5
+
+USER root
+WORKDIR /opt/app
+
+# Fat JAR produced by `sbt clean assembly` (spark-sql / hadoop-client are Provided and supplied by
+# the base image; hadoop-aws, iceberg and glow are shaded into the JAR).
+COPY target/scala-2.12/radiant-open-datalake-spark.jar /opt/app/radiant-open-datalake-spark.jar
+
+# The import DAG loads its dataset config from the classpath as `config/<environment>.conf`
+# (environment defaults to "dev" in the sandbox). Only prd.conf ships in the JAR, so expose a
+# dev.conf on an extra classpath dir.
+COPY src/main/resources/config/prd.conf /opt/app/conf-extra/config/dev.conf
+
+# Point storage at the sandbox MinIO bucket (opendatalake-dev). FerLab uses the iceberg StorageConf
+# path as the Iceberg table LOCATION, so the baked prd bucket must be rewritten or writes 404 with
+# NoSuchBucket. Use the s3:// scheme for iceberg (Iceberg S3FileIO + Polaris allowedLocations expect
+# it); raw stays s3a:// for Hadoop (and is overridden at runtime via --raw-storage anyway).
+RUN sed -i \
+    -e 's#s3a://opendatalake-prd/iceberg#s3://opendatalake-dev/iceberg#g' \
+    -e 's#opendatalake-prd#opendatalake-dev#g' \
+    /opt/app/conf-extra/config/dev.conf
+
+RUN chown -R spark:spark /opt/app
+
+USER spark

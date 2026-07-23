@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polaris-catalog-init-job
+spec:
+  backoffLimit: 10
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: create-catalog
+          image: alpine:3.20
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              apk add --no-cache curl jq >/dev/null
+              POLARIS=http://polaris:8181
+
+              # Wait until Polaris is up and hands out an OAuth2 token for the root principal.
+              echo "Requesting token from Polaris..."
+              until TOKEN=$(curl -sf "$POLARIS/api/catalog/v1/oauth/tokens" \
+                    --user root:s3cr3t \
+                    -H "Polaris-Realm: POLARIS" \
+                    -d grant_type=client_credentials \
+                    -d scope=PRINCIPAL_ROLE:ALL | jq -r .access_token) \
+                    && [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ]; do
+                echo "...waiting for Polaris..."
+                sleep 3
+              done
+
+              AUTH="Authorization: Bearer $TOKEN"
+              REALM="Polaris-Realm: POLARIS"
+
+              # Create the "opendatalake" catalog backed by MinIO. Both endpoint and endpointInternal
+              # are the in-cluster MinIO service (Polaris and Spark both run inside minikube).
+              # No roleArn => Polaris vends the static MinIO creds directly (no STS).
+              echo "Creating catalog opendatalake (409 = already exists, ignored)..."
+              curl -s -o /dev/null -w "  catalog: %{http_code}\n" \
+                -H "$AUTH" -H "$REALM" -H 'Content-Type: application/json' \
+                "$POLARIS/api/management/v1/catalogs" \
+                -d '{
+                  "catalog": {
+                    "name": "opendatalake",
+                    "type": "INTERNAL",
+                    "readOnly": false,
+                    "properties": { "default-base-location": "s3://opendatalake-dev/iceberg" },
+                    "storageConfigInfo": {
+                      "storageType": "S3",
+                      "endpoint": "http://opendatalake-minio:9000",
+                      "endpointInternal": "http://opendatalake-minio:9000",
+                      "pathStyleAccess": true,
+                      "allowedLocations": ["s3://opendatalake-dev/iceberg"]
+                    }
+                  }
+                }'
+
+              # Grant the auto-provisioned catalog_admin role read/write on table + namespace data.
+              echo "Granting CATALOG_MANAGE_CONTENT..."
+              curl -s -o /dev/null -w "  grant: %{http_code}\n" \
+                -H "$AUTH" -H "$REALM" -H 'Content-Type: application/json' -X PUT \
+                "$POLARIS/api/management/v1/catalogs/opendatalake/catalog-roles/catalog_admin/grants" \
+                -d '{"type":"catalog","privilege":"CATALOG_MANAGE_CONTENT"}'
+
+              # Pre-create the "reference" namespace the ETL writes its Iceberg tables into.
+              echo "Creating namespace reference (409 = already exists, ignored)..."
+              curl -s -o /dev/null -w "  namespace: %{http_code}\n" \
+                -H "$AUTH" -H "$REALM" -H 'Content-Type: application/json' \
+                "$POLARIS/api/catalog/v1/opendatalake/namespaces" \
+                -d '{"namespace":["reference"]}'
+
+              echo "Polaris catalog bootstrap complete."
