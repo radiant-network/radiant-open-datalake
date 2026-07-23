@@ -1,7 +1,9 @@
 # Local sandbox image: bundles the Open Datalake fat JAR on top of Apache Spark 3.5.5 so the
 # Airflow KubernetesPodOperator can run `spark-submit --master local[*]` inside minikube.
 #
-# Build context is the `spark/` directory. Build the JAR first with `sbt clean assembly`.
+# This Dockerfile lives in `airflow/sandbox/`, but its build context is the `spark/` directory
+# (COPY paths are relative to `spark/`). Build the JAR first with `sbt clean assembly`, then from
+# `airflow/`: `docker build -f sandbox/Dockerfile.opendatalake.spark ../spark`.
 FROM apache/spark:3.5.5
 
 USER root

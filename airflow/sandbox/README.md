@@ -103,20 +103,18 @@ docker build -t ghcr.io/radiant-network/opendatalake-airflow-task-operator:lates
 
 ## Building the Spark ETL image
 
-To let Airflow run the import (Spark) jobs on local Spark, build the Scala fat JAR and bake it into a Spark image inside minikube's docker environment. The image (`Dockerfile.opendatalake.spark`, in the `spark/` directory) is `apache/spark:3.5.5` + the fat JAR; jobs run as `spark-submit --master local[*]`.
+To let Airflow run the import (Spark) jobs on local Spark, build the Scala fat JAR and bake it into a Spark image inside minikube's docker environment. The Dockerfile (`airflow/sandbox/Dockerfile.opendatalake.spark`) builds `apache/spark:3.5.5` + the fat JAR; jobs run as `spark-submit --master local[*]`. Build the JAR from `spark/`, then build the image from `airflow/` with the `spark/` directory as the build context (COPY paths are relative to `spark/`).
 
-Run from the `spark/` directory:
 ```sh
-cd ../spark
-
 # Build the fat JAR -> target/scala-2.12/radiant-open-datalake-spark.jar
+cd ../spark
 sbt clean assembly
 
-# Build the image inside minikube's docker so the KubernetesPodOperator can pull it locally
-eval $(minikube -p minikube docker-env)
-docker build -t ghcr.io/radiant-network/opendatalake-spark:latest -f Dockerfile.opendatalake.spark .
-
+# Back in airflow/, build the image inside minikube's docker so the KubernetesPodOperator can pull
+# it locally. Dockerfile is in sandbox/; the build context is the sibling spark/ directory.
 cd ../airflow
+eval $(minikube -p minikube docker-env)
+docker build -t ghcr.io/radiant-network/opendatalake-spark:latest -f sandbox/Dockerfile.opendatalake.spark ../spark
 ```
 
 Note: `spark-sql`/`hadoop-client` are `Provided` (supplied by the base image); `hadoop-aws`, Iceberg and Glow are shaded into the JAR, so no `--packages` are needed at runtime.
