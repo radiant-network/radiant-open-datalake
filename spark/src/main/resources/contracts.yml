@@ -3,21 +3,20 @@
 # Source of truth for the contracts the ETL must execute (SJRA-1546, section 3.1).
 # One entry per source under `sources.<name>.contracts`. Fields:
 #   lineage       - "{MAJOR}.{MINOR}" the contract corresponds to (dot separated).
-#   table         - Iceberg table name linked to that lineage's MAJOR.
-#   normalizer    - FQCN of the normalizer holding the schema for that lineage's MAJOR.
-#   release_notes - Path to the release notes for that lineage's MAJOR.
+#   table         - Iceberg table name linked to that lineage's MAJOR. Also the key ContractRegistry
+#                   maps to the normalizer that implements the contract.
+#   release_notes - Path to the release notes for that lineage's MAJOR, relative to `spark/`.
 #
-# A new MINOR bumps `lineage` on the existing row; a new MAJOR adds a new row.
+# A new MINOR bumps `lineage` on the existing row; a new MAJOR adds a new row plus a
+# ContractRegistry entry under the new table name.
 sources:
   clinvar:
     contracts:
       - lineage: "1.0"
         table: "clinvar"
-        normalizer: "org.radiant.opendatalake.normalized.Clinvar"
         release_notes: "doc/release-notes/clinvar/v1.md"
   dbsnp:
     contracts:
       - lineage: "1.0"
         table: "dbsnp"
-        normalizer: "org.radiant.opendatalake.normalized.DBSNP"
         release_notes: "doc/release-notes/dbsnp/v1.md"

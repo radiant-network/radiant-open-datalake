@@ -13,7 +13,7 @@ import org.radiant.opendatalake.normalized.io.RawInput
 import java.time.LocalDateTime
 import scala.collection.mutable
 
-case class Clinvar(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc) {
+case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc) {
 
   override val mainDestination: DatasetConf = conf.getDataset("normalized_clinvar")
 

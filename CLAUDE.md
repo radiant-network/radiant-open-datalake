@@ -164,23 +164,27 @@ and the discovered version at launch time.
 ## Data contracts (`config/contracts/`, SJRA-1546 / SJRA-1747)
 
 `spark/src/main/resources/contracts.yml` is the declared source of truth for which contracts the ETL
-must execute: per source, a `lineage` `"{MAJOR}.{MINOR}"`, its `table`, the normalizer FQCN, and a
-`release_notes` path (relative to `spark/`, under `spark/doc/release-notes/<source>/v<MAJOR>.md`).
-MAJOR identifies the table/normalizer pair (new MAJOR = new row); MINOR is bumped in place when
-columns are added by schema evolution. `Contracts.load()` parses it off the classpath with Jackson
-YAML (snake_case → camelCase, `FAIL_ON_UNKNOWN_PROPERTIES` on, so a typo'd key throws). Jackson passes
-*null*, never an empty collection, for empty yaml keys, so `Contracts` normalizes both a null
-`sources` map and a null per-source value — otherwise a half-written file NPEs instead of reporting
-itself.
+must execute: per source, a `lineage` `"{MAJOR}.{MINOR}"`, its `table`, and a `release_notes` path
+(relative to `spark/`, under `spark/doc/release-notes/<source>/v<MAJOR>.md`, Keep a Changelog format).
+MAJOR identifies the table (new MAJOR = new row); MINOR is bumped in place when columns are added by
+schema evolution. The yaml deliberately carries **no normalizer class name** — `(table, MAJOR)` is the
+registry key, so the implementing class is named once, in Scala, where the compiler checks it.
+`Contracts.load()` parses the file off the classpath with Jackson YAML (snake_case → camelCase,
+`FAIL_ON_UNKNOWN_PROPERTIES` on, so a typo'd key throws). Jackson passes *null*, never an empty
+collection, for empty yaml keys, so `Contracts` normalizes both a null `sources` map and a null
+per-source value — otherwise a half-written file NPEs instead of reporting itself.
 
-`ContractsSpec` is the guard on the two untyped string fields: every `normalizer` must resolve to a
-concrete `ETL` taking a `RuntimeETLContext`, and every `release_notes` path must exist on disk.
+`release_notes` is the only untyped path left in the file; `ContractsSpec` asserts each one exists on
+disk, and `ContractRegistrySpec` keeps the declared `(table, MAJOR)` pairs and the registry keys in
+bijection.
 
 **Fan-out.** Contract-declared sources dispatch through `ContractRunner.run(source, …)` instead of a
 hard-coded job: the CLI command names the *source*, `contracts.yml` decides which normalizers run for
 it (SJRA-1546 §3.2). Adding a MAJOR = a `contracts.yml` row + a `ContractRegistry` entry, no CLI
-change. `ContractRegistry` maps the declared FQCN to a factory (keys are `classOf[…].getName`, so
-renames follow) — a registry rather than reflection because normalizer constructor arities differ.
+change. `ContractRegistry` maps the declared `(table, MAJOR)` to a factory — a registry rather than
+reflection because normalizer constructor arities differ, and keyed on that pair because MAJOR is what
+identifies a contract: reusing a table name under a new MAJOR must resolve to a new normalizer, not
+silently to the old one.
 The fan-out builds and validates every job before running any (`ContractRunner.build`): unknown
 source, a MAJOR declared twice, unregistered normalizer, or a `contracts.yml` `table` that disagrees
 with the normalizer's `mainDestination` all fail before the first table is written. `contracts` and
@@ -236,7 +240,8 @@ shared tmp warehouse make parallel runs unsafe.
 3. Register the table in `EtlConfiguration.scala` and regenerate configs via `sbt runMain`
 4. Register the Spark command in `ImportPublicTable.scala`
 5. Declare the source's data contract in `spark/src/main/resources/contracts.yml` (SJRA-1546):
-   `lineage` (`{MAJOR}.{MINOR}`), `table`, normalizer FQCN, `release_notes` path
+   `lineage` (`{MAJOR}.{MINOR}`), `table`, `release_notes` path — then map that `(table, MAJOR)` to the
+   normalizer in `ContractRegistry`, and write the release notes file the row points at
 6. Add a spec under `spark/src/test/scala/.../normalized/` (see Test harness above)
 
 ## Known rough edges

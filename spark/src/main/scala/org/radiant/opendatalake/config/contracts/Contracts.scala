@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, Pro
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
-case class Contract(lineage: String, table: String, normalizer: String, releaseNotes: String) {
+case class Contract(lineage: String, table: String, releaseNotes: String) {
 
   private val parts: Array[String] = lineage.split('.')
   require(

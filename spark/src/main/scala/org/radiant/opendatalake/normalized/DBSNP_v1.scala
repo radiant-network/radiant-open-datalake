@@ -10,7 +10,7 @@ import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class DBSNP(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc)  {
+case class DBSNP_v1(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc)  {
 
   override val mainDestination: DatasetConf = conf.getDataset("normalized_dbsnp")
 
