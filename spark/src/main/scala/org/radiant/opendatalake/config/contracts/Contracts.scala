@@ -17,17 +17,19 @@ case class Contract(lineage: String, table: String, releaseNotes: String) {
 
 case class SourceContracts(contracts: List[Contract])
 
+/*
+  Jackson's nulls are normalized in `declaredSources`, once, so the rest of the class sees clean data:
+  a yaml key present but empty deserializes to *null* and jackson-module-scala does not substitute an
+  empty Map/List.
+*/
 case class Contracts(sources: Map[String, SourceContracts]) {
 
-  private def declaredSources: Map[String, SourceContracts] = Option(sources).getOrElse(Map.empty)
+  private lazy val declaredSources: Map[String, SourceContracts] =
+    Option(sources).getOrElse(Map.empty).map { case (name, declared) =>
+      name -> SourceContracts(Option(declared).flatMap(d => Option(d.contracts)).getOrElse(Nil))
+    }
 
-  def forSource(source: String): List[Contract] = {
-    val declared = for {
-      sourceContracts <- declaredSources.get(source).flatMap(Option(_))
-      contracts <- Option(sourceContracts.contracts)
-    } yield contracts
-    declared.getOrElse(Nil)
-  }
+  def forSource(source: String): List[Contract] = declaredSources.get(source).map(_.contracts).getOrElse(Nil)
 
   def sourceNames: Set[String] = declaredSources.keySet
 }
@@ -52,5 +54,6 @@ object Contracts {
     finally stream.close()
   }
 
+  // For test purposes only
   def parse(yaml: String): Contracts = mapper.readValue(yaml, classOf[Contracts])
 }

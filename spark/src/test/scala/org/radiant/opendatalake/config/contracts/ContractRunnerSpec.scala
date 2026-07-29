@@ -32,7 +32,7 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val acceptAll: ContractRunner.FactoryLookup = _ => Some(_ => fail("plan must not build jobs"))
 
   "plan" should "return every declared contract of the source, in file order" in {
-    ContractRunner.plan("clinvar", twoMajors, acceptAll).map(_.lineage) shouldBe List("1.4", "2.0")
+    ContractRunner.plan("clinvar", twoMajors, acceptAll).map { case (c, _) => c.lineage } shouldBe List("1.4", "2.0")
   }
 
   it should "reject a source with no declared contract" in {
@@ -57,6 +57,7 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", contracts)
     ex.getMessage should include("same MAJOR more than once")
     ex.getMessage should include("'clinvar'")
+    ex.getMessage should include("MAJOR 1: 1.0, 1.3") // the colliding lineages, not just the fact of a collision
   }
 
   it should "reject a table with no registry entry" in {
@@ -71,7 +72,8 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     )
 
     val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", contracts)
-    ex.getMessage should include("No contracts entry for source 'clinvar'")
+    ex.getMessage should include("No ContractRegistry entry for source 'clinvar'")
+    ex.getMessage should include("(clinvar_not_registered, MAJOR 1)")
   }
 
   /*
@@ -93,7 +95,8 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     ContractRegistry.factory(Contract("1.0", "clinvar", "v1.md")) should not be empty
 
     val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", contracts)
-    ex.getMessage should include("No contracts entry for source 'clinvar'")
+    ex.getMessage should include("No ContractRegistry entry for source 'clinvar'")
+    ex.getMessage should include("(clinvar, MAJOR 2)")
   }
 
   "destinationMismatch" should "accept a job writing to the table its contract declares" in {
@@ -130,6 +133,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     ContractRegistry.factory(Contract("1.0", "fake", "v1.md")) shouldBe None
     an[IllegalArgumentException] should be thrownBy ContractRunner.plan("fake", contracts)
 
-    ContractRunner.plan("fake", contracts, acceptAll).map(_.lineage) shouldBe List("1.0")
+    ContractRunner.plan("fake", contracts, acceptAll).map { case (c, _) => c.lineage } shouldBe List("1.0")
   }
 }
