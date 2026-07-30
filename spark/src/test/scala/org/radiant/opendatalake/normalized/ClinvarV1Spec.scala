@@ -8,7 +8,7 @@ import bio.ferlab.datalake.testutils.TestETLContext
 import org.radiant.opendatalake.testutils.{CleanUpBeforeAll, CreateDatabasesBeforeAll, SparkSpec}
 
 
-class ClinvarSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBeforeAll {
+class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBeforeAll {
 
   import spark.implicits._
 
@@ -22,7 +22,7 @@ class ClinvarSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBe
   "transform" should "transform ClinvarInput to ClinvarOutput" in {
     val inputData = Map(source.id -> Seq(RawClinvar("2"), RawClinvar("3")).toDF())
 
-    val resultDF = new Clinvar(TestETLContext(), version = "test", rawStorage = "").transformSingle(inputData)
+    val resultDF = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "").transformSingle(inputData)
 
     val expectedResults = Seq(NormalizedClinvar("2"), NormalizedClinvar("3"))
 
@@ -34,7 +34,7 @@ class ClinvarSpec extends SparkSpec with CreateDatabasesBeforeAll with CleanUpBe
     val secondLoad = Seq(NormalizedClinvar("1", name = "second"), NormalizedClinvar("3"))
     val expectedResults = Seq(NormalizedClinvar("1", name = "second"), NormalizedClinvar("3"))
 
-    val job = new Clinvar(TestETLContext(), version = "test", rawStorage = "")
+    val job = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "")
     job.loadSingle(firstLoad.toDF())
     val firstResult = destination.read
     firstResult.select("chromosome", "start", "end", "reference", "alternate", "name").show(false)

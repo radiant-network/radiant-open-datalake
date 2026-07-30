@@ -2,6 +2,7 @@
 
 ## Versions
 
+- 2026-07-29: Amend the contracts.yml definition.
 - 2026-06-08: Update post-initial draft review.
 - 2026-06-02: Initial draft.
 
@@ -86,11 +87,9 @@ sources:
     contracts:
       - lineage: "1.0"  
         table: "clinvar_v1"
-        normalizer: "org.radiant.opendatalake.normalized.clinvar.clinvar_v1"  # See Normalizers as schemas section
         release_notes: "doc/release-notes/clinvar/v1.md"                      # See Release notes section
       - lineage: "2.0"          
         table: "clinvar_v2"
-        normalizer: "org.radiant.opendatalake.normalized.clinvar.clinvar_v2"
         release_notes: "doc/release-notes/clinvar/v2.md"
 ```
 
@@ -229,3 +228,7 @@ At a minimum, they are available by browsing Github's `Releases` section.
 ## 5. References
 
 - Versioning spec: https://www.notion.so/ferlab/POC-open-datalake-versioning-360b0fcecb3d8050b64ccde3c3ccaa5c
+
+## 6. Amendments 
+
+- 2026-07-29: Removed the normalizer from the `contracts.yml`. The normalizer-as-schema will be handled internally using Scala code. This avoids reflection. 

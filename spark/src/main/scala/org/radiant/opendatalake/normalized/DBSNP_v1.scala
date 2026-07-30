@@ -4,15 +4,13 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, RuntimeETLContext}
 import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
-import org.radiant.opendatalake.mainutils.{RawStorage, Version}
 import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class DBSNP(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc)  {
+case class DBSNP_v1(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc)  {
 
   override val mainDestination: DatasetConf = conf.getDataset("normalized_dbsnp")
 
@@ -47,13 +45,4 @@ case class DBSNP(rc: RuntimeETLContext, version: String, rawStorage: String) ext
 
   override val defaultRepartition: DataFrame => DataFrame = RepartitionByColumns(columnNames = Seq("chromosome"), sortColumns = Seq("start"))
 
-}
-
-object DBSNP {
-  @main
-  def run(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit = {
-    DBSNP(rc, version.value, rawStorage.value).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }

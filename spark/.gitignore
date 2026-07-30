@@ -1,6 +1,8 @@
+.bsp/
 derby.log
 metastore_db/
 project/target/
 project/project/
 spark-warehouse/
-target/
+*target/*
+tmp/

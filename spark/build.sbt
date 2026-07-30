@@ -19,6 +19,7 @@ val glowVersion = "2.0.0"
 val datalakeSpark3Version = "14.14.4"
 val scalatestVersion = "3.2.17"
 val icebergVersion = "1.10.1"
+val jacksonVersion = "2.15.2"
 
 resolvers ++= Seq(
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
@@ -33,6 +34,10 @@ libraryDependencies += "org.apache.iceberg" % "iceberg-spark-runtime-3.5_2.12" %
 libraryDependencies += "org.apache.iceberg" % "iceberg-aws-bundle" % icebergVersion
 
 libraryDependencies += "io.projectglow" %% "glow-spark3" % glowVersion exclude("org.apache.hadoop", "hadoop-client")
+
+// YAML parsing for contracts.yml
+libraryDependencies += "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
+libraryDependencies += "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion % Provided
 
 
 // test dependencies
