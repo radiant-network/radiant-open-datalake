@@ -138,12 +138,15 @@ catalog used in tests rejects custom table locations. Keep that mapping intact w
 
 Every job is a `case class Xxx(rc: RuntimeETLContext)` extending a FerLab base
 (`bio.ferlab.datalake.spark3.etl.v4`) and paired with a companion `object` exposing a `@main run` —
-except the contract-managed ones (`Clinvar`, `DBSNP`), which have no companion at all: a second
+except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`), which have no companion at all: a second
 `@main` would be a launch path that skips contract selection and the destination check, so their only
 entry point is `ImportPublicTable` dispatching through `ContractRunner`.
 
-- `SimpleETLP` — normalized jobs (20 of them); publishes/partitions per the `DatasetConf`.
+- `SimpleETLP` — normalized jobs (18 of them); publishes/partitions per the `DatasetConf`.
 - `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (5).
+- `wap.WapETLP` — the two contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`). A `SimpleETLP` whose
+  `loadSingle` publishes by Iceberg branch instead of overwriting the table; see **Write-Audit-Publish**
+  below.
 
 Override `mainDestination` (a `conf.getDataset(...)` id), `extract`, `transformSingle`, and optionally
 `defaultRepartition`. Genomic column helpers (`chromosome`, `start`, `locus`, `flattenInfo`,
@@ -160,6 +163,39 @@ Version-pinned sources (`clinvar`, `dbsnp`) take `Version` and `RawStorage` main
 dataset path and swaps the raw `StorageConf` root for the `--raw-storage` value. That is why raw S3
 roots are *not* authoritative in the generated conf for those sources — Airflow supplies the bucket
 and the discovered version at launch time.
+
+## Write-Audit-Publish by Iceberg branch (`wap/`, SJRA-1546 §2.1)
+
+`Clinvar_v1` and `DBSNP_v1` extend `wap.WapETLP`, which overrides `loadSingle` to publish through
+`wap.WapLoader` instead of the framework's load path. Per run, on the destination table: reset a
+transient `audit_{version}` branch to `main`, write there, `CREATE OR REPLACE BRANCH {version}` at the
+resulting snapshot, drop the audit branch. **`main` is left permanently empty** — it is only a clean base
+to branch from, and the published data lives on a branch named *exactly* the `dataset_version`
+(clinvar `20260715`, dbsnp `GCF_000001405.40`). Re-importing a version replaces its branch (§3.4).
+
+Consequences worth knowing before touching any of this:
+
+- **Consumers must name a branch.** `SELECT … FROM opendatalake.reference.clinvar` with no branch reads
+  `main` and returns zero rows. Nothing in this repo reads these two tables, but StarRocks/portal do.
+- **The FerLab load path cannot be reused.** `ETL.loadDataset` ends at DataFrameWriter V1
+  (`mode(Overwrite).saveAsTable`), which Spark resolves to `ReplaceTableAsSelect` — a staged table
+  *replace*, which discards refs. Same reason the `spark.wap.branch` session conf is not an option here:
+  Iceberg honours it for append/overwrite-by-expression, not for a staged replace. Bypassing
+  `loadDataset` means `WapETLP`/`WapLoader` must redo its `CREATE DATABASE IF NOT EXISTS` and its
+  `repartition.getOrElse(defaultRepartition)`.
+- **Writes must use the branch-qualified identifier**, `df.writeTo("db.t.`branch_x`")`.
+  `writeTo(t).option("branch", x)` is silently ignored on the write path and commits to `main` instead;
+  the `branch` option *does* work for reads (`spark.read.option("branch", x).table(t)`).
+- Ref names are backtick-quoted everywhere: clinvar's versions are all-digits and dbsnp's contains a dot,
+  so neither is a valid bare SQL identifier. Iceberg itself does not validate ref names.
+- `REFRESH TABLE` before reading `.refs` — `SparkCatalog` caches metadata (30s default TTL) and every
+  step commits then immediately reads the ref it just moved.
+- A zero-row `writeTo(...).create()` still commits an empty append snapshot, which is what the first
+  `CREATE BRANCH` points at. That is how a source bootstraps its table with an empty `main`.
+- `ETL.run()` returns `conf.getDataset(id).read`, i.e. `main`, so its return value is empty for these
+  jobs. Nothing consumes it.
+- Extending `WapETLP` *is* the guarantee that a job cannot publish to `main`: `SingleETL` makes
+  `transform`/`load` final, so `loadSingle` is the only seam and it is already overridden.
 
 ## Data contracts (`config/contracts/`, SJRA-1546 / SJRA-1747)
 

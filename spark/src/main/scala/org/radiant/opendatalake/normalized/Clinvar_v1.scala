@@ -8,6 +8,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
 import org.radiant.opendatalake.normalized.io.RawInput
+import org.radiant.opendatalake.wap.WapETLP
 
 import java.time.LocalDateTime
 import scala.collection.mutable

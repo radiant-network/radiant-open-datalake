@@ -6,6 +6,7 @@ import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 import org.radiant.opendatalake.normalized.io.RawInput
+import org.radiant.opendatalake.wap.WapETLP
 
 import java.time.LocalDateTime
 
