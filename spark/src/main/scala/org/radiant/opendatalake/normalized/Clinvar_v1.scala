@@ -2,7 +2,6 @@ package org.radiant.opendatalake.normalized
 
 
 import bio.ferlab.datalake.commons.config.{Coalesce, DatasetConf, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import bio.ferlab.datalake.spark3.implicits.SparkUtils._
 import org.apache.spark.sql._
@@ -13,7 +12,7 @@ import org.radiant.opendatalake.normalized.io.RawInput
 import java.time.LocalDateTime
 import scala.collection.mutable
 
-case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String) extends SimpleETLP(rc) {
+case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String) extends WapETLP(rc) {
 
   override val mainDestination: DatasetConf = conf.getDataset("normalized_clinvar")
 
