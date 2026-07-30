@@ -1,14 +1,14 @@
 package org.radiant.opendatalake.config.contracts
 
 import bio.ferlab.datalake.commons.config.{DatasetConf, RuntimeETLContext}
-import org.radiant.opendatalake.config.contracts.ContractRegistry.Normalizer
+import org.radiant.opendatalake.config.contracts.ContractRegistry.NormalizerETL
 import org.slf4j.{Logger, LoggerFactory}
 
 object ContractRunner {
 
-  private val log: Logger = LoggerFactory.getLogger(getClass.getName.stripSuffix("$"))
+  private val log: Logger = LoggerFactory.getLogger(getClass.getCanonicalName)
 
-  type FactoryLookup = Contract => Option[NormalizerArgs => Normalizer]
+  type FactoryLookup = Contract => Option[NormalizerArgs => NormalizerETL]
 
   /*
     Returns the resolved factory alongside each contract rather than the contract alone: `build` would
@@ -16,7 +16,7 @@ object ContractRunner {
   */
   def plan(source: String,
            contracts: Contracts,
-           factories: FactoryLookup = ContractRegistry.factory): List[(Contract, NormalizerArgs => Normalizer)] = {
+           factories: FactoryLookup = ContractRegistry.factory): List[(Contract, NormalizerArgs => NormalizerETL)] = {
 
     val declared = contracts.forSource(source)
     require(declared.nonEmpty, s"No contract declared for source '$source' in contracts.yml")
@@ -31,19 +31,17 @@ object ContractRunner {
     resolved.collect { case (c, Some(factory)) => c -> factory }
   }
 
-  def destinationMismatch(contract: Contract, mainDestination: DatasetConf): Option[String] = {
-    // Annotated: this is Option.contains (exact match on the element), not String.contains (substring).
-    val actual: Option[String] = mainDestination.table.map(_.name)
-    if (actual.contains(contract.table)) None
-    else Some(
-      s"contract ${contract.lineage} declares table '${contract.table}' but ${mainDestination.id} writes to ${actual.map(t => s"'$t'").getOrElse("no table")}"
-    )
-  }
+  def destinationMismatch(contract: Contract, mainDestination: DatasetConf): Option[String] =
+    mainDestination.table.map(_.name) match {
+      case Some(name) if name == contract.table => None
+      case Some(name) => Some(s"contract ${contract.lineage} declares table '${contract.table}' but ${mainDestination.id} writes to '$name'")
+      case None       => Some(s"contract ${contract.lineage} declares table '${contract.table}' but ${mainDestination.id} writes to no table")
+    }
 
   def build(source: String,
             args: NormalizerArgs,
             contracts: Contracts,
-            factories: FactoryLookup = ContractRegistry.factory): List[(Contract, Normalizer)] = {
+            factories: FactoryLookup = ContractRegistry.factory): List[(Contract, NormalizerETL)] = {
 
     val jobs = plan(source, contracts, factories).map { case (c, factory) => c -> factory(args) }
 

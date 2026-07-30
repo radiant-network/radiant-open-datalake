@@ -15,21 +15,22 @@ case class Contract(lineage: String, table: String, releaseNotes: String) {
   val minor: Int = parts(1).toInt
 }
 
-case class SourceContracts(contracts: List[Contract])
+case class SourceContracts(contracts: Option[List[Contract]])
 
 /*
-  Jackson's nulls are normalized in `declaredSources`, once, so the rest of the class sees clean data:
-  a yaml key present but empty deserializes to *null* and jackson-module-scala does not substitute an
-  empty Map/List.
+  A yaml key present but empty deserializes to *null*. jackson-module-scala maps null -> None for the
+  Option fields (`sources`, `contracts`), but NOT for a null map *value* (`clinvar:` with nothing under
+  it) — that stays null — so `Option(declared)` still guards the middle case. Normalized once in
+  `declaredSources` so the rest of the class sees clean data.
 */
-case class Contracts(sources: Map[String, SourceContracts]) {
+case class Contracts(sources: Option[Map[String, SourceContracts]]) {
 
-  private lazy val declaredSources: Map[String, SourceContracts] =
-    Option(sources).getOrElse(Map.empty).map { case (name, declared) =>
-      name -> SourceContracts(Option(declared).flatMap(d => Option(d.contracts)).getOrElse(Nil))
+  private lazy val declaredSources: Map[String, List[Contract]] =
+    sources.getOrElse(Map.empty).map { case (name, declared) =>
+      name -> Option(declared).flatMap(_.contracts).getOrElse(Nil)
     }
 
-  def forSource(source: String): List[Contract] = declaredSources.get(source).map(_.contracts).getOrElse(Nil)
+  def forSource(source: String): List[Contract] = declaredSources.getOrElse(source, Nil)
 
   def sourceNames: Set[String] = declaredSources.keySet
 }

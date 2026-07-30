@@ -95,9 +95,10 @@ class ContractsSpec extends AnyFlatSpec with Matchers {
   }
 
   /*
-    Jackson leaves absent or empty yaml keys as null, and jackson-module-scala does not substitute an
-    empty collection. Without the guards in Contracts these shapes throw a bare NPE inside
-    `forSource` instead of ContractRunner's "No contract declared" message.
+    Jackson leaves absent or empty yaml keys as null. jackson-module-scala maps null -> None for the
+    Option fields, but a null map *value* (`clinvar:` with nothing under it) stays null. Without the
+    normalization in Contracts these shapes throw a bare NPE inside `forSource` instead of
+    ContractRunner's "No contract declared" message.
   */
   it should "treat a null sources map or a null contracts list as nothing declared" in {
     Contracts.parse("sources:\n").sourceNames shouldBe empty
