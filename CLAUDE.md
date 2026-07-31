@@ -170,13 +170,16 @@ and the discovered version at launch time.
 
 ## Write-Audit-Publish by Iceberg branch (`wap/`, SJRA-1546 §2.1)
 
-Two layers, both under `wap/`. `wap/iceberg/` owns **all** the Iceberg SQL and mechanics as two value types:
-`IcebergTable(database, name)` carries the branch operations (ref lookups, branch DDL, branch-scoped
-reads/writes, bootstrap) and `IcebergDatabase(name)` the namespace ones. Both keep every awkward detail
-private — ref-name quoting, the fact that only a branch-qualified identifier honours a branch on write, and
-the mandatory `REFRESH` before a ref read — so a caller works in branches and snapshots and never assembles
-an identifier. `IcebergTable.fullName` is deliberately *not* FerLab's `TableConf.fullName`, which drops the
-database when it is empty and would yield an unqualified identifier.
+Two layers, both under `wap/`. `wap/iceberg/` owns **all** the Iceberg SQL and mechanics as one value type,
+`IcebergTable(database, name)`: ref lookups, branch DDL, branch-scoped reads/writes, bootstrap. It keeps every
+awkward detail private — ref-name quoting, the fact that only a branch-qualified identifier honours a branch
+on write, and the mandatory `REFRESH` before a ref read — so a caller works in branches and snapshots and
+never assembles an identifier. `IcebergTable.fullName` is deliberately *not* FerLab's `TableConf.fullName`,
+which drops the database when it is empty and would yield an unqualified identifier.
+
+**The database is not created here.** It is infrastructure, provisioned before the ETL runs, so nothing under
+`wap/` issues `CREATE DATABASE` — a missing `reference` namespace is meant to fail the import loudly rather
+than be conjured mid-run. Specs that load to Iceberg mix in `CreateDatabasesBeforeAll` to stand it up.
 
 `wap/WapLoader.scala` holds the flow and contains no SQL of its own; it is nothing but the steps of §2.1:
 `prepareCleanBase` → `stageOnAuditBranch` → `publishVersionBranch`. New Iceberg verbs (e.g. §2.2 tagging) go
@@ -197,8 +200,8 @@ Consequences worth knowing before touching any of this:
   (`mode(Overwrite).saveAsTable`), which Spark resolves to `ReplaceTableAsSelect` — a staged table
   *replace*, which discards refs. Same reason the `spark.wap.branch` session conf is not an option here:
   Iceberg honours it for append/overwrite-by-expression, not for a staged replace. Bypassing
-  `loadDataset` means `WapETLP`/`WapLoader` must redo its `CREATE DATABASE IF NOT EXISTS` and its
-  `repartition.getOrElse(defaultRepartition)`.
+  `loadDataset` means `WapETLP` must redo its `repartition.getOrElse(defaultRepartition)`; its
+  `CREATE DATABASE IF NOT EXISTS` is deliberately *not* carried over.
 - **Writes must use the branch-qualified identifier**, `df.writeTo("db.t.`branch_x`")`.
   `writeTo(t).option("branch", x)` is silently ignored on the write path and commits to `main` instead;
   the `branch` option *does* work for reads (`spark.read.option("branch", x).table(t)`).

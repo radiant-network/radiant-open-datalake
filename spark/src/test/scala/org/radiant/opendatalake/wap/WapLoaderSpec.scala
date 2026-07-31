@@ -4,7 +4,7 @@ import bio.ferlab.datalake.commons.config.Format.ICEBERG
 import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config.{DatasetConf, TableConf}
 import org.apache.spark.sql.functions.col
-import org.radiant.opendatalake.testutils.SparkSpec
+import org.radiant.opendatalake.testutils.{CreateDatabasesBeforeAll, SparkSpec}
 
 case class WapRow(id: String, chromosome: String = "1", value: String = "first")
 
@@ -14,9 +14,12 @@ case class WiderWapRow(id: String,
                        value: String = "first",
                        clinical_significance: String = "benign")
 
-class WapLoaderSpec extends SparkSpec {
+class WapLoaderSpec extends SparkSpec with CreateDatabasesBeforeAll {
 
   import spark.implicits._
+
+  // WapLoader does not create it: the database is infrastructure, provisioned before the ETL ever runs.
+  override val dbToCreate: List[String] = List("reference")
 
   /*
     A distinct table per test. WithSparkTestEnvironment wipes spark/tmp in beforeEach and afterEach while

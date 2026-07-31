@@ -2,7 +2,7 @@ package org.radiant.opendatalake.wap
 
 import bio.ferlab.datalake.commons.config.{Configuration, DatasetConf, TableConf}
 import org.apache.spark.sql.{DataFrame, SparkSession}
-import org.radiant.opendatalake.wap.iceberg.{IcebergDatabase, IcebergTable}
+import org.radiant.opendatalake.wap.iceberg.IcebergTable
 import org.slf4j.{Logger, LoggerFactory}
 
 object WapLoader {
@@ -28,9 +28,7 @@ object WapLoader {
     )
 
   private def prepareCleanBase(table: IcebergTable, data: DataFrame, partitionBy: List[String], location: String)
-                              (implicit spark: SparkSession): Unit = {
-    IcebergDatabase(table.database).createIfNotExists()
-
+                              (implicit spark: SparkSession): Unit =
     if (table.exists()) {
       allowSchemaEvolution(table)
       ensureEmptyMain(table)
@@ -38,7 +36,6 @@ object WapLoader {
       log.info(s"WAP ${table.fullName}: table absent, creating it empty on ${IcebergTable.MainBranch} at $location")
       table.createEmpty(data, partitionBy, location)
     }
-  }
 
   private def allowSchemaEvolution(table: IcebergTable)(implicit spark: SparkSession): Unit =
     if (!table.schemaEvolutionEnabled()) {

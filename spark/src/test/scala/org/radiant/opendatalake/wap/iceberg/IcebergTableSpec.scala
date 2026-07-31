@@ -31,9 +31,4 @@ class IcebergTableSpec extends AnyFlatSpec with Matchers {
   it should "expose main as the branch every version is cut from" in {
     IcebergTable.MainBranch shouldBe "main"
   }
-
-  "IcebergDatabase" should "build tables in its own namespace" in {
-    IcebergDatabase("reference").table("clinvar") shouldBe IcebergTable("reference", "clinvar")
-    IcebergDatabase("reference").table("clinvar").fullName shouldBe "reference.clinvar"
-  }
 }
