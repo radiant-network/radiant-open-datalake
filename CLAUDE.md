@@ -132,10 +132,11 @@ tables resolve as `opendatalake.reference.<table>`.
 
 `test.conf` deliberately rewrites every Iceberg dataset path to `/<table-name>`: the local Hadoop
 catalog used in tests rejects custom table locations — `HadoopCatalogTableBuilder.withLocation` compares
-against `<warehouse>/<namespace>/<table>` with `String.equals` and throws on anything else. That is also
-why `WithSparkTestEnvironment` declares the `iceberg_storage` root scheme-qualified as
-`file:$tmp/warehouse/reference`: `WapLoader` creates tables *at* the declared location, and without the
-scheme the two strings differ by exactly `file:`. Keep both intact when touching `EtlConfiguration`.
+against `<warehouse>/<namespace>/<table>` with `String.equals` and throws on anything else. Keep that
+mapping intact when touching `EtlConfiguration`. Since `WapLoader` creates tables *at* the declared
+location, `IcebergTable.createEmpty` qualifies it first (`/x` → `file:/x`, `s3a://…` untouched) — a LOCAL
+`StorageConf` root is a bare path, and unqualified it would differ from that catalog default by exactly
+`file:`.
 
 ## Job shape
 

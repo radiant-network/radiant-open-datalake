@@ -249,7 +249,7 @@ class WapLoaderSpec extends SparkSpec {
 
     WapLoader.publish(ds, Seq(WapRow("1")).toDF(), "20260715")
 
-    locationOf(ds) shouldBe ds.location
+    locationOf(ds) shouldBe s"file:${ds.location}"
   }
 
   /*
