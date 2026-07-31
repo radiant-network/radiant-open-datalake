@@ -1,7 +1,7 @@
 from enum import Enum
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, UpdateMode
-from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
+from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig, GnomadJointSourceConfig
 
 _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
@@ -49,6 +49,7 @@ class _Source(Enum):
             waiter_max_attempts=960,  # ~16h
         ),
     )
+    GNOMAD_JOINT = GnomadJointSourceConfig()
 
 
 ###########################################################

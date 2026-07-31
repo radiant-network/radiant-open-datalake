@@ -44,9 +44,6 @@ object EtlConfiguration extends App {
     "spark.sql.defaultCatalog" -> "opendatalake"
   )
 
-
-  val gnomad_storage_id = "gnomad"
-
   def table(table_name: String): Option[TableConf] = Some(TableConf(iceberg_database, table_name))
 
   private lazy val contracts: Contracts = Contracts.load()
@@ -73,10 +70,9 @@ object EtlConfiguration extends App {
 
   val sources = List(
     //raw
-    DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/{{VERSION}}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_gnomad_genomes_v3", raw_storage_id, "/gnomad_v3/release/3.1/vcf/genomes/gnomad.genomes.v3.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")).copy(storageid = gnomad_storage_id),
-    DatasetConf("raw_gnomad_joint_v4", raw_storage_id, "/gnomad_v4/release/4.1/vcf/joint/gnomad.joint.v4.1.sites.chr[^M]*.vcf.bgz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
+    DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/{{VERSION}}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
+    DatasetConf("raw_gnomad_joint", raw_storage_id, "/gnomad_joint/{{VERSION}}/*.vcf.bgz",  VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
     DatasetConf("raw_gnomad_cnv_v4", raw_storage_id, "/gnomad_v4/release/4.1/exome_cnv/gnomad.v4.1.cnv.all.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_sv_v4", raw_storage_id, "/gnomad_v4/release/4.1/genome_sv/gnomad.v4.1.sv.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_constraint_v2_1_1", raw_storage_id, "/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
@@ -112,11 +108,8 @@ object EtlConfiguration extends App {
     buildNormalizedDatasetConf("dbsnp", partitionby = List("chromosome")),
     DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
     DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
-    DatasetConf("normalized_gnomad_genomes_v2_1_1", iceberg_storage_id, "/normalized/gnomad_genomes_v2_1_1_liftover_grch38", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v2_1_1")),
-    DatasetConf("normalized_gnomad_exomes_v2_1_1", iceberg_storage_id, "/normalized/gnomad_exomes_v2_1_1_liftover_grch38", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_exomes_v2_1_1")),
     DatasetConf("normalized_gnomad_constraint_v2_1_1", iceberg_storage_id, "/normalized/gnomad_constraint_v2_1_1", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
-    DatasetConf("normalized_gnomad_genomes_v3", iceberg_storage_id, "/normalized/gnomad_genomes_v3", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v3")),
-    DatasetConf("normalized_gnomad_joint_v4", iceberg_storage_id, "/normalized/gnomad_joint_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_joint_v4")),
+    buildNormalizedDatasetConf("gnomad_joint", partitionby = List("chromosome")),
     DatasetConf("normalized_gnomad_cnv_v4", iceberg_storage_id, "/normalized/gnomad_cnv_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_cnv_v4")),
     DatasetConf("normalized_gnomad_sv_v4", iceberg_storage_id, "/normalized/gnomad_sv_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_sv_v4")),
     DatasetConf("normalized_human_genes", iceberg_storage_id, "/normalized/human_genes", ICEBERG, OverWrite, partitionby = List(), table = table("human_genes")),
@@ -132,8 +125,7 @@ object EtlConfiguration extends App {
     DatasetConf("enriched_genes", iceberg_storage_id, "/enriched/genes", ICEBERG, OverWrite, partitionby = List(), table = table("genes")),
     DatasetConf("enriched_dbnsfp", iceberg_storage_id, "/enriched/dbnsfp/scores", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_original")),
     DatasetConf("enriched_spliceai_indel", iceberg_storage_id, "/enriched/spliceai/indel", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_indel")),
-    DatasetConf("enriched_spliceai_snv", iceberg_storage_id, "/enriched/spliceai/snv", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_snv")),
-    DatasetConf("enriched_rare_variant", iceberg_storage_id, "/enriched/rare_variant", ICEBERG, OverWrite, partitionby = List("chromosome", "is_rare"), table = table("rare_variant_enriched"))
+    DatasetConf("enriched_spliceai_snv", iceberg_storage_id, "/enriched/spliceai/snv", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_snv"))
   )
 
   val prd_conf = SimpleConfiguration(DatalakeConf(

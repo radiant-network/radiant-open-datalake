@@ -13,7 +13,7 @@ class ContractsSpec extends AnyFlatSpec with Matchers {
   "Contracts.load" should "parse the packaged contracts.yml from the classpath" in {
     val contracts = Contracts.load()
 
-    contracts.sourceNames should contain allOf ("clinvar", "dbsnp")
+    contracts.sourceNames should contain allOf ("clinvar", "dbsnp", "gnomad_joint")
 
     contracts.forSource("clinvar") should contain(
       Contract(lineage = "1.0", releaseNotes = "doc/release-notes/clinvar/v1.md")
@@ -23,8 +23,13 @@ class ContractsSpec extends AnyFlatSpec with Matchers {
       Contract(lineage = "1.0", releaseNotes = "doc/release-notes/dbsnp/v1.md")
     )
 
+    contracts.forSource("gnomad_joint") should contain(
+      Contract(lineage = "1.0", releaseNotes = "doc/release-notes/gnomad_joint/v1.md")
+    )
+
     contracts.tablePrefixOf("clinvar") shouldBe Some("clinvar")
     contracts.tablePrefixOf("dbsnp") shouldBe Some("dbsnp")
+    contracts.tablePrefixOf("gnomad_joint") shouldBe Some("gnomad_joint")
     contracts.tablePrefixOf("absent") shouldBe None
   }
 

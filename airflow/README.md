@@ -11,6 +11,16 @@ This directory contains Airflow DAGs and related code for orchestrating workflow
 
 - The ECS container must be pre-configured so that S3 credentials and connection info are available at runtime (e.g., via environment variables or IAM roles) to allow the S3 hook to function properly.
 
+### Airflow pools
+
+The download DAGs limit their concurrency through Airflow pools. Pools live in the Airflow database,
+not in this repository, so they must exist in the target environment. **Tasks referencing a pool that
+does not exist will not run.** Create them from the Airflow UI, under **Admin -> Pools**.
+
+| Pool name                               | Used by                                        | Suggested slots |
+|-----------------------------------------|------------------------------------------------|-----------------|
+| `opendatalake_download_tasks_pool`      | `upload_via_local_copy` (transfer runs on ECS) | -               |
+| `opendatalake_direct_upload_tasks_pool` | `direct_upload` (transfer runs on the worker)  | 3               |
 
 ## Operations
 

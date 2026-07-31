@@ -84,6 +84,13 @@ Custom operators live in `opendatalake/lib/operators/` and are re-exported from 
 - **`PythonScriptOperator`** (`ecs.py`) — runs a Python download script on ECS Fargate.
 - **`EmrServerlessJobOperator`** (`emr.py`) — launches the Spark fat JAR on EMR Serverless. Deferrable by default; forwards SPARK_DRIVER logs to the Airflow task log; builds the Iceberg/Glue Spark conf from config.
 
+**Airflow pools are environment state, not code.** `config.py` names two — `DOWNLOAD_TASKS_POOL` for
+the ECS path, `DIRECT_UPLOAD_TASKS_POOL` for `direct_upload` — but they must be created in the target
+Airflow (Admin → Pools) or the tasks claiming them never run. They are deliberately separate: an ECS
+task only polls, whereas `direct_upload` streams the file *inside the Airflow worker* and holds a
+`part_size_mb` chunk (200 MB) in memory per running task, so its pool is sized against worker memory
+across all sources. Documented in `airflow/README.md` under Runtime Requirements.
+
 **Colocated env-var config pattern** (introduced SJRA-1570 — prefer this over Airflow Variables for new operators): each operator owns a frozen `@dataclass` config (`EcsConfig`, `EmrServerlessConfig`) with a module-level `_REQUIRED_ENV_VARS` map, a `@lru_cache`'d `from_env()` reading `os.getenv`, and `missing_required()`. Infra config is injected via `OPENDATALAKE_*` environment variables (set at deploy time, e.g. Terraform), validated at construction (raises `AirflowException` listing missing vars). Tests inject a config object directly and seed env defaults in `tests/unit/conftest.py` from each operator's `_REQUIRED_ENV_VARS`.
 
 ## Python Stack
@@ -154,13 +161,14 @@ location, `IcebergTable.createEmpty` qualifies it first (`/x` → `file:/x`, `s3
 
 Every job is a `case class Xxx(rc: RuntimeETLContext)` extending a FerLab base
 (`bio.ferlab.datalake.spark3.etl.v4`) and paired with a companion `object` exposing a `@main run` —
-except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`), which have no companion at all: a second
-`@main` would be a launch path that skips contract selection and the destination check, so their only
-entry point is `ImportPublicTable` dispatching through `ContractRunner`.
+except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`, `GnomadJoint_v1`), which have no companion
+at all: a second `@main` would be a launch path that skips contract selection and the destination
+check, so their only entry point is `ImportPublicTable` dispatching through `ContractRunner`.
 
-- `SimpleETLP` — normalized jobs (18 of them); publishes/partitions per the `DatasetConf`.
-- `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (5).
-- `contracts.ContractETLP` — the two contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`). It derives their
+- `SimpleETLP` — normalized jobs (17 of them); publishes/partitions per the `DatasetConf`.
+- `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (4).
+- `contracts.ContractETLP` — the three contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`,
+  `GnomadJoint_v1`). It derives their
   destination per MAJOR (see **Data contracts** below) and extends `wap.WapETLP`, a `SimpleETLP` whose
   `loadSingle` publishes by Iceberg branch instead of overwriting the table; see **Write-Audit-Publish**
   below. Nothing extends `WapETLP` directly except a test fixture.
@@ -354,8 +362,8 @@ or a job whose destination is not the table its MAJOR implies all fail before th
 testable without Spark. Execution itself is sequential with no cross-contract rollback — fine while every
 contract destination is `OverWrite`. Each contract also re-extracts the raw input independently; §3.1
 encourages sharing intermediate transforms between MAJORs of one source, which nothing does yet because
-no source has two. `clinvar` and `dbsnp` are wired; the other commands still dispatch directly until
-they get contract entries.
+no source has two. `clinvar`, `dbsnp` and `gnomad_joint` are wired; the other commands still dispatch
+directly until they get contract entries.
 
 `ContractFanOutSpec` is the end-to-end proof: it declares two MAJORs of a fictional source through
 `ContractRunner.run`'s injectable `contracts` / `factories` seams — no row in `contracts.yml`, no dataset
@@ -443,10 +451,16 @@ Iceberg schema evolution widens the existing table (see the two required setting
 - `EtlConfiguration` only writes `prd.conf` and `test.conf`, but Airflow passes
   `config/<environment>.conf` (and `spark/sandbox/README.md` references `config/qa.conf`). Non-prd
   environments need their `StorageConf` list and a `ConfigurationWriter.writeTo` line added.
-- `raw_gnomad_genomes_v3` is pinned to storage id `gnomad`, for which no `StorageConf` exists in
-  `prd_storage` — that dataset cannot be read until the storage is declared.
 - Glue-specific catalog properties are intentionally absent from the generated conf; they are injected
   at deploy/runtime by the Airflow operator's Spark conf.
+- **`split_multiallelics` in a `DatasetConf`'s `readoptions` does nothing.** Glow dropped the
+  `splitToBiallelic` reader option in 0.4.0; splitting is a *transformer*
+  (`Glow.transform("split_multiallelics", df)`, wrapped as `withSplitMultiAllelic`), and the `.read`
+  path — `LoadResolver` → `GenericLoader.read` → `spark.read.options(...).format("vcf")` — has nowhere
+  to apply one, so Spark silently ignores the unknown option. Only `GenomicImplicits.vcf(…, split =
+  true)` actually splits, and its two-argument overload passes `split = false`. Harmless today: gnomAD
+  and ClinVar release biallelic VCFs (gnomAD since v2.1, by policy), and `DBSNP_v1` explodes
+  `alternateAlleles` itself. The option is still declared on several datasets here and in the lib.
 
 ## Documentation
 

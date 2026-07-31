@@ -193,9 +193,10 @@ Connect to the Airflow UI at http://localhost:8080
 - Password: airflow
 
 
-## Create Pool
+## Create Pools
 
 In the airflow UI, using the Admin tab, create pool "opendatalake_download_tasks_pool" with 1 slots.
+Also create pool "opendatalake_direct_upload_tasks_pool" with 1 slots.
 
 ## Ensure DAGs are activated before running
 
@@ -240,5 +241,6 @@ SET CATALOG opendatalake;
 SHOW DATABASES;             -- Iceberg namespaces (e.g. reference)
 USE reference;
 SHOW TABLES;
-SELECT * FROM clinvar LIMIT 10;
+SELECT * FROM clinvar_v1 LIMIT 10;                 -- main branch should be empty
+SELECT * FROM clinvar_v1 VERSION AS OF '20260804'; -- inspect version branch
 ```
