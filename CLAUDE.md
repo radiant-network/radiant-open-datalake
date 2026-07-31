@@ -131,8 +131,11 @@ Two storage ids only: `raw_storage` (`s3a://opendatalake-<env>/raw/landing`) and
 tables resolve as `opendatalake.reference.<table>`.
 
 `test.conf` deliberately rewrites every Iceberg dataset path to `/<table-name>`: the local Hadoop
-catalog used in tests rejects custom table locations. Keep that mapping intact when touching
-`EtlConfiguration`.
+catalog used in tests rejects custom table locations — `HadoopCatalogTableBuilder.withLocation` compares
+against `<warehouse>/<namespace>/<table>` with `String.equals` and throws on anything else. That is also
+why `WithSparkTestEnvironment` declares the `iceberg_storage` root scheme-qualified as
+`file:$tmp/warehouse/reference`: `WapLoader` creates tables *at* the declared location, and without the
+scheme the two strings differ by exactly `file:`. Keep both intact when touching `EtlConfiguration`.
 
 ## Job shape
 
@@ -166,6 +169,18 @@ and the discovered version at launch time.
 
 ## Write-Audit-Publish by Iceberg branch (`wap/`, SJRA-1546 §2.1)
 
+Two layers, both under `wap/`. `wap/iceberg/` owns **all** the Iceberg SQL and mechanics as two value types:
+`IcebergTable(database, name)` carries the branch operations (ref lookups, branch DDL, branch-scoped
+reads/writes, bootstrap) and `IcebergDatabase(name)` the namespace ones. Both keep every awkward detail
+private — ref-name quoting, the fact that only a branch-qualified identifier honours a branch on write, and
+the mandatory `REFRESH` before a ref read — so a caller works in branches and snapshots and never assembles
+an identifier. `IcebergTable.fullName` is deliberately *not* FerLab's `TableConf.fullName`, which drops the
+database when it is empty and would yield an unqualified identifier.
+
+`wap/WapLoader.scala` holds the flow and contains no SQL of its own; it is nothing but the steps of §2.1:
+`prepareCleanBase` → `stageOnAuditBranch` → `publishVersionBranch`. New Iceberg verbs (e.g. §2.2 tagging) go
+on the `wap.iceberg` types; new flow logic goes in `wap`.
+
 `Clinvar_v1` and `DBSNP_v1` extend `wap.WapETLP`, which overrides `loadSingle` to publish through
 `wap.WapLoader` instead of the framework's load path. Per run, on the destination table: reset a
 transient `audit_{version}` branch to `main`, write there, `CREATE OR REPLACE BRANCH {version}` at the
@@ -192,6 +207,31 @@ Consequences worth knowing before touching any of this:
   step commits then immediately reads the ref it just moved.
 - A zero-row `writeTo(...).create()` still commits an empty append snapshot, which is what the first
   `CREATE BRANCH` points at. That is how a source bootstraps its table with an empty `main`.
+- **`main` is emptied if it is not already**, and the audit write is an `overwrite(lit(true))` rather than
+  an `append`. Both matter: audit is cut *from* `main`, so on a table written by the old overwrite path
+  (data on `main`) an append inherited those rows and published **2x** on the version branch while `main`
+  kept the originals. `WapLoader` now issues `DELETE FROM <table>` when `main` has rows — schema-agnostic,
+  so a legacy table whose schema has since evolved still empties — and the overwrite makes the audit branch
+  equal to exactly the incoming data regardless of what it inherited. Already-published version branches
+  are untouched; they are independent refs.
+- **The table is created at `DatasetConf.location`**, passed as the `location` create property
+  (`TableCatalog.PROP_LOCATION`, which Iceberg's `SparkCatalog` reads). Omitting it does not fail — the
+  catalog quietly picks its own default (Glue: `<warehouse>/<db>.db/<table>`), which is *not* where
+  `EtlConfiguration` says the dataset lives. The FerLab load path this replaced passed it as
+  `.option("path", location).saveAsTable(...)`, so dropping it would have silently relocated any newly
+  bootstrapped table.
+- **Schema evolution on write needs two settings, and neither works alone** — this is what lets a MINOR
+  contract bump add columns instead of failing the import. `merge-schema` (write option, set on the audit
+  write) is what evolves the table: Iceberg's `SparkWriteBuilder.build()` calls `validateOrMergeWriteSchema`
+  → `updateSchema().unionByNameWith(incoming).commit()`. But Spark's analyzer runs first and
+  `TableOutputResolver` rejects the extra column with `INSERT_COLUMN_ARITY_MISMATCH.TOO_MANY_DATA_COLUMNS`
+  before the connector is ever asked to build a write. `write.spark.accept-any-schema` (table property, set
+  at `createEmpty` and back-filled by `prepareCleanBase` on older tables) is what gets past that: Iceberg's
+  `SparkTable` advertises `ACCEPT_ANY_SCHEMA` only when it is set, which flips
+  `DataSourceV2Relation.skipSchemaResolution`. Drop the option and the write dies with
+  `Field <col> not found in source schema`; drop the property and it dies in analysis. Matching is by name,
+  so column order is irrelevant and a dropped column reads back null. Iceberg's schema is table-level, not
+  per-branch, so widening shows the new column on already-published branches — with no value behind it.
 - `ETL.run()` returns `conf.getDataset(id).read`, i.e. `main`, so its return value is empty for these
   jobs. Nothing consumes it.
 - Extending `WapETLP` *is* the guarantee that a job cannot publish to `main`: `SingleETL` makes

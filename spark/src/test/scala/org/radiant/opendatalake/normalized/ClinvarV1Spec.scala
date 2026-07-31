@@ -1,7 +1,6 @@
 package org.radiant.opendatalake.normalized
 
 import bio.ferlab.datalake.commons.config.DatasetConf
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
 import bio.ferlab.datalake.testutils.models.normalized.NormalizedClinvar
 import bio.ferlab.datalake.testutils.models.raw.RawClinvar
 import bio.ferlab.datalake.testutils.TestETLContext
@@ -34,7 +33,7 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
     dataset_version and `main` is left permanently empty, so `destination.read` (which resolves to the
     table's default ref) is no longer the way to see what was written.
   */
-  private val tableName: String = destination.table.map(t => s"${t.database}.${t.name}").get
+  private val tableName: String = destination.table.map(_.fullName).get
 
   private def onBranch(branch: String) = spark.read.option("branch", branch).table(tableName)
 
