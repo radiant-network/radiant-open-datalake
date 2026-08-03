@@ -127,8 +127,16 @@ and `src/test/resources/config/test.conf`. Never hand-edit those `.conf` files �
 `EtlConfiguration.scala` and regenerate, or the next `runMain` silently reverts the change.
 
 Two storage ids only: `raw_storage` (`s3a://opendatalake-<env>/raw/landing`) and `iceberg_storage`
-(`s3a://opendatalake-<env>/iceberg/reference`). Catalog is `opendatalake`, database `reference`, so
-tables resolve as `opendatalake.reference.<table>`.
+(`s3a://opendatalake-<env>/iceberg/<database>`).
+
+Catalog and database are **per-environment configuration**, both `opendatalake` / `reference` today but
+neither fixed by the code. The database is `TableConf.database` in `config/<env>.conf`, from
+`EtlConfiguration.iceberg_database` — which also builds the `iceberg_storage` root, so renaming it moves
+where tables land. The catalog name appears nowhere in the ETL: every identifier it emits is
+`<database>.<table>`, and `spark.sql.defaultCatalog` at launch decides which catalog that is. That is what
+lets one JAR run against Glue on EMR (`operators/emr.py`), Polaris in the sandbox
+(`operators/spark_k8s.py`) and a Hadoop catalog in tests (`WithSparkTestEnvironment`). Details and the
+per-environment table in `spark/doc/storage_convention.md`.
 
 `test.conf` deliberately rewrites every Iceberg dataset path to `/<table-name>`: the local Hadoop
 catalog used in tests rejects custom table locations — `HadoopCatalogTableBuilder.withLocation` compares
@@ -194,8 +202,11 @@ to branch from, and the published data lives on a branch named *exactly* the `da
 
 Consequences worth knowing before touching any of this:
 
-- **Consumers must name a branch.** `SELECT … FROM opendatalake.reference.clinvar` with no branch reads
-  `main` and returns zero rows. Nothing in this repo reads these two tables, but StarRocks/portal do.
+- **Consumers must name a branch.** `SELECT … FROM opendatalake.reference.clinvar_v1` with no branch reads
+  `main` and returns zero rows. Nothing in this repo reads these two tables, but StarRocks/portal do. In SQL
+  only the branch-qualified identifier works — ``reference.clinvar_v1.`branch_20260715` ``. `VERSION AS OF
+  '20260715'` does *not*: Spark reads an all-digit ref as a snapshot id and fails with `Cannot find snapshot
+  with ID 20260715`.
 - **The FerLab load path cannot be reused.** `ETL.loadDataset` ends at DataFrameWriter V1
   (`mode(Overwrite).saveAsTable`), which Spark resolves to `ReplaceTableAsSelect` — a staged table
   *replace*, which discards refs. Same reason the `spark.wap.branch` session conf is not an option here:
@@ -244,34 +255,75 @@ Consequences worth knowing before touching any of this:
 ## Data contracts (`config/contracts/`, SJRA-1546 / SJRA-1747)
 
 `spark/src/main/resources/contracts.yml` is the declared source of truth for which contracts the ETL
-must execute: per source, a `lineage` `"{MAJOR}.{MINOR}"`, its `table`, and a `release_notes` path
-(relative to `spark/`, under `spark/doc/release-notes/<source>/v<MAJOR>.md`, Keep a Changelog format).
-MAJOR identifies the table (new MAJOR = new row); MINOR is bumped in place when columns are added by
-schema evolution. The yaml deliberately carries **no normalizer class name** — `(table, MAJOR)` is the
-registry key, so the implementing class is named once, in Scala, where the compiler checks it.
+must execute: per source a `table_prefix`, and per MAJOR a row carrying a `lineage` `"{MAJOR}.{MINOR}"` and a
+`release_notes` path (relative to `spark/`, under `spark/doc/release-notes/<source>/v<MAJOR>.md`, Keep a
+Changelog format). MINOR is bumped in place when columns are added by schema evolution; a new MAJOR is a new
+row. The yaml deliberately carries **no normalizer class name** — `(source, MAJOR)` is the registry key, so
+the implementing class is named once, in Scala, where the compiler checks it.
+
+**Each MAJOR is its own Iceberg table, and nothing declares its name.** `lineage` is the only place a MAJOR
+appears; `config/contracts/ContractDestination` computes the rest — `tableName(prefix, major)` gives
+`clinvar_v1`, and `forMajor(family, major)` narrows the source's *one* `DatasetConf` into a per-MAJOR
+destination by appending `_v{MAJOR}` to its id, path and table name. So `EtlConfiguration` declares
+`normalized_clinvar` at `/normalized/clinvar` with table `clinvar` — a **family template**, a table that never
+exists — and `clinvar_v1`, `clinvar_v2`, … are what get created, ingesting in parallel (§3.4). MAJOR 1 is not
+a special case. Adding a MAJOR therefore touches no configuration and needs no regenerate.
+
+Consequences worth knowing:
+
+- The suffix is **appended, never substituted**. That is what keeps both environments right from one rule:
+  prd `/normalized/clinvar` → `/normalized/clinvar_v1`, and the test config (where `EtlConfiguration` rewrites
+  every Iceberg path to `/` + table name) `/clinvar` → `/clinvar_v1`, the only location the local Hadoop
+  catalog accepts. `forMajor` therefore *requires* a family whose path ends with its table name — appending to
+  `/normalized/dbnsfp/variant` would put `dbnsfp_v1` at `…/variant_v1`, which Glue accepts silently.
+- A contract normalizer extends **`ContractETLP(rc, sourceDatasetId, major)`** and no longer overrides
+  `mainDestination` — it states which family it reads and which MAJOR it implements, and the destination is
+  derived (lazily: `conf` belongs to the `ETL` constructor). Overriding `mainDestination` anyway is the escape
+  hatch for a MAJOR needing partitioning of its own; the name is still checked.
+- The MAJOR is a literal in the normalizer rather than injected from the registry key **on purpose**: a class
+  that accepted any MAJOR would let a mistyped registry entry publish its schema under another contract, where
+  a fixed one makes that a `destinationMismatch` failure before any write.
+- Two guardrails replace the old name-agreement check: `destinationMismatch` (the job's destination is the
+  table its `(table_prefix, MAJOR)` implies — catches a wrong family id or wrong MAJOR literal, at launch on
+  EMR), and `ContractConfigSpec` (every `table_prefix` resolves to an `ICEBERG` `DatasetConf` in the
+  *generated* `prd.conf` and `test.conf`, and every declared family is `forMajor`-derivable in both — so that
+  `require` is never the first thing to notice). Asserting against `EtlConfiguration.sources` would not work:
+  it is a `scala.App`, so its body is unevaluated until `main` runs. Checking the generated files also catches
+  an `EtlConfiguration` edited without regenerating.
+- `plan` rejects a `table_prefix` that already carries a `_v<digits>` suffix — it would derive `clinvar_v1_v1`.
+
 `Contracts.load()` parses the file off the classpath with Jackson YAML (snake_case → camelCase,
-`FAIL_ON_UNKNOWN_PROPERTIES` on, so a typo'd key throws). Jackson passes *null*, never an empty
-collection, for empty yaml keys, so `Contracts` normalizes both a null `sources` map and a null
-per-source value — otherwise a half-written file NPEs instead of reporting itself.
+`FAIL_ON_UNKNOWN_PROPERTIES` on, so a typo'd key throws — and so does a leftover `table:` on a row, which is
+the migration guard). Jackson passes *null*, never an empty collection, for empty yaml keys, so `Contracts`
+normalizes both a null `sources` map and a null per-source value — otherwise a half-written file NPEs instead
+of reporting itself.
 
 `release_notes` is the only untyped path left in the file; `ContractsSpec` asserts each one exists on
-disk, and `ContractRegistrySpec` keeps the declared `(table, MAJOR)` pairs and the registry keys in
+disk, and `ContractRegistrySpec` keeps the declared `(source, MAJOR)` pairs and the registry keys in
 bijection.
 
 **Fan-out.** Contract-declared sources dispatch through `ContractRunner.run(source, …)` instead of a
 hard-coded job: the CLI command names the *source*, `contracts.yml` decides which normalizers run for
-it (SJRA-1546 §3.2). Adding a MAJOR = a `contracts.yml` row + a `ContractRegistry` entry, no CLI
-change. `ContractRegistry` maps the declared `(table, MAJOR)` to a factory — a registry rather than
-reflection because normalizer constructor arities differ, and keyed on that pair because MAJOR is what
-identifies a contract: reusing a table name under a new MAJOR must resolve to a new normalizer, not
-silently to the old one.
+it (SJRA-1546 §3.2). Adding a MAJOR never touches the CLI or Airflow — see **Bumping a contract MAJOR**
+below. `ContractRegistry` maps `(source, MAJOR)` to a factory — a registry rather than reflection because
+normalizer constructor arities differ, and keyed on that pair because it is what identifies a contract: a
+MAJOR the registry does not know must resolve to nothing rather than to the previous MAJOR's normalizer.
+`plan` returns a `ContractPlan` carrying the validated `tablePrefix` alongside the resolved jobs, since the
+table a contract publishes to is derived and nothing else can name it.
 The fan-out builds and validates every job before running any (`ContractRunner.build`): unknown
-source, a MAJOR declared twice, unregistered normalizer, or a `contracts.yml` `table` that disagrees
-with the normalizer's `mainDestination` all fail before the first table is written. `contracts` and
-the registry lookup (`FactoryLookup`) are both injectable parameters, so plan/validation is testable
-without Spark. Execution itself is sequential with no cross-contract rollback — fine while every
-contract destination is `OverWrite`. `clinvar` and `dbsnp` are wired; the other commands still
-dispatch directly until they get contract entries.
+source, a missing or already-suffixed `table_prefix`, a MAJOR declared twice, an unregistered normalizer,
+or a job whose destination is not the table its MAJOR implies all fail before the first table is written.
+`contracts` and the registry lookup (`FactoryLookup`) are both injectable parameters, so plan/validation is
+testable without Spark. Execution itself is sequential with no cross-contract rollback — fine while every
+contract destination is `OverWrite`. Each contract also re-extracts the raw input independently; §3.1
+encourages sharing intermediate transforms between MAJORs of one source, which nothing does yet because
+no source has two. `clinvar` and `dbsnp` are wired; the other commands still dispatch directly until
+they get contract entries.
+
+`ContractFanOutSpec` is the end-to-end proof: it declares two MAJORs of a fictional source through
+`ContractRunner.run`'s injectable `contracts` / `factories` seams — no row in `contracts.yml`, no dataset
+in `EtlConfiguration` — and asserts the two tables are independent, `main` stays empty on both, and one
+unregistered row aborts the whole plan before anything is written.
 
 ## Test harness
 
@@ -319,10 +371,35 @@ shared tmp warehouse make parallel runs unsafe.
 2. Create a corresponding Spark normalization class in `spark/src/main/scala/org/radiant/opendatalake/normalized/`
 3. Register the table in `EtlConfiguration.scala` and regenerate configs via `sbt runMain`
 4. Register the Spark command in `ImportPublicTable.scala`
-5. Declare the source's data contract in `spark/src/main/resources/contracts.yml` (SJRA-1546):
-   `lineage` (`{MAJOR}.{MINOR}`), `table`, `release_notes` path — then map that `(table, MAJOR)` to the
-   normalizer in `ContractRegistry`, and write the release notes file the row points at
+5. Declare the source's data contract in `spark/src/main/resources/contracts.yml` (SJRA-1546): a
+   `table_prefix` for the source (the table family — step 3's table name, *without* a MAJOR suffix), then a
+   row per MAJOR with `lineage` (`{MAJOR}.{MINOR}`) and a `release_notes` path. Map `(source, MAJOR)` to the
+   normalizer in `ContractRegistry`, extend `ContractETLP` in the normalizer, and write the release notes
+   file the row points at
 6. Add a spec under `spark/src/test/scala/.../normalized/` (see Test harness above)
+
+## Bumping a contract MAJOR
+
+A MAJOR is a breaking schema change, so it gets a **new table** and the old MAJOR keeps ingesting beside it
+(SJRA-1546 §3.4). No CLI, Airflow or operator change — the command names the source, not the contract.
+
+**No `EtlConfiguration` change and no regenerate** — the source's single dataset family serves every MAJOR,
+and `reference.<source>_v{N+1}` is derived from it. Three edits:
+
+1. New row under the source's `contracts` in `contracts.yml`: `lineage: "{N+1}.0"` and `release_notes:
+   "doc/release-notes/<source>/v{N+1}.md"`. Leave the old row and the `table_prefix` alone.
+2. New normalizer class `<Source>_v{N+1}` beside the old one, `extends ContractETLP(rc, sourceDatasetId =
+   "normalized_<source>", major = N+1)` — the old class is frozen, that is the point of the bump.
+3. `ContractRegistry` entry mapping `("<source>", N+1)` to the new class.
+4. Write `spark/doc/release-notes/<source>/v{N+1}.md` (Keep a Changelog; copy the v1 header table).
+5. `sbt test` — `ContractRegistrySpec` and `ContractsSpec` fail loudly on any of these being missing or
+   inconsistent. The table itself is created on the first run by `WapLoader`; nothing pre-creates it.
+
+If the new MAJOR needs different partitioning, declare an explicit `DatasetConf` for `<source>_v{N+1}` and
+override `mainDestination` to point at it — `destinationMismatch` still checks the name.
+
+MINOR is different: bump `lineage` in place on the existing row and add columns to the *same* normalizer.
+Iceberg schema evolution widens the existing table (see the two required settings under **Write-Audit-Publish**).
 
 ## Known rough edges
 

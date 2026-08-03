@@ -69,13 +69,18 @@ This will allow us to apply lifecycle policies specifically on each tags.
 ### 3.1 `contract_version` configuration stored in `contracts.yml` 
 
 `contract_version` is a YAML configuration that lives in the ETL code as a `contracts.yml` (exact name irrelevant for now) file.
-Fields are defined for `source.{name}.contracts` like this:
+
+Fields are defined per source, for `source.{name}`:
+
+| Field          | Description                                                                                           | Example   |
+|----------------|-------------------------------------------------------------------------------------------------------|-----------|
+| `table_prefix` | The source's Iceberg table family. Each `MAJOR`'s table name is `{table_prefix}_v{MAJOR}` (see §3.4). | `clinvar` |
+
+and per contract, for `source.{name}.contracts`:
 
 | Field           | Description                                                                              | Example                                                  |
 |-----------------|------------------------------------------------------------------------------------------|----------------------------------------------------------|
 | `lineage`       | Describes to which `{MAJOR}.{MINOR}` the contract corresponds. (Dot separated)           | 1.0                                                      | 
-| `table`         | The iceberg table name linked with that specific `lineage`'s `MAJOR`.                    | `clinvar_v1`                                             | 
-| `normalizer`    | Which normalizer contains the schema definition for that particular `lineage`'s `MAJOR`. | `org.radiant.opendatalake.normalized.clinvar.clinvar_v1` | 
 | `release_notes` | Path to release notes for that specific `lineage`'s `MAJOR`.                             | `doc/release-notes/clinvar/v2.md`                        | 
 
 Example:
@@ -84,14 +89,15 @@ Example:
 # contracts.yml
 sources:
   clinvar:
+    table_prefix: "clinvar"                                                   # -> clinvar_v1, clinvar_v2
     contracts:
       - lineage: "1.0"  
-        table: "clinvar_v1"
         release_notes: "doc/release-notes/clinvar/v1.md"                      # See Release notes section
       - lineage: "2.0"          
-        table: "clinvar_v2"
         release_notes: "doc/release-notes/clinvar/v2.md"
 ```
+
+An Iceberg table is named by using the following combination: `{table_prefix}_v{MAJOR}`.
 
 For the example above, all the normalizers are executed every time a new `clinvar` version is detected.
 
@@ -176,7 +182,7 @@ Schema validation can have 3 different outcomes:
 |-------|-------------|-------------------------------------------------------------------------------|--------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|
 | PATCH | No          | none                                                                          | none                                                               | new snapshot on the existing table; new tag `contract_v{MAJOR}.{MINOR}.{PATCH+1}`                        |
 | MINOR | Yes         | bump `lineage` (e.g. `"1.3"` → `"1.4"`) on the existing row                   | edit the same normalizer class to add new columns                  | Iceberg schema evolution adds columns to the existing table; PATCH counter resets to 0 for the new MINOR |
-| MAJOR | Yes         | add a new row `(major: N+1, lineage: "{N+1}.0", table: "<source>_v{N+1}", …)` | add a new normalizer class (`{source}_v{N+1}`, …) + new `contract` | new Iceberg table created on first run; old MAJOR row stays in the file and keeps ingesting in parallel  |
+| MAJOR | Yes         | add a new row `(lineage: "{N+1}.0", release_notes: …)`; `table_prefix` is untouched | add a new normalizer class (`{source}_v{N+1}`, …) + new `contract` | new Iceberg table `{table_prefix}_v{N+1}`, created on first run; old MAJOR row stays in the file and keeps ingesting in parallel  |
 
 **Important points:**
 
@@ -231,4 +237,5 @@ At a minimum, they are available by browsing Github's `Releases` section.
 
 ## 6. Amendments 
 
-- 2026-07-29: Removed the normalizer from the `contracts.yml`. The normalizer-as-schema will be handled internally using Scala code. This avoids reflection. 
+- 2026-08-03: Added a `table_prefix` to allow multiple MAJOR versions to share the same basic configurations. This avoids configuration duplication.
+- 2026-07-29: Removed the normalizer from the `contracts.yml`. The normalizer-as-schema will be handled internally using Scala code. This avoids reflection.
