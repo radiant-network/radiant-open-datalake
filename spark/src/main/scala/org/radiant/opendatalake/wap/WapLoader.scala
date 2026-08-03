@@ -44,11 +44,11 @@ object WapLoader {
     }
 
   private def ensureEmptyMain(table: IcebergTable)(implicit spark: SparkSession): Unit =
-    table.rowCount() match { // once per import, against ETLs that run for hours
+    table.mainRowCount() match { // once per import, against ETLs that run for hours
       case 0L => ()
       case rows =>
         log.warn(s"WAP ${table.fullName}: ${IcebergTable.MainBranch} held $rows row(s); emptying it, it must stay a clean base")
-        table.deleteAll()
+        table.deleteAllFromMain()
     }
 
   private def stageOnAuditBranch(table: IcebergTable, data: DataFrame, version: String)
@@ -61,7 +61,7 @@ object WapLoader {
     log.info(s"WAP ${table.fullName}: staging '$version' on '$auditBranch' from ${IcebergTable.MainBranch}@$mainSnapshotId")
 
     table.createOrReplaceBranch(auditBranch, mainSnapshotId)
-    table.overwriteBranch(auditBranch, data)
+    table.overwriteBranchAndMergeSchema(auditBranch, data)
 
     table.snapshotIdOf(auditBranch).getOrElse(
       throw new IllegalStateException(s"audit branch '$auditBranch' vanished mid-run on ${table.fullName}")

@@ -36,7 +36,7 @@ case class IcebergTable(database: String, name: String) {
 
   def exists()(implicit spark: SparkSession): Boolean = spark.catalog.tableExists(fullName)
 
-  def rowCount()(implicit spark: SparkSession): Long = spark.table(fullName).count()
+  def mainRowCount()(implicit spark: SparkSession): Long = spark.table(fullName).count()
 
   def snapshotIdOf(ref: String)(implicit spark: SparkSession): Option[Long] = {
     refresh()
@@ -55,7 +55,7 @@ case class IcebergTable(database: String, name: String) {
   def dropBranch(branch: String)(implicit spark: SparkSession): Unit =
     spark.sql(s"ALTER TABLE $fullName DROP BRANCH ${quoted(branch)}")
 
-  def overwriteBranch(branch: String, data: DataFrame): Unit =
+  def overwriteBranchAndMergeSchema(branch: String, data: DataFrame): Unit =
     data.writeTo(branchIdentifier(branch)).option(MergeSchemaOption, "true").overwrite(lit(true))
 
   def schemaEvolutionEnabled()(implicit spark: SparkSession): Boolean =
@@ -73,7 +73,7 @@ case class IcebergTable(database: String, name: String) {
     spark.read.option("branch", branch).table(fullName)
   }
 
-  def deleteAll()(implicit spark: SparkSession): Unit = spark.sql(s"DELETE FROM $fullName")
+  def deleteAllFromMain()(implicit spark: SparkSession): Unit = spark.sql(s"DELETE FROM $fullName")
 
   def createEmpty(schemaSource: DataFrame, partitionBy: List[String], location: String)
                  (implicit spark: SparkSession): Unit = {
