@@ -48,7 +48,7 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
 
     // Re-importing the same dataset_version replaces the branch rather than merging into it (§3.4).
     job.loadSingle(secondLoad.toDF())
-    onBranch("test").select("chromosome", "start", "end", "reference", "alternate", "name").show(false)
+    onBranch("test").select("chromosome", "start", "end", "reference", "alternate", "name")
     onBranch("test").as[NormalizedClinvar].collect() should contain theSameElementsAs secondLoad
 
     withClue("main must stay empty — consumers read the dataset_version branch: ") {
