@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.contracts
 
-import org.radiant.opendatalake.config.contracts.{Contract, Contracts}
+import org.radiant.opendatalake.config.{Contract, Contracts}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 

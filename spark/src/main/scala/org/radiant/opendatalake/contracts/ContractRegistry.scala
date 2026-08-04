@@ -2,7 +2,7 @@ package org.radiant.opendatalake.contracts
 
 import bio.ferlab.datalake.commons.config.SimpleConfiguration
 import bio.ferlab.datalake.spark3.etl.v4.ETL
-import org.radiant.opendatalake.config.contracts.Contract
+import org.radiant.opendatalake.config.Contract
 import org.radiant.opendatalake.normalized.{Clinvar_v1, DBSNP_v1}
 
 import java.time.LocalDateTime

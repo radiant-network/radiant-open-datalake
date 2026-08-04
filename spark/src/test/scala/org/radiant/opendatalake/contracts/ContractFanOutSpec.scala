@@ -5,7 +5,7 @@ import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config.{DatasetConf, RunStep, RuntimeETLContext, TableConf}
 import bio.ferlab.datalake.testutils.TestETLContext
 import org.apache.spark.sql.DataFrame
-import org.radiant.opendatalake.config.contracts.Contracts
+import org.radiant.opendatalake.config.Contracts
 import org.radiant.opendatalake.testutils.{CreateDatabasesBeforeAll, SparkSpec}
 import org.radiant.opendatalake.wap.WapETLP
 

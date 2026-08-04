@@ -3,7 +3,7 @@ package org.radiant.opendatalake.contracts
 import bio.ferlab.datalake.commons.config.Format.ICEBERG
 import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config.{DatasetConf, TableConf}
-import org.radiant.opendatalake.config.contracts.{Contract, Contracts}
+import org.radiant.opendatalake.config.{Contract, Contracts}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers

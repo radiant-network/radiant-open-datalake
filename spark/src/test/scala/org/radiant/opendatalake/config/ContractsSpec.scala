@@ -1,4 +1,4 @@
-package org.radiant.opendatalake.config.contracts
+package org.radiant.opendatalake.config
 
 import com.fasterxml.jackson.databind.JsonMappingException
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException

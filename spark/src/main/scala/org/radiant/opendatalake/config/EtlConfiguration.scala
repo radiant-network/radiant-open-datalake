@@ -4,7 +4,6 @@ import bio.ferlab.datalake.commons.config.Format.{CSV, GFF, ICEBERG, VCF, XML}
 import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config._
 import bio.ferlab.datalake.commons.file.FileSystemType.S3
-import org.radiant.opendatalake.config.contracts.Contracts
 
 
 import pureconfig.generic.auto._

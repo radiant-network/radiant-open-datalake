@@ -1,4 +1,4 @@
-package org.radiant.opendatalake.config.contracts
+package org.radiant.opendatalake.config
 
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, PropertyNamingStrategies}
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory

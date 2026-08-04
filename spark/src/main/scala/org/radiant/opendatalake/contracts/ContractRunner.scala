@@ -1,7 +1,7 @@
 package org.radiant.opendatalake.contracts
 
 import bio.ferlab.datalake.commons.config.{DatasetConf, RuntimeETLContext}
-import org.radiant.opendatalake.config.contracts.{Contract, Contracts}
+import org.radiant.opendatalake.config.{Contract, Contracts}
 import org.radiant.opendatalake.contracts.ContractRegistry.NormalizerETL
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -26,7 +26,7 @@ object ContractRunner {
       throw new IllegalArgumentException(s"Source '$source' declares no table_prefix in contracts.yml")
     )
 
-    require(MajorSuffix.findFirstIn(tablePrefix).isEmpty, s"table_prefix '$tablePrefix' should not carry a MAJOR suffix")
+    require(MajorSuffix.findFirstIn(tablePrefix).isEmpty, s"table_prefix '$tablePrefix' already carries a MAJOR suffix; declare it without the suffix (MAJOR comes from the lineage)")
 
     val duplicated = declared.groupBy(_.major).collect { case (major, rows) if rows.size > 1 => s"MAJOR $major: ${rows.map(_.lineage).mkString(", ")}"}
     require(duplicated.isEmpty, s"contracts.yml declares the same MAJOR more than once for source '$source': ${duplicated.mkString("; ")}")
