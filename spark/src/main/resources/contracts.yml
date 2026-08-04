@@ -7,7 +7,7 @@
 #       lineage       - "{MAJOR}.{MINOR}" the contract corresponds to (dot separated).
 #       release_notes - Path to the release notes for that lineage's MAJOR, relative to `spark/`.
 #
-# A new MINOR bumps `lineage` on the existing row. A new MAJOR adds a new row with its own `linear` and `release_notes`.
+# A new MINOR bumps `lineage` on the existing row. A new MAJOR adds a new row with its own `lineage` and `release_notes`.
 sources:
   clinvar:
     table_prefix: "clinvar"

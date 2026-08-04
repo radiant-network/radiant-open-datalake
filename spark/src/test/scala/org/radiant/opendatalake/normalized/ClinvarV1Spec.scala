@@ -12,16 +12,18 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
   import spark.implicits._
 
   val source: DatasetConf = conf.getDataset("raw_clinvar")
-  val destination: DatasetConf = conf.getDataset("normalized_clinvar")
 
-  assert(destination.table.isDefined, "table normalized_clinvar dataset (destination) must be defined in test config")
+  val destination: DatasetConf =
+    new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar").mainDestination
+
+  assert(destination.table.map(_.name).contains("clinvar_v1"), s"MAJOR 1 must publish to clinvar_v1, not ${destination.table}")
   override val dbToCreate: List[String] = List(destination.table.map(_.database).get)
   override val dsToClean: List[DatasetConf] = List(destination)
 
   "transform" should "transform ClinvarInput to ClinvarOutput" in {
     val inputData = Map(source.id -> Seq(RawClinvar("2"), RawClinvar("3")).toDF())
 
-    val resultDF = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "").transformSingle(inputData)
+    val resultDF = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar").transformSingle(inputData)
 
     val expectedResults = Seq(NormalizedClinvar("2"), NormalizedClinvar("3"))
 
@@ -41,7 +43,7 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
     val firstLoad = Seq(NormalizedClinvar("1", name = "first"), NormalizedClinvar("2"))
     val secondLoad = Seq(NormalizedClinvar("1", name = "second"), NormalizedClinvar("3"))
 
-    val job = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "")
+    val job = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar")
 
     job.loadSingle(firstLoad.toDF())
     onBranch("test").as[NormalizedClinvar].collect() should contain allElementsOf firstLoad

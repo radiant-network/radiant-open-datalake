@@ -1,7 +1,7 @@
 package org.radiant.opendatalake
 
 import bio.ferlab.datalake.commons.config.RuntimeETLContext
-import org.radiant.opendatalake.config.contracts.ContractRunner
+import org.radiant.opendatalake.contracts.ContractRunner
 import org.radiant.opendatalake.enriched.{DBNSFP, Genes, RareVariant}
 import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
