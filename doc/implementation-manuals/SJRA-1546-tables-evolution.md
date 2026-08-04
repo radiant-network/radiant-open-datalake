@@ -213,15 +213,15 @@ At a minimum, they are available by browsing Github's `Releases` section.
 ## 4. Implementation Checklist
 
 **Contracts & fan-out**
-- [ ] Add the `contracts.yml` file to the ETL repository and a loader/parser for it.
-- [ ] Implement the operator that Airflow to inject the `dataset_version` (from the Asset event) and trigger spark runs.
+- [x] Add the `contracts.yml` file to the ETL repository and a loader/parser for it.
+- [x] Implement the operator that Airflow to inject the `dataset_version` (from the Asset event) and trigger spark runs.
 
 **Versions table**
 - [ ] Create the `versions` table (StarRocks-readable) with the defined columns.
 - [ ] Expose the table to consumers as the per-dataset status page.
 
 **Idempotency & restart**
-- [ ] Implement idempotent overwrite per `dataset_version` (delete `WHERE dataset_version = X` + append, single transaction) so re-runs converge without duplicates.
+- [x] Implement idempotent overwrite per `dataset_version` (delete `WHERE dataset_version = X` + append, single transaction) so re-runs converge without duplicates.
 - [ ] Implement resume logic: `last_run > last_successful_run` -> retry-from-failure; 
 - [ ] Implement the `v{MAJOR}.{MINOR}.{PATCH}` Iceberg tagging, idempotent per `dataset_version` (no duplicate tag / no PATCH incrementation on retry).
 - [ ] Auto-increment `PATCH` only on a new successful commit, derived from the `versions` table (`PATCH` reserved to automation).
@@ -229,7 +229,7 @@ At a minimum, they are available by browsing Github's `Releases` section.
 **Schema validation & failure handling**
 - [ ] Implement in-normalizer schema validation classifying the run as `PATCH` / `MINOR` / `MAJOR`.
 - [ ] On a breaking change (or other failure), set `status=ERROR` in the `versions` table before exiting; block further updates to that contract.
-- [ ] Define the `MINOR` (schema evolution: add columns) and `MAJOR` (new table + new normalizer class) implementations.
+- [x] Define the `MINOR` (schema evolution: add columns) and `MAJOR` (new table + new normalizer class) implementations.
 
 ## 5. References
 
