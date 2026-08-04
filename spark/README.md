@@ -23,8 +23,10 @@ The dataset configuration files are generated from the Scala class `EtlConfigura
 **Never hand-edit either file**, but instead edit `EtlConfiguration.scala` and regenerate, or the next run silently reverts the change:
 
 ```sh
-sbt "runMain org.radiant.opendatalake.config.EtlConfiguration"
+sbt "Test/runMain org.radiant.opendatalake.config.EtlConfiguration"
 ```
+
+`Test/` rather than plain `runMain` because we need to read `contracts.yml` to name the contract-managed tables.
 
 The job is launched with `--config config/<ENV>.conf`, so an environment other than `prd` (`qa`, `staging`, …)
 needs its `StorageConf` list and its own `ConfigurationWriter.writeTo` line added to `EtlConfiguration`

@@ -32,11 +32,6 @@ class ContractDestinationSpec extends AnyFlatSpec with Matchers {
     destination.table.map(_.database) shouldBe Some("reference")
   }
 
-  /*
-    The point of table_prefix: the name is chosen in contracts.yml, so it does not have to match the family's
-    own. The family only decides which directory the table sits in — its declared name is the segment being
-    replaced, which is what keeps the location's last segment equal to the table name.
-  */
   it should "take an arbitrary prefix, not the family's table name" in {
     val destination = ContractDestination.forMajor(family, "clinvar_open", 1)
 
@@ -44,10 +39,6 @@ class ContractDestinationSpec extends AnyFlatSpec with Matchers {
     destination.path shouldBe "/normalized/clinvar_open_v1"
   }
 
-  /*
-    test.conf rewrites every Iceberg path to `/` + the family's table name, so the prefix has to survive a
-    single-segment path too — that is the only location the local Hadoop catalog accepts.
-  */
   it should "handle a single-segment family path" in {
     val destination = ContractDestination.forMajor(family.copy(path = "/clinvar"), "clinvar_open", 1)
 
@@ -55,10 +46,6 @@ class ContractDestinationSpec extends AnyFlatSpec with Matchers {
     destination.table.map(_.name) shouldBe Some("clinvar_open_v1")
   }
 
-  /*
-    Everything else is what makes the family worth declaring once: a MAJOR inherits the source's storage,
-    partitioning and write options rather than restating them.
-  */
   it should "leave the rest of the dataset alone" in {
     val destination = ContractDestination.forMajor(family, "clinvar", 1)
 
@@ -81,11 +68,6 @@ class ContractDestinationSpec extends AnyFlatSpec with Matchers {
     ex.getMessage should include("declares no table")
   }
 
-  /*
-    The last path segment is replaced whatever it happens to be, rather than being required to match the
-    family's table name. That is what makes the location end with the derived table name by construction —
-    the only shape the Hadoop catalog accepts, and one Glue would otherwise disagree with silently.
-  */
   it should "overwrite the last path segment even when it is not the family's table name" in {
     val odd = family.copy(path = "/normalized/raw_clinvar")
 

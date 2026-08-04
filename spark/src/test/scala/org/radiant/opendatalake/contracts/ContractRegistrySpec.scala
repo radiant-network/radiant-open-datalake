@@ -23,14 +23,8 @@ class ContractRegistrySpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /*
-    MAJOR is half the key, not decoration: each MAJOR is implemented by its own class, so a lineage the
-    registry does not know resolves to nothing rather than reusing the previous MAJOR's normalizer — which
-    would publish that schema under the new contract's table.
-  */
   it should "key a factory on the MAJOR as well as the source" in {
     ContractRegistry.factory("clinvar", Contract("1.0", "v1.md")) should not be empty
-    // A MAJOR far beyond anything declared, so this stays meaningful as real MAJORs are added.
     ContractRegistry.factory("clinvar", Contract("99.0", "v99.md")) shouldBe None
     ContractRegistry.factory("cosmic", Contract("1.0", "v1.md")) shouldBe None
   }

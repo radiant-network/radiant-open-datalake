@@ -27,10 +27,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
       |""".stripMargin
   )
 
-  /*
-    Accepts anything, and fails loudly if a caller tries to build with it. Lets the plan specs use
-    contracts that no real registry entry backs — plan is about selection, not registration.
-  */
   private val acceptAll: ContractRunner.FactoryLookup = (_, _) => Some(_ => fail("plan must not build jobs"))
 
   "plan" should "return every declared contract of the source, in file order" in {
@@ -40,10 +36,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     plan.tablePrefix shouldBe "clinvar"
   }
 
-  /*
-    The table a contract publishes to is derived, so the plan is where a caller learns it — nothing in
-    contracts.yml spells it out.
-  */
   it should "name the table each MAJOR publishes to" in {
     val plan = ContractRunner.plan("clinvar", twoMajors, acceptAll)
 
@@ -70,9 +62,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     ex.getMessage should include("Source 'clinvar' declares no table_prefix")
   }
 
-  /*
-    The suffix is appended per contract, so a prefix carrying one already would derive `clinvar_v1_v1`.
-  */
   it should "reject a table_prefix that already carries a MAJOR suffix" in {
     val contracts = Contracts.parse(
       """sources:
@@ -105,7 +94,7 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", contracts)
     ex.getMessage should include("same MAJOR more than once")
     ex.getMessage should include("'clinvar'")
-    ex.getMessage should include("MAJOR 1: 1.0, 1.3") // the colliding lineages, not just the fact of a collision
+    ex.getMessage should include("MAJOR 1: 1.0, 1.3")
   }
 
   it should "reject a MAJOR with no registry entry" in {
@@ -129,11 +118,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     ContractRunner.destinationMismatchReason("clinvar", contract, iceberg("normalized_clinvar_v1", Some("clinvar_v1"))) shouldBe None
   }
 
-  /*
-    With the destination derived, this catches a normalizer that names the wrong source dataset or the wrong
-    MAJOR — a MAJOR 2 class copied from MAJOR 1 and still pointing at its family, say, which would quietly
-    publish two contracts into one table.
-  */
   it should "report a job writing to another MAJOR's table" in {
     val contract = Contract("2.0", "v2.md")
     val mismatch = ContractRunner.destinationMismatchReason("clinvar", contract, iceberg("normalized_clinvar_v1", Some("clinvar_v1")))
@@ -149,10 +133,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     mismatch.value should include("writes to no table")
   }
 
-  /*
-    The launch path over the packaged contracts.yml: plan is where the prefix rules, the duplicate-MAJOR rule
-    and registry coverage are enforced, and no other spec runs it against the real file.
-  */
   "plan" should "accept every source declared in the packaged contracts.yml" in {
     val contracts = Contracts.load()
 

@@ -139,9 +139,8 @@ neither fixed by the code. The database is `TableConf.database` in `config/<env>
 where tables land. The catalog name appears nowhere in the ETL: every identifier it emits is
 `<database>.<table>`, and `spark.sql.defaultCatalog` at launch decides which catalog that is. That is what
 lets one JAR run against Glue on EMR (`operators/emr.py`), Polaris in the sandbox
-(`operators/spark_k8s.py`) and a Hadoop catalog in tests (`WithSparkTestEnvironment`). Note that
-`spark/doc/storage_convention.md` still presents both names as fixed and queries `reference.clinvar`, a table
-that no longer exists — this section is the accurate one.
+(`operators/spark_k8s.py`) and a Hadoop catalog in tests (`WithSparkTestEnvironment`). The consumer-facing
+version of this, including how to read a branch, is `spark/doc/storage_convention.md`.
 
 `test.conf` deliberately rewrites every Iceberg dataset path to `/<table-name>`: the local Hadoop
 catalog used in tests rejects custom table locations — `HadoopCatalogTableBuilder.withLocation` compares
