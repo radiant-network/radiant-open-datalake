@@ -52,9 +52,9 @@ object EtlConfiguration extends App {
   private lazy val contracts: Contracts = Contracts.load()
 
   // This is useful for customizing the DatasetConf with the information coming from `contracts.yml`
-  def buildNormalizedDatasetConfForContractFamily(source: String,
-                                                  partitionby: List[String] = List(),
-                                                  repartition: Option[Repartition] = None): DatasetConf = {
+  def buildNormalizedDatasetConf(source: String,
+                                 partitionby: List[String] = List(),
+                                 repartition: Option[Repartition] = None): DatasetConf = {
     val prefix = contracts.tablePrefixOf(source).filter(_.nonEmpty).getOrElse(
       throw new IllegalArgumentException(s"source '$source' declares no table_prefix in contracts.yml")
     )
@@ -104,12 +104,12 @@ object EtlConfiguration extends App {
     //normalized
     DatasetConf("normalized_1000_genomes", iceberg_storage_id, "/normalized/1000_genomes", ICEBERG, OverWrite, partitionby = List(), table = table("1000_genomes")),
     DatasetConf("normalized_cancer_hotspots", iceberg_storage_id, "/normalized/cancer_hotspots", ICEBERG, OverWrite, partitionby = List(), table = table("cancer_hotspots")),
-    buildNormalizedDatasetConfForContractFamily("clinvar", repartition = Some(Coalesce())),
+    buildNormalizedDatasetConf("clinvar", repartition = Some(Coalesce())),
     DatasetConf("normalized_cosmic_gene_set", iceberg_storage_id, "/normalized/cosmic_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
     DatasetConf("normalized_cosmic_mutation_set", iceberg_storage_id, "/normalized/cosmic_mutation_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_mutation_set")),
     DatasetConf("normalized_dbnsfp", iceberg_storage_id, "/normalized/dbnsfp/variant", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp")),
     DatasetConf("normalized_dbnsfp_annovar", iceberg_storage_id, "/normalized/annovar/dbnsfp", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_annovar")),
-    buildNormalizedDatasetConfForContractFamily("dbsnp", partitionby = List("chromosome")),
+    buildNormalizedDatasetConf("dbsnp", partitionby = List("chromosome")),
     DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
     DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
     DatasetConf("normalized_gnomad_genomes_v2_1_1", iceberg_storage_id, "/normalized/gnomad_genomes_v2_1_1_liftover_grch38", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_genomes_v2_1_1")),

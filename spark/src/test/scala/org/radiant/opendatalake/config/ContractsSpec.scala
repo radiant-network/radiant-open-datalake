@@ -112,21 +112,52 @@ class ContractsSpec extends AnyFlatSpec with Matchers {
 
   /*
     Jackson leaves absent or empty yaml keys as null. jackson-module-scala maps null -> None for the
-    Option fields, but a null map *value* (`clinvar:` with nothing under it) stays null. Without the
-    normalization in Contracts these shapes throw a bare NPE inside `forSource` instead of
-    ContractRunner's "No contract declared" message.
+    Option fields, but a null map *value* (`clinvar:` with nothing under it) stays null. Contracts drops
+    those entries — with a required tablePrefix there is no empty SourceContracts to stand in for one — so
+    such a source reaches ContractRunner's "No contract declared" message instead of a bare NPE.
   */
-  it should "treat a null sources map or a null contracts list as nothing declared" in {
+  it should "treat a null sources map or a null source as nothing declared" in {
     Contracts.parse("sources:\n").sourceNames shouldBe empty
     Contracts.parse("sources:\n").forSource("clinvar") shouldBe empty
 
-    val sourceWithoutList = Contracts.parse("sources:\n  clinvar:\n")
-    sourceWithoutList.sourceNames should contain("clinvar")
-    sourceWithoutList.forSource("clinvar") shouldBe empty
-    sourceWithoutList.tablePrefixOf("clinvar") shouldBe None
+    val emptySource = Contracts.parse("sources:\n  clinvar:\n")
+    emptySource.sourceNames shouldBe empty
+    emptySource.forSource("clinvar") shouldBe empty
+    emptySource.tablePrefixOf("clinvar") shouldBe None
 
-    val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", sourceWithoutList)
+    val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", emptySource)
     ex.getMessage should include("No contract declared for source 'clinvar'")
+  }
+
+  /*
+    table_prefix is what names the table, so a source without one has nothing to publish to. Required at the
+    type level, which makes it a parse failure — Jackson wraps the case-class require, same as for lineage.
+  */
+  it should "reject a source that declares no table_prefix" in {
+    val yaml =
+      """sources:
+        |  clinvar:
+        |    contracts:
+        |      - lineage: "1.0"
+        |        release_notes: "v1.md"
+        |""".stripMargin
+
+    val ex = the[JsonMappingException] thrownBy Contracts.parse(yaml)
+    ex.getMessage should include("Missing table_prefix")
+  }
+
+  it should "reject an empty table_prefix" in {
+    val yaml =
+      """sources:
+        |  clinvar:
+        |    table_prefix: ""
+        |    contracts:
+        |      - lineage: "1.0"
+        |        release_notes: "v1.md"
+        |""".stripMargin
+
+    val ex = the[JsonMappingException] thrownBy Contracts.parse(yaml)
+    ex.getMessage should include("Missing table_prefix")
   }
 
   /*
@@ -154,14 +185,6 @@ class ContractsSpec extends AnyFlatSpec with Matchers {
     behind by a doc move, is invisible otherwise. Paths are relative to the spark module, which is the
     working directory of the forked test JVM (sbt `baseDirectory`).
   */
-  it should "declare a table_prefix for every source" in {
-    val contracts = Contracts.load()
-
-    val missing = contracts.sourceNames.toList.sorted.filter(contracts.tablePrefixOf(_).forall(_.isEmpty))
-
-    missing shouldBe empty
-  }
-
   it should "point every contract at a release notes file that exists" in {
     val contracts = Contracts.load()
 

@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.contracts
 
-import bio.ferlab.datalake.commons.config.DatasetConf
+import bio.ferlab.datalake.commons.config.{DatasetConf, TableConf}
 
 object ContractDestination {
 
@@ -9,11 +9,11 @@ object ContractDestination {
   def tableName(tablePrefix: String, major: Int): String = tablePrefix + suffix(major)
 
   def forMajor(sourceDataset: DatasetConf, tablePrefix: String, major: Int): DatasetConf = {
-    val anchor = sourceDataset.table.getOrElse(
+    val name = tableName(tablePrefix, major)
+
+    val anchor: TableConf = sourceDataset.table.getOrElse(
       throw new IllegalArgumentException(s"${sourceDataset.id} declares no table")
     )
-
-    val name = tableName(tablePrefix, major)
 
     sourceDataset.copy(
       id = sourceDataset.id + suffix(major),

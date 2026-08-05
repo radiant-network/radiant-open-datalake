@@ -19,21 +19,36 @@ object ContractRunner {
            contracts: Contracts,
            factories: FactoryLookup = ContractRegistry.factory): ContractPlan = {
 
+    val tablePrefix = contracts.tablePrefixOf(source).getOrElse(
+      throw new IllegalArgumentException(s"No contract declared for source '$source' in contracts.yml")
+    )
+
     val declared = contracts.forSource(source)
     require(declared.nonEmpty, s"No contract declared for source '$source' in contracts.yml")
 
-    val tablePrefix = contracts.tablePrefixOf(source).filter(_.nonEmpty).getOrElse(
-      throw new IllegalArgumentException(s"Source '$source' declares no table_prefix in contracts.yml")
-    )
-
     require(MajorSuffix.findFirstIn(tablePrefix).isEmpty, s"table_prefix '$tablePrefix' already carries a MAJOR suffix; declare it without the suffix (MAJOR comes from the lineage)")
 
-    val duplicated = declared.groupBy(_.major).collect { case (major, rows) if rows.size > 1 => s"MAJOR $major: ${rows.map(_.lineage).mkString(", ")}"}
-    require(duplicated.isEmpty, s"contracts.yml declares the same MAJOR more than once for source '$source': ${duplicated.mkString("; ")}")
+    val duplicatedMajors = declared
+      .groupBy(_.major)
+      .collect {
+        case (major, rows) if rows.size > 1
+        => s"MAJOR $major: ${rows.map(_.lineage).mkString(", ")}"
+      }
+
+    require(
+      duplicatedMajors.isEmpty,
+      s"contracts.yml declares the same MAJOR more than once for source '$source': ${duplicatedMajors.mkString("; ")}"
+    )
 
     val resolved = declared.map(c => c -> factories(source, c))
-    val unregistered = resolved.collect { case (c, None) => s"${c.lineage} -> ($source, MAJOR ${c.major})" }
-    require(unregistered.isEmpty, s"No ContractRegistry entry for source '$source': ${unregistered.mkString(", ")}")
+    val unregistered = resolved.collect {
+      case (c, None) => s"${c.lineage} -> ($source, MAJOR ${c.major})"
+    }
+
+    require(
+      unregistered.isEmpty,
+      s"No ContractRegistry entry for source '$source': ${unregistered.mkString(", ")}"
+    )
 
     ContractPlan(tablePrefix, resolved.collect { case (c, Some(factory)) => c -> factory })
   }
@@ -59,7 +74,10 @@ object ContractRunner {
     val args = NormalizerArgs(rc, version, rawStorage, contractPlan.tablePrefix)
     val jobs = contractPlan.jobs.map { case (c, factory) => c -> factory(args) }
 
-    val mismatches = jobs.flatMap { case (c, job) => destinationMismatchReason(contractPlan.tablePrefix, c, job.mainDestination) }
+    val mismatches = jobs.flatMap {
+      case (c, job) =>
+        destinationMismatchReason(contractPlan.tablePrefix, c, job.mainDestination)
+    }
     require(mismatches.isEmpty, s"a normalizer does not write to the table its contract implies: ${mismatches.mkString("; ")}")
 
     jobs

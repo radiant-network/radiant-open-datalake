@@ -48,20 +48,6 @@ class ContractRunnerSpec extends AnyFlatSpec with Matchers with OptionValues {
     ex.getMessage should include("No contract declared for source 'cosmic'")
   }
 
-  it should "reject a source with contracts but no table_prefix" in {
-    val contracts = Contracts.parse(
-      """sources:
-        |  clinvar:
-        |    contracts:
-        |      - lineage: "1.0"
-        |        release_notes: "v1.md"
-        |""".stripMargin
-    )
-
-    val ex = the[IllegalArgumentException] thrownBy ContractRunner.plan("clinvar", contracts, acceptAll)
-    ex.getMessage should include("Source 'clinvar' declares no table_prefix")
-  }
-
   it should "reject a table_prefix that already carries a MAJOR suffix" in {
     val contracts = Contracts.parse(
       """sources:

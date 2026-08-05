@@ -15,19 +15,23 @@ case class Contract(lineage: String, releaseNotes: String) {
   val minor: Int = parts(1).toInt
 }
 
-case class SourceContracts(tablePrefix: Option[String], contracts: Option[List[Contract]])
+case class SourceContracts(tablePrefix: String, contracts: Option[List[Contract]]) {
+
+  require(
+    tablePrefix != null && tablePrefix.nonEmpty,
+    "Missing table_prefix: every source in contracts.yml must declare the table family its MAJORs publish to"
+  )
+}
 
 case class Contracts(sources: Option[Map[String, SourceContracts]]) {
 
   private lazy val declaredSources: Map[String, SourceContracts] =
-    sources.getOrElse(Map.empty).map { case (name, declared) =>
-      name -> Option(declared).getOrElse(SourceContracts(None, None))
-    }
+    sources.getOrElse(Map.empty).filter { case (_, declared) => declared != null }
 
   def forSource(source: String): List[Contract] =
     declaredSources.get(source).flatMap(_.contracts).getOrElse(Nil)
 
-  def tablePrefixOf(source: String): Option[String] = declaredSources.get(source).flatMap(_.tablePrefix)
+  def tablePrefixOf(source: String): Option[String] = declaredSources.get(source).map(_.tablePrefix)
 
   def sourceNames: Set[String] = declaredSources.keySet
 }
