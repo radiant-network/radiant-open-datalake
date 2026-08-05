@@ -7,15 +7,14 @@ import bio.ferlab.datalake.spark3.implicits.SparkUtils._
 import org.apache.spark.sql._
 import org.apache.spark.sql.expressions.UserDefinedFunction
 import org.apache.spark.sql.functions._
+import org.radiant.opendatalake.contracts.ContractETLP
 import org.radiant.opendatalake.normalized.io.RawInput
-import org.radiant.opendatalake.wap.WapETLP
 
 import java.time.LocalDateTime
 import scala.collection.mutable
 
-case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String) extends WapETLP(rc) {
-
-  override val mainDestination: DatasetConf = conf.getDataset("normalized_clinvar")
+case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_clinvar", tablePrefix, major = 1) {
 
   val clinvar_vcf: DatasetConf = conf.getDataset("raw_clinvar")
 

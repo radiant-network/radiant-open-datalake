@@ -30,7 +30,7 @@ Alternatively, you can use the ui. Login to localhost:9001 with admin, password 
 ## 4. Build the assembly
 
 ```sh
-  sbt "runMain org.radiant.opendatalake.config.EtlConfiguration"
+  sbt "Test/runMain org.radiant.opendatalake.config.EtlConfiguration"
   sbt clean assembly
 ```
 

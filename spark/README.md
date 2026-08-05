@@ -13,12 +13,24 @@ See [doc/storage_convention.md](doc/storage_convention.md)
 
 ## Developers
 
-The dataset configuration files in `resources/config` (e.g., `qa.conf`, `staging.conf`, `prod.conf` and `test.conf`) are automatically generated from the Scala class `EtlConfiguration`.  
-To (re)generate these configuration files, run the following command:
+The dataset configuration files are generated from the Scala class `EtlConfiguration`:
+
+| File                                  | Used by                                                                                          |
+|---------------------------------------|--------------------------------------------------------------------------------------------------|
+| `src/main/resources/config/prd.conf`  | the deployed job, and shipped inside the fat JAR                                                 |
+| `src/test/resources/config/test.conf` | the test suite, with the Iceberg paths rewritten to `/<table-name>` for the local Hadoop catalog |
+
+**Never hand-edit either file**, but instead edit `EtlConfiguration.scala` and regenerate, or the next run silently reverts the change:
 
 ```sh
-sbt "runMain org.radiant.opendatalake.config.EtlConfiguration"
+sbt "Test/runMain org.radiant.opendatalake.config.EtlConfiguration"
 ```
+
+`Test/` rather than plain `runMain` because we need to read `contracts.yml` to name the contract-managed tables.
+
+The job is launched with `--config config/<ENV>.conf`, so an environment other than `prd` (`qa`, `staging`, …)
+needs its `StorageConf` list and its own `ConfigurationWriter.writeTo` line added to `EtlConfiguration`
+first.
 
 To build a fat JAR for deployment, use:
 

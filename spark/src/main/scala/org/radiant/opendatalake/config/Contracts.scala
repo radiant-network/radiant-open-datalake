@@ -1,10 +1,10 @@
-package org.radiant.opendatalake.config.contracts
+package org.radiant.opendatalake.config
 
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, PropertyNamingStrategies}
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
-case class Contract(lineage: String, table: String, releaseNotes: String) {
+case class Contract(lineage: String, releaseNotes: String) {
 
   private val parts: Array[String] = lineage.split('.')
   require(
@@ -15,22 +15,23 @@ case class Contract(lineage: String, table: String, releaseNotes: String) {
   val minor: Int = parts(1).toInt
 }
 
-case class SourceContracts(contracts: Option[List[Contract]])
+case class SourceContracts(tablePrefix: String, contracts: Option[List[Contract]]) {
 
-/*
-  A yaml key present but empty deserializes to *null*. jackson-module-scala maps null -> None for the
-  Option fields (`sources`, `contracts`), but NOT for a null map *value* (`clinvar:` with nothing under
-  it) — that stays null — so `Option(declared)` still guards the middle case. Normalized once in
-  `declaredSources` so the rest of the class sees clean data.
-*/
+  require(
+    tablePrefix != null && tablePrefix.nonEmpty,
+    "Missing table_prefix: every source in contracts.yml must declare the table family its MAJORs publish to"
+  )
+}
+
 case class Contracts(sources: Option[Map[String, SourceContracts]]) {
 
-  private lazy val declaredSources: Map[String, List[Contract]] =
-    sources.getOrElse(Map.empty).map { case (name, declared) =>
-      name -> Option(declared).flatMap(_.contracts).getOrElse(Nil)
-    }
+  private lazy val declaredSources: Map[String, SourceContracts] =
+    sources.getOrElse(Map.empty).filter { case (_, declared) => declared != null }
 
-  def forSource(source: String): List[Contract] = declaredSources.getOrElse(source, Nil)
+  def forSource(source: String): List[Contract] =
+    declaredSources.get(source).flatMap(_.contracts).getOrElse(Nil)
+
+  def tablePrefixOf(source: String): Option[String] = declaredSources.get(source).map(_.tablePrefix)
 
   def sourceNames: Set[String] = declaredSources.keySet
 }

@@ -1,22 +1,21 @@
 # contracts.yml
 #
 # Source of truth for the contracts the ETL must execute (SJRA-1546, section 3.1).
-# One entry per source under `sources.<name>.contracts`. Fields:
-#   lineage       - "{MAJOR}.{MINOR}" the contract corresponds to (dot separated).
-#   table         - Iceberg table name linked to that lineage's MAJOR. Also the key ContractRegistry
-#                   maps to the normalizer that implements the contract.
-#   release_notes - Path to the release notes for that lineage's MAJOR, relative to `spark/`.
+# One entry per source under `sources.<name>`:
+#   table_prefix  - Prefix to which the `v{MAJOR}` suffix is appended to name the Iceberg table.
+#   contracts     - One entry per MAJOR:
+#       lineage       - "{MAJOR}.{MINOR}" the contract corresponds to (dot separated).
+#       release_notes - Path to the release notes for that lineage's MAJOR, relative to `spark/`.
 #
-# A new MINOR bumps `lineage` on the existing row; a new MAJOR adds a new row plus a
-# ContractRegistry entry under the new table name.
+# A new MINOR bumps `lineage` on the existing row. A new MAJOR adds a new row with its own `lineage` and `release_notes`.
 sources:
   clinvar:
+    table_prefix: "clinvar"
     contracts:
       - lineage: "1.0"
-        table: "clinvar"
         release_notes: "doc/release-notes/clinvar/v1.md"
   dbsnp:
+    table_prefix: "dbsnp"
     contracts:
       - lineage: "1.0"
-        table: "dbsnp"
         release_notes: "doc/release-notes/dbsnp/v1.md"
