@@ -1,4 +1,4 @@
-package org.radiant.opendatalake.normalized.mondo
+package org.radiant.opendatalake.normalized
 
 import bio.ferlab.datalake.commons.config.{Coalesce, DatasetConf, RuntimeETLContext}
 import bio.ferlab.transform.DownloadTransformer

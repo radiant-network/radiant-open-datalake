@@ -1,4 +1,4 @@
-package org.radiant.opendatalake.normalized.mondo
+package org.radiant.opendatalake.normalized
 
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.TestETLContext
