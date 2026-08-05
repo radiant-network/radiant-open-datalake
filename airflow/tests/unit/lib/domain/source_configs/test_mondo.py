@@ -5,9 +5,7 @@ import pytest
 
 def test_mondo_get_latest_version(mondo_source_config):
     mock_response = Mock(url="https://github.com/monarch-initiative/mondo/releases/tag/v2024-09-03")
-    with patch(
-        "opendatalake.lib.domain.source_configs.mondo.http_get", return_value=mock_response
-    ) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.mondo.http_get", return_value=mock_response) as mock_http_get:
         version = mondo_source_config.get_latest_version()
 
     assert version == "v2024-09-03"
