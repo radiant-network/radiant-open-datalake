@@ -1,7 +1,7 @@
 import pytest
 
 from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
-from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
+from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig, MondoSourceConfig
 
 
 @pytest.fixture
@@ -36,6 +36,25 @@ def dbsnp_source_conf() -> DBSNPSourceConfig:
                 md5_present=True,
                 label="test",
             ),
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+
+
+@pytest.fixture
+def mondo_source_config() -> MondoSourceConfig:
+    return MondoSourceConfig(
+        short_name="mondo",
+        display_name="Mondo Disease Ontology",
+        website="https://mondo.monarchinitiative.org/",
+        latest_release_url="https://github.com/monarch-initiative/mondo/releases/latest",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://github.com/monarch-initiative/mondo/releases/download/{version}/mondo-base.obo"
+                ),
+                label="test",
+            )
         ],
         update_mode=UpdateMode.AUTO,
     )

@@ -1,10 +1,11 @@
 from enum import Enum
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, UpdateMode
-from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig
+from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig, MondoSourceConfig
 
 _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
+_OBO_LABEL = "obo"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -48,6 +49,22 @@ class _Source(Enum):
             spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
             waiter_max_attempts=960,  # ~16h
         ),
+    )
+    MONDO = MondoSourceConfig(
+        short_name="mondo",
+        display_name="Mondo Disease Ontology",
+        website="https://mondo.monarchinitiative.org/",
+        latest_release_url="https://github.com/monarch-initiative/mondo/releases/latest",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://github.com/monarch-initiative/mondo/releases/download/{version}/mondo-base.obo"
+                ),
+                label=_OBO_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="mondo"),
     )
 
 
