@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.config
 
-import bio.ferlab.datalake.commons.config.Format.{CSV, GFF, ICEBERG, VCF, XML}
+import bio.ferlab.datalake.commons.config.Format.{BINARY, CSV, GFF, ICEBERG, VCF, XML}
 import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config._
 import bio.ferlab.datalake.commons.file.FileSystemType.S3
@@ -87,6 +87,7 @@ object EtlConfiguration extends App {
     DatasetConf("raw_cosmic_mutation_set", raw_storage_id, "/cosmic/cmc_export.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_ddd_gene_set", raw_storage_id, "/ddd/DDG2P.csv.gz", CSV, OverWrite, readoptions = Map("header" -> "true")),
     DatasetConf("raw_hpo_gene_set", raw_storage_id, "/hpo/genes_to_phenotype.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t", "nullValue" -> "-")),
+    DatasetConf("raw_mondo", raw_storage_id, "/mondo/{{VERSION}}/*.obo", BINARY, OverWrite),
     DatasetConf("raw_refseq_human_genes", raw_storage_id, "/refseq/Homo_sapiens.gene_info.gz", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "header" -> "true", "sep" -> "\t", "nullValue" -> "-")),
     DatasetConf("raw_refseq_annotation", raw_storage_id, "/refseq/GCF_GRCh38_genomic.gff.gz", GFF, OverWrite),
     DatasetConf("raw_ensembl_entrez", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.entrez.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
@@ -114,6 +115,7 @@ object EtlConfiguration extends App {
     DatasetConf("normalized_gnomad_sv_v4", iceberg_storage_id, "/normalized/gnomad_sv_v4", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_sv_v4")),
     DatasetConf("normalized_human_genes", iceberg_storage_id, "/normalized/human_genes", ICEBERG, OverWrite, partitionby = List(), table = table("human_genes")),
     DatasetConf("normalized_hpo_gene_set", iceberg_storage_id, "/normalized/hpo_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("hpo_gene_set")),
+    buildNormalizedDatasetConf("mondo"),
     DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
     DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
     DatasetConf("normalized_topmed_bravo", iceberg_storage_id, "/normalized/topmed_bravo", ICEBERG, OverWrite, partitionby = List(), table = table("topmed_bravo")),

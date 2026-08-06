@@ -24,3 +24,8 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/gnomad_joint/v1.md"
+  mondo:
+    table_prefix: "mondo"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/mondo/v1.md"
