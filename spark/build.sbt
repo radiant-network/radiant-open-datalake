@@ -27,6 +27,9 @@ resolvers ++= Seq(
 )
 
 libraryDependencies += "bio.ferlab" %% "datalake-spark3" % datalakeSpark3Version
+
+// Keep the exclude or transitive dependencies will break the build because of conflicts
+libraryDependencies += "bio.ferlab" %% "obo-parser" % "1.3.1" exclude ("org.apache.poi", "poi") exclude ("org.apache.poi", "poi-ooxml")
 libraryDependencies += "org.apache.spark" %% "spark-sql" % sparkVersion % Provided
 libraryDependencies += "org.apache.hadoop" % "hadoop-client" % "3.3.4" % Provided
 libraryDependencies += "org.apache.hadoop" % "hadoop-aws" % "3.3.4"
