@@ -1,23 +1,26 @@
 package org.radiant.opendatalake.normalized.gnomad
 
 import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
-import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.vcf
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
+import org.radiant.opendatalake.contracts.ContractETLP
+import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class GnomadV4(rc: RuntimeETLContext) extends SimpleETLP(rc) {
 
-  override val mainDestination: DatasetConf = conf.getDataset("normalized_gnomad_joint_v4")
-  val gnomad_vcf: DatasetConf = conf.getDataset("raw_gnomad_joint_v4")
+// Here "v1" represents the opendatalake contract version (1.x.x).
+// The raw dataset version compatible with this normalizer is 4.1.
+case class GnomadJoint_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_gnomad_joint", tablePrefix, major = 1) {
+
+
+  val gnomad_vcf: DatasetConf = conf.getDataset("raw_gnomad_joint")
 
   override def extract(lastRunValue: LocalDateTime = minValue,
                        currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
 
-    Map(gnomad_vcf.id -> vcf(gnomad_vcf.location, None))
+    Map(gnomad_vcf.id -> RawInput.readVersioned(gnomad_vcf.id, version, rawStorage))
   }
 
   override def transformSingle(data: Map[String, DataFrame],
@@ -27,6 +30,7 @@ case class GnomadV4(rc: RuntimeETLContext) extends SimpleETLP(rc) {
 
     val df = data(gnomad_vcf.id)
 
+    // qual and name are not selected because they are always null in gnomAD sites VCFs.
     val intermediate = df
       .select(
         chromosome +:
@@ -34,8 +38,6 @@ case class GnomadV4(rc: RuntimeETLContext) extends SimpleETLP(rc) {
         end +:
         reference +:
         alternate +:
-        $"qual" +:
-        name +:
         flattenInfo(df): _*
       )
 
@@ -45,8 +47,6 @@ case class GnomadV4(rc: RuntimeETLContext) extends SimpleETLP(rc) {
       $"end",
       $"reference",
       $"alternate",
-      $"qual",
-      $"name",
       $"ac_joint".cast("long"),
       $"af_joint",
       $"an_joint".cast("long"),
@@ -64,13 +64,4 @@ case class GnomadV4(rc: RuntimeETLContext) extends SimpleETLP(rc) {
 
   override val defaultRepartition: DataFrame => DataFrame = RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1000))
 
-}
-
-object GnomadV4 {
-  @main
-  def run(rc: RuntimeETLContext): Unit = {
-    GnomadV4(rc).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }

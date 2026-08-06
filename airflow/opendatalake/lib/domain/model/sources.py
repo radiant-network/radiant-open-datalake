@@ -1,7 +1,12 @@
 from enum import Enum
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, UpdateMode
-from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig, MondoSourceConfig
+from opendatalake.lib.domain.source_configs import (
+    ClinvarSourceConfig,
+    DBSNPSourceConfig,
+    GnomadJointSourceConfig,
+    MondoSourceConfig,
+)
 
 _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
@@ -50,6 +55,9 @@ class _Source(Enum):
             waiter_max_attempts=960,  # ~16h
         ),
     )
+
+    GNOMAD_JOINT = GnomadJointSourceConfig()
+
     MONDO = MondoSourceConfig(
         short_name="mondo",
         display_name="Mondo Disease Ontology",

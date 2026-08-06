@@ -45,3 +45,7 @@ ASSETS_URI_PREFIX = "opendatalake"
 
 # Pools
 DOWNLOAD_TASKS_POOL = "opendatalake_download_tasks_pool"
+
+# Direct uploads stream the file inside the Airflow worker, holding a part in memory.
+# We use a pool for these tasks to control amount of concurrent streams and avoid memory problems.
+DIRECT_UPLOAD_TASKS_POOL = "opendatalake_direct_upload_tasks_pool"
