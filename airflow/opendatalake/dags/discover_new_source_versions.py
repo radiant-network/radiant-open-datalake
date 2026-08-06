@@ -5,7 +5,7 @@ from airflow.sdk import Metadata, dag, task
 
 from opendatalake.lib import config
 from opendatalake.lib.assets import new_source_version_asset, new_source_version_asset_alias
-from opendatalake.lib.domain.model.sources import get_auto_update_source_ids, get_latest_version
+from opendatalake.lib.domain.model.sources import get_auto_update_source_ids, get_latest_version, get_display_name
 
 
 @dag(
@@ -50,9 +50,10 @@ def discover_new_source_versions():
             )
 
     for source in get_auto_update_source_ids():
+        display_name = get_display_name(source)
         check_for_update.override(
             task_id=f"{source}_check_for_update",
-            task_display_name=f"[PyOp] Check {source.capitalize()} For Update",
+            task_display_name=f"[PyOp] Check {display_name} For Update",
         )(source=source)
 
 

@@ -1,7 +1,12 @@
 from enum import Enum
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, UpdateMode
-from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig, MondoSourceConfig
+from opendatalake.lib.domain.source_configs import (
+    ClinvarSourceConfig,
+    DBSNPSourceConfig,
+    MondoSourceConfig,
+    OneThousandGenomesSourceConfig,
+)
 
 _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
@@ -11,6 +16,26 @@ _OBO_LABEL = "obo"
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
 # In the future, we may switch to a configuration-based mechanism instead of using an enum.
 class _Source(Enum):
+    _1000_GENOMES = OneThousandGenomesSourceConfig(
+        short_name="1000_Genomes",
+        display_name="1000 Genomes Project",
+        website="https://www.internationalgenome.org/home",
+        listing_url="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz",
+                md5_present=False,
+                label=_VCF_LABEL,
+            ),
+            DownloadConfig(
+                download_url=lambda version: f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz.tbi",
+                md5_present=False,
+                label=_TBI_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="1000genomes"),
+    )
     CLINVAR = ClinvarSourceConfig(
         short_name="clinvar",
         display_name="NCBI Clinvar",
@@ -73,9 +98,20 @@ class _Source(Enum):
 ###########################################################
 
 
+def _normalize_source_id(source: str) -> str:
+    return source.lower().lstrip("_")
+
+
+_SOURCE_BY_ID: dict[str, _Source] = {_normalize_source_id(member.name): member for member in _Source}
+assert len(_SOURCE_BY_ID) == len(_Source), "source ids are not unique after normalization"
+
+
+def _get_source(source: str) -> _Source:
+    return _SOURCE_BY_ID[_normalize_source_id(source)]
+
+
 def get_download_configs(source: str) -> list[DownloadConfig]:
-    source_enum = _Source[source.upper()]
-    return source_enum.value.download_configs
+    return _get_source(source).value.download_configs
 
 
 def get_download_config_at_index(source: str, index: int) -> DownloadConfig:
@@ -88,11 +124,11 @@ def get_download_config_at_index(source: str, index: int) -> DownloadConfig:
 
 
 def get_display_name(source: str) -> str:
-    return _Source[source.upper()].value.display_name
+    return _get_source(source).value.display_name
 
 
 def get_import_config(source: str) -> ImportConfig:
-    source_enum = _Source[source.upper()]
+    source_enum = _get_source(source)
     import_config = source_enum.value.import_config
     if import_config is None:
         raise ValueError(f"Source '{source}' has no import_config; declare one in sources.py to import it.")
@@ -100,9 +136,8 @@ def get_import_config(source: str) -> ImportConfig:
 
 
 def get_auto_update_source_ids() -> list[str]:
-    return [s.name.lower() for s in _Source if s.value.update_mode == UpdateMode.AUTO]
+    return [_normalize_source_id(s.name) for s in _Source if s.value.update_mode == UpdateMode.AUTO]
 
 
 def get_latest_version(source: str) -> str:
-    source_enum = _Source[source.upper()]
-    return source_enum.value.get_latest_version()
+    return _get_source(source).value.get_latest_version()
