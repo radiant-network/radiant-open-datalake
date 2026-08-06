@@ -37,21 +37,18 @@ def test_get_auto_update_source_ids():
     assert result
     for identifier in result:
         assert identifier.lower() == identifier
-        # The digit-guard underscore on enum names (e.g. `_1000_GENOMES`) must not leak into the id.
         assert not identifier.startswith("_")
         # The id round-trips: it resolves back to its (AUTO) source.
         assert _get_source(identifier).value.update_mode == UpdateMode.AUTO
 
 
-def test_source_ids_have_no_leading_underscore():
-    # `_1000_genomes` -> `1000_genomes`; regression guard for the enum-name underscore leak.
+def test_source_id_derived_from_short_name():
     assert "1000_genomes" in get_auto_update_source_ids()
     assert get_display_name("1000_genomes") == "1000 Genomes Project"
 
 
-def test_reverse_lookup_is_case_and_underscore_insensitive():
-    # Same source resolves regardless of case or a stray leading underscore.
-    for alias in ("1000_genomes", "1000_GENOMES", "_1000_genomes"):
+def test_reverse_lookup_is_case_insensitive():
+    for alias in ("1000_genomes", "1000_GENOMES"):
         assert get_display_name(alias) == "1000 Genomes Project"
 
 

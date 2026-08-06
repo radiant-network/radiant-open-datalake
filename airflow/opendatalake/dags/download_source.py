@@ -10,8 +10,9 @@ from opendatalake.lib.domain.download import S3Downloader
 from opendatalake.lib.domain.model.config import DownloadConfig
 from opendatalake.lib.domain.model.sources import (
     get_auto_update_source_ids,
+    get_display_name,
     get_download_config_at_index,
-    get_download_configs, get_display_name,
+    get_download_configs,
 )
 from opendatalake.lib.operators.ecs import PythonScriptOperator
 from opendatalake.lib.tasks import get_version

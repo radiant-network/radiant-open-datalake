@@ -5,7 +5,7 @@ from airflow.sdk import Metadata, dag, task
 
 from opendatalake.lib import config
 from opendatalake.lib.assets import new_source_version_asset, new_source_version_asset_alias
-from opendatalake.lib.domain.model.sources import get_auto_update_source_ids, get_latest_version, get_display_name
+from opendatalake.lib.domain.model.sources import get_auto_update_source_ids, get_display_name, get_latest_version
 
 
 @dag(

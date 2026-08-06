@@ -16,22 +16,26 @@ _OBO_LABEL = "obo"
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
 # In the future, we may switch to a configuration-based mechanism instead of using an enum.
 class _Source(Enum):
-    _1000_GENOMES = OneThousandGenomesSourceConfig(
+    OneThousandGenomes = OneThousandGenomesSourceConfig(
         short_name="1000_Genomes",
         display_name="1000 Genomes Project",
         website="https://www.internationalgenome.org/home",
         listing_url="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/",
         download_configs=[
             DownloadConfig(
-                download_url=lambda version: f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz",
+                download_url=lambda version: (
+                    f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz"
+                ),
                 md5_present=False,
                 label=_VCF_LABEL,
             ),
             DownloadConfig(
-                download_url=lambda version: f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz.tbi",
+                download_url=lambda version: (
+                    f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz.tbi"
+                ),
                 md5_present=False,
                 label=_TBI_LABEL,
-            )
+            ),
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="1000genomes"),
@@ -99,10 +103,10 @@ class _Source(Enum):
 
 
 def _normalize_source_id(source: str) -> str:
-    return source.lower().lstrip("_")
+    return source.lower()
 
 
-_SOURCE_BY_ID: dict[str, _Source] = {_normalize_source_id(member.name): member for member in _Source}
+_SOURCE_BY_ID: dict[str, _Source] = {_normalize_source_id(member.value.short_name): member for member in _Source}
 assert len(_SOURCE_BY_ID) == len(_Source), "source ids are not unique after normalization"
 
 
@@ -136,7 +140,7 @@ def get_import_config(source: str) -> ImportConfig:
 
 
 def get_auto_update_source_ids() -> list[str]:
-    return [_normalize_source_id(s.name) for s in _Source if s.value.update_mode == UpdateMode.AUTO]
+    return [_normalize_source_id(s.value.short_name) for s in _Source if s.value.update_mode == UpdateMode.AUTO]
 
 
 def get_latest_version(source: str) -> str:
