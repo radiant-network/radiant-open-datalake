@@ -7,10 +7,7 @@ import org.radiant.opendatalake.normalized.gnomad.GnomadJoint_v1
 import org.radiant.opendatalake.testutils.SparkSpec
 
 /*
-  Reads the real gnomAD joint header and two hand-picked chr22 records from
-  `input_vcf/gnomadV4Joint.vcf`: one variant seen only in the genomes, one seen in both callsets.
-  Going through Glow rather than a case class is deliberate — the projection depends on ~300 INFO
-  fields being flattened, which a hand-written model would not reproduce.
+  Use sample vcf file constructed consisting in the header + rows from original chr22 file
  */
 class GnomadJointV1Spec extends SparkSpec {
 
