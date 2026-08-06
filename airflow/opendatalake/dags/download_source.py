@@ -1,4 +1,5 @@
 import re
+from datetime import timedelta
 from pathlib import Path
 
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
@@ -18,7 +19,7 @@ from opendatalake.lib.operators.ecs import PythonScriptOperator
 from opendatalake.lib.tasks import get_version
 
 
-@task
+@task(pool=config.DIRECT_UPLOAD_TASKS_POOL)
 def direct_upload(source: str, prefix: str, version: str, download_index: int):
     """
     Runs a direct upload for a given source and download config.
@@ -80,6 +81,9 @@ def _make_download_source_dag(source_id: str):
         schedule=input_asset,
         tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download"]],
         catchup=False,
+        # Retries let direct uploads (multipart) resume automatically: a new attempt only
+        # downloads the parts that were not already uploaded to S3.
+        default_args={"retries": 3, "retry_delay": timedelta(minutes=1)},
     )
     def _download():
         @task(task_display_name="[PyOp] Get S3 Prefix")

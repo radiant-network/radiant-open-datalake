@@ -2,7 +2,7 @@ package org.radiant.opendatalake
 
 import bio.ferlab.datalake.commons.config.RuntimeETLContext
 import org.radiant.opendatalake.contracts.ContractRunner
-import org.radiant.opendatalake.enriched.{DBNSFP, Genes, RareVariant}
+import org.radiant.opendatalake.enriched.{DBNSFP, Genes}
 import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
 import org.radiant.opendatalake.normalized.omim.OmimGeneSet
@@ -37,10 +37,8 @@ object ImportPublicTable {
   def ensembl_mapping(rc: RuntimeETLContext): Unit = EnsemblMapping.run(rc)
 
   @main
-  def gnomadv3(rc: RuntimeETLContext): Unit = GnomadV3.run(rc)
-
-  @main
-  def gnomadv4(rc: RuntimeETLContext): Unit = GnomadV4.run(rc)
+  def gnomad_joint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("gnomad_joint", rc, version.value, rawStorage.value)
 
   @main
   def gnomadv4cnv(rc: RuntimeETLContext): Unit = GnomadV4CNV.run(rc)
@@ -91,9 +89,6 @@ object ImportPublicTable {
 
   @main
   def topmed_bravo(rc: RuntimeETLContext): Unit = TopMed.run(rc)
-
-  @main
-  def rare_variant_enriched(rc: RuntimeETLContext): Unit = RareVariant.run(rc)
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args, allowPositional = true)
 
