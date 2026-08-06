@@ -1,7 +1,12 @@
 import pytest
 
 from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
-from opendatalake.lib.domain.source_configs import ClinvarSourceConfig, DBSNPSourceConfig, GnomadJointSourceConfig, MondoSourceConfig
+from opendatalake.lib.domain.source_configs import (
+    ClinvarSourceConfig,
+    DBSNPSourceConfig,
+    GnomadJointSourceConfig,
+    MondoSourceConfig,
+)
 
 
 @pytest.fixture
