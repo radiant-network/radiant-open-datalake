@@ -16,7 +16,7 @@ object ContractRegistry {
   private val factories: Map[(String, Int), NormalizerArgs => NormalizerETL] = Map(
     ("clinvar", 1) -> (args => Clinvar_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
     ("dbsnp", 1) -> (args => DBSNP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("gnomad_joint", 1) -> (args => GnomadJoint_v1(args.rc, args.version, args.rawStorage, args.tablePrefix))
+    ("gnomad_joint", 1) -> (args => GnomadJoint_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
     ("mondo", 1) -> (args => Mondo_v1(args.rc, args.version, args.rawStorage, args.tablePrefix))
   )
 
