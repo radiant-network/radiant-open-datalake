@@ -34,3 +34,12 @@ def test_get_latest_version_no_release_raises(one_thousand_genomes_source_config
         pytest.raises(ValueError, match="No 1000 Genomes release directory"),
     ):
         one_thousand_genomes_source_config.get_latest_version()
+
+
+def test_get_latest_version_rejects_int_that_is_not_a_real_date(one_thousand_genomes_source_config):
+    html = '<a href="20139999/">20139999/</a>'
+    with (
+        patch(_HTTP_GET, return_value=Mock(text=html)),
+        pytest.raises(ValueError, match="Unrecognized 1000 Genomes release format"),
+    ):
+        one_thousand_genomes_source_config.get_latest_version()

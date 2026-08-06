@@ -38,7 +38,6 @@ def test_get_auto_update_source_ids():
     for identifier in result:
         assert identifier.lower() == identifier
         assert not identifier.startswith("_")
-        # The id round-trips: it resolves back to its (AUTO) source.
         assert _get_source(identifier).value.update_mode == UpdateMode.AUTO
 
 
