@@ -3,6 +3,7 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.TestETLContext
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.functions.{array, lit}
 import org.radiant.opendatalake.normalized.gnomad.GnomadCNV_v1
 import org.radiant.opendatalake.testutils.SparkSpec
 
@@ -36,7 +37,6 @@ class GnomadCNVV1Spec extends SparkSpec {
     del.getAs[String]("reference") shouldBe "N"
     del.getAs[String]("alternate") shouldBe "<DEL>"
     del.getAs[String]("name") shouldBe "variant_is_80_2__DEL"
-    del.getAs[Seq[String]]("filters") shouldBe Seq("PASS")
     del.getAs[String]("svtype") shouldBe "DEL"
     del.getAs[Int]("svlen") shouldBe 5553
     del.getAs[Double]("sc") shouldBe 3.0
@@ -51,11 +51,22 @@ class GnomadCNVV1Spec extends SparkSpec {
     // The release carries about 112 INFO fields; publishing one commits the contract to it, since
     // dropping a column later is a MAJOR while adding one is a MINOR carried by schema evolution.
     val fields = job.transformSingle(Map(source.id -> raw)).schema.fieldNames
-    fields should have length 12
+    fields should have length 11
     fields.filter(f => f.contains("_xx") || f.contains("_xy") || f.contains("_nfe")) shouldBe empty
-    fields should not contain "qual"
+    fields should contain noneOf ("qual", "filters")
 
     // Glow reads the INFO END field into its own `end`, so a flattened INFO would yield a second one.
     fields.count(_ == "end") shouldBe 1
+  }
+
+  it should "drop the records the release marked FAIL" in {
+    val fixture = getClass.getResource("/input_vcf/gnomadV4CNV.vcf").getPath
+    val raw = spark.read.format("vcf").option("flattenInfoFields", "true").load(fixture)
+
+    // FILTER holds PASS or FAIL only — 747 of the 68,699 released sites are FAIL, masked for a noisy
+    // normalized read-depth signal. They are dropped, which is why `filters` is not published.
+    val failed = raw.withColumn("filters", array(lit("FAIL")))
+
+    job.transformSingle(Map(source.id -> failed)).count() shouldBe 0
   }
 }
