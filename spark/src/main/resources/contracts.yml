@@ -9,6 +9,11 @@
 #
 # A new MINOR bumps `lineage` on the existing row. A new MAJOR adds a new row with its own `lineage` and `release_notes`.
 sources:
+  "1000_genomes":
+    table_prefix: "1000_genomes"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/1000_genomes/v1.md"
   clinvar:
     table_prefix: "clinvar"
     contracts:

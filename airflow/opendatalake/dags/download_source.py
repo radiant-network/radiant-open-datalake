@@ -11,6 +11,7 @@ from opendatalake.lib.domain.download import S3Downloader
 from opendatalake.lib.domain.model.config import DownloadConfig
 from opendatalake.lib.domain.model.sources import (
     get_auto_update_source_ids,
+    get_display_name,
     get_download_config_at_index,
     get_download_configs,
 )
@@ -72,10 +73,11 @@ def _generate_download_task_id(download_conf: DownloadConfig, rank: int) -> str:
 def _make_download_source_dag(source_id: str):
     input_asset = new_source_version_asset(source_id)
     output_asset = downloaded_source_asset(source_id)
+    display_name = get_display_name(source_id)
 
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-download-{source_id}",
-        dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Download {source_id.capitalize()}",
+        dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Download {display_name}",
         schedule=input_asset,
         tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download"]],
         catchup=False,

@@ -63,7 +63,8 @@ object ImportPublicTable {
   def omim(rc: RuntimeETLContext): Unit = OmimGeneSet.run(rc)
 
   @main(name = "1000genomes")
-  def one_thousand_genomes(rc: RuntimeETLContext): Unit = OneThousandGenomes.run(rc)
+  def one_thousand_genomes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("1000_genomes", rc, version.value, rawStorage.value)
 
   @main
   def orphanet(rc: RuntimeETLContext): Unit = OrphanetGeneSet.run(rc)
