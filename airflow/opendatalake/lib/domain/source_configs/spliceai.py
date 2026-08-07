@@ -129,7 +129,6 @@ class SpliceAiSourceConfig(SourceConfig):
     def get_latest_version(self) -> str:
         headers = _auth_headers()
         etags = [
-            _sanitize_etag(http_get(f"{_API_ROOT}/{_FILE_IDS[variant_type]['vcf']}", headers).json()["ETag"])
             for variant_type in ("snv", "indel")
         ]
         return "_".join(etags)
