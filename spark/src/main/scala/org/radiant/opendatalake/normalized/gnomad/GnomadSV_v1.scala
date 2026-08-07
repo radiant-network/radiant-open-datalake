@@ -11,8 +11,7 @@ import java.time.LocalDateTime
 
 
 // Here "v1" represents the opendatalake contract version (1.x.x).
-// The raw dataset version compatible with this normalizer is 4.1, the latest gnomAD release
-// carrying structural variants (4.1.1 has no `genome_sv/` directory).
+// The raw dataset version compatible with this normalizer is 4.1
 case class GnomadSV_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
   extends ContractETLP(rc, sourceDatasetId = "normalized_gnomad_sv", tablePrefix, major = 1) {
 
@@ -29,12 +28,10 @@ case class GnomadSV_v1(rc: RuntimeETLContext, version: String, rawStorage: Strin
                                currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
     import spark.implicits._
 
-    // Only the high-quality calls are published, so `filters` itself is not: every published row
-    // would carry the same value. The VCF reader returns FILTER as an array, since a record can
-    // carry several filters at once; array_contains is how a PASS is recognised there.
-    //
-    // INFO_END duplicates the `end` column computed by the VCF reader, and flattening it would
-    // produce two columns named `end`.
+  
+    // - INFO_END duplicates the `end` column computed by the VCF reader, and flattening it would
+    //   produce two columns named `end`.
+    // - We keep only variants with FILTER set to 'PASS'
     val df = data(gnomad_vcf.id)
       .where(array_contains($"filters", "PASS"))
       .drop("INFO_END")

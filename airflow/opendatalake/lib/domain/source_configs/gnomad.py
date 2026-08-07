@@ -8,9 +8,6 @@ _RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release"
 # gnomAD publishes each dataset on its own cadence, so we pin the two datasets separately
 JOINT_VERSION = "4.1"
 CNV_VERSION = "4.1"
-
-# gnomAD publishes structural variants only under 4.0 and 4.1, and 4.1.1 carries no `genome_sv/`
-# directory, so 4.1 is the latest SV release. It is also the one clin ingests.
 SV_VERSION = "4.1"
 
 _SV_VCF_URL = f"{_RELEASE_ROOT}/{SV_VERSION}/genome_sv/gnomad.v{SV_VERSION}.sv.sites.vcf.gz"
