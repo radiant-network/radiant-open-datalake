@@ -6,7 +6,6 @@ from opendatalake.lib.domain.source_configs import (
     DBSNPSourceConfig,
     GnomadJointSourceConfig,
     MondoSourceConfig,
-    OneThousandGenomesSourceConfig,
 )
 
 
@@ -70,47 +69,6 @@ def mondo_source_config() -> MondoSourceConfig:
         ],
         update_mode=UpdateMode.AUTO,
     )
-
-
-@pytest.fixture
-def one_thousand_genomes_source_config() -> OneThousandGenomesSourceConfig:
-    return OneThousandGenomesSourceConfig(
-        short_name="1000_Genomes",
-        display_name="1000 Genomes Project",
-        website="https://www.internationalgenome.org/",
-        listing_url="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/",
-        download_configs=[
-            DownloadConfig(
-                download_url=lambda version: (
-                    f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/"
-                    f"ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz"
-                ),
-                label="test",
-            )
-        ],
-        update_mode=UpdateMode.AUTO,
-    )
-
-
-@pytest.fixture
-def thousand_genomes_listing_html() -> str:
-    return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
-<html>
- <head><title>Index of /vol1/ftp/release</title></head>
- <body>
-<h1>Index of /vol1/ftp/release</h1>
-<table>
-<tr><td><a href="/vol1/ftp/">Parent Directory</a></td><td>-</td></tr>
-<tr><td><a href="2008_12/">2008_12/</a></td><td>2009-02-19 16:41</td></tr>
-<tr><td><a href="2009_02/">2009_02/</a></td><td>2009-06-25 11:14</td></tr>
-<tr><td><a href="2010_11/">2010_11/</a></td><td>2011-02-16 09:50</td></tr>
-<tr><td><a href="20100804/">20100804/</a></td><td>2011-03-28 14:47</td></tr>
-<tr><td><a href="20101123/">20101123/</a></td><td>2011-09-28 15:30</td></tr>
-<tr><td><a href="20110521/">20110521/</a></td><td>2013-01-08 09:52</td></tr>
-<tr><td><a href="20130502/">20130502/</a></td><td>2025-07-04 16:59</td></tr>
-</table>
-</body></html>
-"""
 
 
 @pytest.fixture

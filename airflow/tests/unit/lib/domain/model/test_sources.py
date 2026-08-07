@@ -42,8 +42,8 @@ def test_get_auto_update_source_ids():
 
 
 def test_source_id_derived_from_short_name():
-    assert "1000_genomes" in get_auto_update_source_ids()
     assert get_display_name("1000_genomes") == "1000 Genomes Project"
+    assert "1000_genomes" not in get_auto_update_source_ids()
 
 
 def test_reverse_lookup_is_case_insensitive():

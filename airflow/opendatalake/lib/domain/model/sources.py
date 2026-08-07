@@ -1,12 +1,11 @@
 from enum import Enum
 
-from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, UpdateMode
+from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, SourceConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
     GnomadJointSourceConfig,
     MondoSourceConfig,
-    OneThousandGenomesSourceConfig,
 )
 
 _VCF_LABEL = "vcf"
@@ -17,28 +16,28 @@ _OBO_LABEL = "obo"
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
 # In the future, we may switch to a configuration-based mechanism instead of using an enum.
 class _Source(Enum):
-    OneThousandGenomes = OneThousandGenomesSourceConfig(
+    OneThousandGenomes = SourceConfig(
         short_name="1000_Genomes",
         display_name="1000 Genomes Project",
         website="https://www.internationalgenome.org/home",
-        listing_url="https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/",
         download_configs=[
             DownloadConfig(
                 download_url=lambda version: (
-                    f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz"
+                    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.20130502.sites.vcf.gz"
                 ),
                 md5_present=False,
                 label=_VCF_LABEL,
+                use_stream_upload=True,
             ),
             DownloadConfig(
                 download_url=lambda version: (
-                    f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz.tbi"
+                    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.20130502.sites.vcf.gz.tbi"
                 ),
                 md5_present=False,
                 label=_TBI_LABEL,
             ),
         ],
-        update_mode=UpdateMode.AUTO,
+        update_mode=UpdateMode.MANUAL,
         import_config=ImportConfig(spark_command="1000genomes"),
     )
     CLINVAR = ClinvarSourceConfig(
