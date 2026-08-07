@@ -73,7 +73,6 @@ class GnomadCnvSourceConfig(SourceConfig):
         default_factory=lambda: [
             DownloadConfig(
                 download_url=f"{_RELEASE_ROOT}/{CNV_VERSION}/exome_cnv/gnomad.v{CNV_VERSION}.cnv.all.vcf.gz",
-                use_stream_upload=True,
                 md5_present=False,
                 label="vcf",
             )

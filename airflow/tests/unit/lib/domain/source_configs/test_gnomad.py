@@ -42,13 +42,13 @@ def test_gnomad_cnv_pins_its_version(gnomad_cnv_source_config):
     assert gnomad_cnv_source_config.get_latest_version() == "4.1"
 
 
-def test_gnomad_cnv_declares_a_single_streamed_vcf(gnomad_cnv_source_config):
+def test_gnomad_cnv_declares_a_single_vcf(gnomad_cnv_source_config):
     config = gnomad_cnv_source_config.download_configs
     assert [c.label for c in config] == ["vcf"]
 
     # Literal, checked against the gnomAD bucket listing: the full callset, not the non_neuro subsets.
     assert config[0].get_url("4.1") == f"{CNV_RELEASE_ROOT}/gnomad.v4.1.cnv.all.vcf.gz"
 
-    # No .tbi and no .md5 exist next to it in the bucket.
-    assert config[0].use_stream_upload is True
+    # The file is small enough for the ECS local copy. No .md5 exist next to it in the bucket.
+    assert config[0].use_stream_upload is False
     assert config[0].md5_present is False
