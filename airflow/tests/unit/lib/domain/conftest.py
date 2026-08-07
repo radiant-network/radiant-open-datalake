@@ -9,6 +9,7 @@ from opendatalake.lib.domain.source_configs import (
     GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
+    SpliceAiSourceConfig,
 )
 
 
@@ -26,6 +27,11 @@ def gnomad_cnv_source_config() -> GnomadCnvSourceConfig:
 @pytest.fixture
 def gnomad_sv_source_config() -> GnomadSVSourceConfig:
     return GnomadSVSourceConfig()
+
+
+@pytest.fixture
+def spliceai_source_config() -> SpliceAiSourceConfig:
+    return SpliceAiSourceConfig()
 
 
 @pytest.fixture

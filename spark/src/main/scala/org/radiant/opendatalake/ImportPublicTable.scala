@@ -86,16 +86,8 @@ object ImportPublicTable {
   def refseq_human_genes(rc: RuntimeETLContext): Unit = RefSeqHumanGenes.run(rc)
 
   @main
-  def spliceai_indel(rc: RuntimeETLContext): Unit = SpliceAi.run(rc, "indel")
-
-  @main
-  def spliceai_snv(rc: RuntimeETLContext): Unit = SpliceAi.run(rc, "snv")
-
-  @main
-  def spliceai_enriched_indel(rc: RuntimeETLContext): Unit = enriched.SpliceAi.run(rc, "indel")
-
-  @main
-  def spliceai_enriched_snv(rc: RuntimeETLContext): Unit = enriched.SpliceAi.run(rc, "snv")
+  def spliceai(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("spliceai", rc, version.value, rawStorage.value)
 
   @main
   def topmed_bravo(rc: RuntimeETLContext): Unit = TopMed.run(rc)

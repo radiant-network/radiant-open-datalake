@@ -137,6 +137,26 @@ sed -i '' 's/operators\.k8s/operators\.ecs/g'  opendatalake/dags/download_source
 
 Note: The swap commands will modify your code copy. Make sure you do not commit the operator swap to version control.
 
+## SpliceAI download token (Optional — only to test the `spliceai` source)
+
+The `spliceai` source downloads from an authenticated API. In AWS the token comes from Secrets Manager,
+but the code itself only reads a plain env var (`SpliceAiConfig.from_env()` → `os.getenv`), so **the
+sandbox needs no Secrets Manager** — just set the env var.
+
+Put your test API key in `sandbox/values/airflow-values.yaml` under `extraEnv` (a placeholder entry is
+already there) and re-run the `helm upgrade` below:
+
+```yaml
+  - name: OPENDATALAKE_SPLICEAI_ACCESS_TOKEN
+    value: "<your-test-api-key>"
+```
+
+This covers version discovery and the VCF `direct_upload` (both run in the worker). For the tbi index,
+which uploads via the K8s download pod, do the ECS→K8s swap above — `sandbox/operators/k8s.py` forwards
+this token from the worker env into the pod (the ARN half of `secret_env_vars` is ignored locally).
+
+Do **not** commit a real token.
+
 ## Switch import_source DAG from EMR to local Spark (Optional)
 
 Swap the EMR Serverless operator for the local-Spark K8s operator so the `import_source` DAG runs `spark-submit` in a pod (against MinIO + Polaris) instead of AWS EMR. Requires the Spark image (built above) and Polaris (installed above).
@@ -203,6 +223,54 @@ Also create pool "opendatalake_direct_upload_tasks_pool" with 1 slots.
 In the airflow UI, toggle the activation for every DAG you want to import before triggering the `Open Datalake - Discover New Source Version` DAG.
 
 ![activate_dags.png](docs/activate_dags.png)
+
+## Run the SpliceAI source end-to-end (example)
+
+SpliceAI exercises the authenticated-download path (BaseSpace V2 API, `x-access-token`) plus the
+contract/WAP import. It needs the two operator swaps (ECS→K8s, EMR→local-Spark), the download token, and
+**both** sandbox images rebuilt — they bake code that changed for this source:
+
+- the **operator image** bakes `opendatalake/` (the download pod resolves the `spliceai` source config);
+- the **Spark image** bakes the fat JAR + `dev.conf` (the `spliceai` command, `SpliceAi_v1` normalizer,
+  and the regenerated dataset config live there).
+
+The Airflow-side code is mounted (`minikube mount`), so only these two pod images need rebuilding.
+
+From `airflow/`:
+
+1. Confirm the token reaches BaseSpace (fail early):
+   ```sh
+   curl -s -H "x-access-token: <test-key>" https://api.basespace.illumina.com/v2/files/16525380715 | jq '.ETag'
+   ```
+   A non-null ETag means the key works. Ensure `OPENDATALAKE_SPLICEAI_ACCESS_TOKEN` is set in
+   `sandbox/values/airflow-values.yaml` (see the token section above), then apply it:
+   ```sh
+   helm upgrade --install airflow apache-airflow/airflow -f sandbox/values/airflow-values.yaml
+   ```
+
+2. Apply both operator swaps (see the two "Switch … operator" sections above).
+
+3. Rebuild both images inside minikube's docker (so the `IfNotPresent` pods pick up `:latest`):
+   ```sh
+   eval $(minikube -p minikube docker-env)
+   docker build -t ghcr.io/radiant-network/opendatalake-airflow-task-operator:latest -f Dockerfile.opendatalake.operator .
+   cd ../spark && sbt clean assembly && cd ../airflow
+   docker build -t ghcr.io/radiant-network/opendatalake-spark:latest -f sandbox/Dockerfile.opendatalake.spark ../spark
+   ```
+
+4. Make sure the package mount and the two pools (above) are in place, and activate the `Discover New
+   Source Versions`, `Download SpliceAI` and `Import SpliceAI` DAGs.
+
+5. Trigger `Open Datalake - Discover New Source Versions`. It resolves the SpliceAI version (the VCF
+   ETags), then the download and import DAGs run via the asset chain. The published table is
+   `reference.spliceai_v1` on a branch named after the version — `main` is empty by WAP design (browse it
+   with StarRocks below).
+
+Notes:
+- The SNV score VCF is large (tens of GB); `direct_upload` streams it through the worker into MinIO, so
+  expect a long download and give the minikube node / MinIO PVC disk headroom. To just prove the wiring,
+  the indel files are much smaller.
+- The download and discovery tasks need internet egress to `api.basespace.illumina.com` (minikube NAT).
 
 ## Browse the Iceberg catalog with StarRocks (Optional)
 

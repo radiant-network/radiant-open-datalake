@@ -33,7 +33,7 @@ class S3Downloader:
         url = self.download_conf.get_url(self.version)
         dest_file_name = self.download_conf.name or Path(url).name
         md5_hash = _get_md5_hash(url) if self.download_conf.md5_present else None
-        headers = self.download_conf.headers or {}
+        headers = self.download_conf.get_headers()
 
         logging.info(f"Start upload of {url}")
         stream_download_file(url=url, dest_file_name=dest_file_name, headers=headers)
@@ -62,7 +62,7 @@ class S3Downloader:
         dest_file_name = self.download_conf.name or Path(url).name
         s3_key = f"{self.s3_prefix}/{dest_file_name}"
         md5_hash = _get_md5_hash(url) if self.download_conf.md5_present else None
-        headers = self.download_conf.headers or {}
+        headers = self.download_conf.get_headers()
 
         multipart_upload_with_resume(s3=self.s3, s3_bucket=self.s3_bucket, s3_key=s3_key, url=url, headers=headers)
         if md5_hash:

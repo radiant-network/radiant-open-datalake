@@ -97,8 +97,7 @@ object EtlConfiguration extends App {
     DatasetConf("raw_ensembl_uniprot", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.uniprot.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_ensembl_ena", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.ena.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_ensembl_gff", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.gff.gz", GFF, OverWrite),
-    DatasetConf("raw_spliceai_indel", raw_storage_id, "/spliceai/spliceai_scores.raw.indel.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_spliceai_snv", raw_storage_id, "/spliceai/spliceai_scores.raw.snv.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_spliceai", raw_storage_id, "/spliceai/{{VERSION}}/spliceai_scores.raw.*.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
 
     //normalized
     buildNormalizedDatasetConf("1000_genomes", partitionby = List("chromosome")),
@@ -124,14 +123,11 @@ object EtlConfiguration extends App {
     DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
     DatasetConf("normalized_topmed_bravo", iceberg_storage_id, "/normalized/topmed_bravo", ICEBERG, OverWrite, partitionby = List(), table = table("topmed_bravo")),
     DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
-    DatasetConf("normalized_spliceai_indel", iceberg_storage_id, "/normalized/spliceai/indel", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("spliceai_indel")),
-    DatasetConf("normalized_spliceai_snv", iceberg_storage_id, "/normalized/spliceai/snv", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("spliceai_snv")),
+    buildNormalizedDatasetConf("spliceai", partitionby = List("chromosome")),
 
     // enriched
     DatasetConf("enriched_genes", iceberg_storage_id, "/enriched/genes", ICEBERG, OverWrite, partitionby = List(), table = table("genes")),
-    DatasetConf("enriched_dbnsfp", iceberg_storage_id, "/enriched/dbnsfp/scores", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_original")),
-    DatasetConf("enriched_spliceai_indel", iceberg_storage_id, "/enriched/spliceai/indel", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_indel")),
-    DatasetConf("enriched_spliceai_snv", iceberg_storage_id, "/enriched/spliceai/snv", ICEBERG, OverWrite, partitionby = List("chromosome"), repartition = Some(RepartitionByRange(columnNames = Seq("chromosome", "start"))), table = table("spliceai_enriched_snv"))
+    DatasetConf("enriched_dbnsfp", iceberg_storage_id, "/enriched/dbnsfp/scores", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_original"))
   )
 
   val prd_conf = SimpleConfiguration(DatalakeConf(

@@ -1,33 +1,23 @@
 package org.radiant.opendatalake.enriched
 
-import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleSingleETL
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits.DatasetConfOperations
-import mainargs.{ParserForMethods, arg, main}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Column, DataFrame, functions}
 
-import java.time.LocalDateTime
+/**
+ * Pure `max_score` enrichment for the SpliceAI scores, shared by the contract normalizer
+ * [[org.radiant.opendatalake.normalized.SpliceAi_v1]].
+ *
+ * Appends `max_score` = the strongest of the four acceptor/donor delta scores (`ds_ag/al/dg/dl`) for the
+ * row and which event(s) reached it (ties keep every tied event; a zero score yields a null `type`). This
+ * is a row-wise derivation with no join, so it runs inside the normalizer rather than as a separate ETL:
+ * a standalone enriched job could not read the WAP `main` branch, which is left empty by design.
+ */
+object SpliceAi {
 
-case class SpliceAi(rc: RuntimeETLContext, variantType: String) extends SimpleSingleETL(rc) {
-
-  override val mainDestination: DatasetConf = conf.getDataset(s"enriched_spliceai_$variantType")
-  val normalized_spliceai: DatasetConf = conf.getDataset(s"normalized_spliceai_$variantType")
-
-  override def extract(lastRunValue: LocalDateTime,
-                       currentRunValue: LocalDateTime): Map[String, DataFrame] = {
-    Map(normalized_spliceai.id -> normalized_spliceai.read)
-  }
-
-  override def transformSingle(data: Map[String, DataFrame],
-                               lastRunValue: LocalDateTime,
-                               currentRunValue: LocalDateTime): DataFrame = {
-    import spark.implicits._
-
-    val df = data(normalized_spliceai.id)
+  def addMaxScore(df: DataFrame): DataFrame = {
     val originalColumns = df.columns.map(col)
 
-    val getDs: Column => Column = _.getItem(0).getField("ds") // Get delta score
+    val getDs: Column => Column = _.getItem(0).getField("ds") // delta score of the head element
     val scoreColumnNames = Array("AG", "AL", "DG", "DL")
     val scoreColumns = scoreColumnNames.map(c => array(struct(col(c) as "ds", lit(c) as "type")))
     val maxScore: Column = scoreColumns.reduce {
@@ -40,28 +30,17 @@ case class SpliceAi(rc: RuntimeETLContext, variantType: String) extends SimpleSi
     df
       .select(
         originalColumns :+
-          $"ds_ag".as("AG") :+ // acceptor gain
-          $"ds_al".as("AL") :+ // acceptor loss
-          $"ds_dg".as("DG") :+ // donor gain
-          $"ds_dl".as("DL"): _* // donor loss
+          col("ds_ag").as("AG") :+ // acceptor gain
+          col("ds_al").as("AL") :+ // acceptor loss
+          col("ds_dg").as("DG") :+ // donor gain
+          col("ds_dl").as("DL"): _* // donor loss
       )
       .withColumn("max_score_temp", maxScore)
       .withColumn("max_score", struct(
-        getDs($"max_score_temp") as "ds",
-        functions.transform($"max_score_temp", c => c.getField("type")) as "type")
+        getDs(col("max_score_temp")) as "ds",
+        functions.transform(col("max_score_temp"), c => c.getField("type")) as "type")
       )
-      .withColumn("max_score", $"max_score".withField("type", when($"max_score.ds" === 0, null).otherwise($"max_score.type")))
-      .select(originalColumns :+ $"max_score": _*)
+      .withColumn("max_score", col("max_score").withField("type", when(col("max_score.ds") === 0, null).otherwise(col("max_score.type"))))
+      .select(originalColumns :+ col("max_score"): _*)
   }
-
-  override def defaultRepartition: DataFrame => DataFrame = RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(500))
-}
-
-object SpliceAi {
-  @main
-  def run(rc: RuntimeETLContext, @arg(name = "variant_type", short = 'v', doc = "Variant Type") variantType: String): Unit = {
-    SpliceAi(rc, variantType).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }

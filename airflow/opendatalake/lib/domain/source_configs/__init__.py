@@ -3,6 +3,7 @@ from .dbsnp import DBSNPSourceConfig
 from .gnomad import GnomadCnvSourceConfig, GnomadJointSourceConfig, GnomadSVSourceConfig
 from .hpo import HpoSourceConfig
 from .mondo import MondoSourceConfig
+from .spliceai import SpliceAiSourceConfig
 
 __all__ = [
     "ClinvarSourceConfig",
@@ -12,4 +13,5 @@ __all__ = [
     "GnomadSVSourceConfig",
     "HpoSourceConfig",
     "MondoSourceConfig",
+    "SpliceAiSourceConfig",
 ]

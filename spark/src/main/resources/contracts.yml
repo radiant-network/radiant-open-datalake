@@ -54,3 +54,8 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/mondo/v1.md"
+  spliceai:
+    table_prefix: "spliceai"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/spliceai/v1.md"

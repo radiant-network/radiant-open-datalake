@@ -1,33 +1,17 @@
 package org.radiant.opendatalake.normalized
 
-import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits.DatasetConfOperations
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
-import mainargs.{ParserForMethods, arg, main}
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.split
+import org.apache.spark.sql.functions._
 
-import java.time.LocalDateTime
+/**
+ * Pure normalize transform for the SpliceAI precomputed scores, shared by the contract normalizer
+ * [[SpliceAi_v1]]. Splits the pipe-delimited `SpliceAI` INFO field into typed columns; one row per
+ * variant-gene pair. Illumina's SNV and indel VCFs share this schema, so a single call normalizes both.
+ */
+object SpliceAi {
 
-case class SpliceAi(rc: RuntimeETLContext, variantType: String) extends SimpleETLP(rc) {
-  override val mainDestination: DatasetConf = conf.getDataset(s"normalized_spliceai_$variantType")
-  val raw_spliceai: DatasetConf = conf.getDataset(s"raw_spliceai_$variantType")
-
-  override def extract(lastRunValue: LocalDateTime = minValue,
-                       currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
-    Map(
-      raw_spliceai.id -> raw_spliceai.read
-    )
-  }
-
-  override def transformSingle(data: Map[String, DataFrame],
-                               lastRunValue: LocalDateTime = minValue,
-                               currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
-    import spark.implicits._
-
-    val df = data(raw_spliceai.id)
-
+  def normalize(df: DataFrame): DataFrame =
     df
       .select(
         chromosome +:
@@ -37,29 +21,16 @@ case class SpliceAi(rc: RuntimeETLContext, variantType: String) extends SimpleET
           alternate +:
           flattenInfo(df, except = "INFO_OLD_MULTIALLELIC", "INFO_FILTERS"): _*
       )
-      .withColumn("spliceai", split($"spliceai", "\\|"))
-      .withColumn("allele", $"spliceai"(0))
-      .withColumn("symbol", $"spliceai"(1))
-      .withColumn("ds_ag", $"spliceai"(2).cast("double"))
-      .withColumn("ds_al", $"spliceai"(3).cast("double"))
-      .withColumn("ds_dg", $"spliceai"(4).cast("double"))
-      .withColumn("ds_dl", $"spliceai"(5).cast("double"))
-      .withColumn("dp_ag", $"spliceai"(6).cast("int"))
-      .withColumn("dp_al", $"spliceai"(7).cast("int"))
-      .withColumn("dp_dg", $"spliceai"(8).cast("int"))
-      .withColumn("dp_dl", $"spliceai"(9).cast("int"))
+      .withColumn("spliceai", split(col("spliceai"), "\\|"))
+      .withColumn("allele", col("spliceai")(0))
+      .withColumn("symbol", col("spliceai")(1))
+      .withColumn("ds_ag", col("spliceai")(2).cast("double"))
+      .withColumn("ds_al", col("spliceai")(3).cast("double"))
+      .withColumn("ds_dg", col("spliceai")(4).cast("double"))
+      .withColumn("ds_dl", col("spliceai")(5).cast("double"))
+      .withColumn("dp_ag", col("spliceai")(6).cast("int"))
+      .withColumn("dp_al", col("spliceai")(7).cast("int"))
+      .withColumn("dp_dg", col("spliceai")(8).cast("int"))
+      .withColumn("dp_dl", col("spliceai")(9).cast("int"))
       .drop("spliceai")
-  }
-
-  override def defaultRepartition: DataFrame => DataFrame = RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(50))
-
-}
-
-object SpliceAi {
-  @main
-  def run(rc: RuntimeETLContext, @arg(name = "variant_type", short = 'v', doc = "Variant Type") variantType: String): Unit = {
-    SpliceAi(rc, variantType).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }
