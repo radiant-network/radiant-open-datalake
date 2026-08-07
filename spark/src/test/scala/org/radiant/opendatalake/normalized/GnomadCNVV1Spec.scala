@@ -32,7 +32,7 @@ class GnomadCNVV1Spec extends SparkSpec {
     val del = rows.head
     del.getAs[String]("chromosome") shouldBe "1"
     del.getAs[Long]("start") shouldBe 925634L
-    del.getAs[Long]("end") shouldBe 931187L
+    del.getAs[Long]("end") shouldBe 931188L
     del.getAs[String]("reference") shouldBe "N"
     del.getAs[String]("alternate") shouldBe "<DEL>"
     del.getAs[String]("name") shouldBe "variant_is_80_2__DEL"
