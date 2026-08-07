@@ -44,7 +44,7 @@ class GnomadJointSourceConfig(SourceConfig):
     display_name: str = field(init=False, default="gnomAD Joint Frequency")
     website: str = field(init=False, default="https://gnomad.broadinstitute.org/")
     download_configs: list[DownloadConfig] = field(init=False, default_factory=_build_download_configs)
-    update_mode: UpdateMode = field(init=False, default=UpdateMode.AUTO)
+    update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(
         init=False,
         default=ImportConfig(

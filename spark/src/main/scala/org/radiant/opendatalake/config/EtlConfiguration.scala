@@ -77,7 +77,7 @@ object EtlConfiguration extends App {
     DatasetConf("raw_gnomad_sv_v4", raw_storage_id, "/gnomad_v4/release/4.1/genome_sv/gnomad.v4.1.sv.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_gnomad_constraint_v2_1_1", raw_storage_id, "/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_topmed_bravo", raw_storage_id, "/topmed/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_1000_genomes", raw_storage_id, "/1000Genomes/ALL.*.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_1000_genomes", raw_storage_id, "/1000_genomes/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_dbnsfp", raw_storage_id, "/dbNSFP/dbNSFP4.3a_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_dbnsfp_annovar", raw_storage_id, "/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_omim_gene_set", raw_storage_id, "/omim/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
@@ -99,7 +99,7 @@ object EtlConfiguration extends App {
     DatasetConf("raw_spliceai_snv", raw_storage_id, "/spliceai/spliceai_scores.raw.snv.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
 
     //normalized
-    DatasetConf("normalized_1000_genomes", iceberg_storage_id, "/normalized/1000_genomes", ICEBERG, OverWrite, partitionby = List(), table = table("1000_genomes")),
+    buildNormalizedDatasetConf("1000_genomes", partitionby = List("chromosome")),
     DatasetConf("normalized_cancer_hotspots", iceberg_storage_id, "/normalized/cancer_hotspots", ICEBERG, OverWrite, partitionby = List(), table = table("cancer_hotspots")),
     buildNormalizedDatasetConf("clinvar", repartition = Some(Coalesce())),
     DatasetConf("normalized_cosmic_gene_set", iceberg_storage_id, "/normalized/cosmic_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
