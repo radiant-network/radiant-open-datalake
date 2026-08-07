@@ -5,6 +5,7 @@ from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
     GnomadJointSourceConfig,
+    HpoSourceConfig,
     MondoSourceConfig,
 )
 
@@ -63,6 +64,25 @@ def mondo_source_config() -> MondoSourceConfig:
             DownloadConfig(
                 download_url=lambda version: (
                     f"https://github.com/monarch-initiative/mondo/releases/download/{version}/mondo-base.obo"
+                ),
+                label="test",
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+
+
+@pytest.fixture
+def hpo_source_config() -> HpoSourceConfig:
+    return HpoSourceConfig(
+        short_name="hpo_terms",
+        display_name="Human Phenotype Ontology (Terms)",
+        website="https://hpo.jax.org/",
+        latest_release_url="https://github.com/obophenotype/human-phenotype-ontology/releases/latest",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://github.com/obophenotype/human-phenotype-ontology/releases/download/{version}/hp.obo"
                 ),
                 label="test",
             )

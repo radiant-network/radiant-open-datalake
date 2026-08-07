@@ -56,6 +56,10 @@ object ImportPublicTable {
   def hpo(rc: RuntimeETLContext): Unit = HPOGeneSet.run(rc)
 
   @main
+  def hpo_terms(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("hpo_terms", rc, version.value, rawStorage.value)
+
+  @main
   def mondo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
     ContractRunner.run("mondo", rc, version.value, rawStorage.value)
 

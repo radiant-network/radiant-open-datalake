@@ -29,6 +29,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/gnomad_joint/v1.md"
+  hpo_terms:
+    table_prefix: "hpo_terms"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/hpo_terms/v1.md"
   mondo:
     table_prefix: "mondo"
     contracts:
