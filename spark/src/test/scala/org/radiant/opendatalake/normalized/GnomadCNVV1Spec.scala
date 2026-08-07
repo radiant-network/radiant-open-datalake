@@ -3,12 +3,16 @@ package org.radiant.opendatalake.normalized
 import bio.ferlab.datalake.commons.config.DatasetConf
 import bio.ferlab.datalake.testutils.TestETLContext
 import org.apache.spark.sql.Row
-import org.apache.spark.sql.functions.{array, lit}
 import org.radiant.opendatalake.normalized.gnomad.GnomadCNV_v1
 import org.radiant.opendatalake.testutils.SparkSpec
 
 /*
-  Use sample vcf file constructed consisting in the header + rows from the original exome CNV file
+  The fixture is the real header of gnomad.v4.1.cnv.all.vcf.gz (100 INFO fields) plus three
+  records taken verbatim from the release, one per scenario:
+    chr1:925634   <DEL> FILTER=PASS -> published
+    chr1:925634   <DUP> FILTER=PASS -> published; same locus as the DEL, hence the orderBy("name")
+    chr1:1082716  <DEL> FILTER=FAIL -> dropped
+  FILTER holds PASS or FAIL only in this release, on 67,952 and 747 records respectively.
  */
 class GnomadCNVV1Spec extends SparkSpec {
 
@@ -26,11 +30,12 @@ class GnomadCNVV1Spec extends SparkSpec {
     val fixture = getClass.getResource("/input_vcf/gnomadV4CNV.vcf").getPath
     val raw = spark.read.format("vcf").option("flattenInfoFields", "true").load(fixture)
 
-    val rows: Array[Row] = job.transformSingle(Map(source.id -> raw)).collect()
-    rows should have length 1
+    // The two PASS records share a start, so ordering by name is what makes this deterministic.
+    val rows: Array[Row] = job.transformSingle(Map(source.id -> raw)).orderBy("name").collect()
+    rows should have length 2
 
     // Should match: chr1:925634-931187 DEL, 3 carriers out of 464277 releasable samples
-    val del = rows.head
+    val del = rows(0)
     del.getAs[String]("chromosome") shouldBe "1"
     del.getAs[Long]("start") shouldBe 925634L
     del.getAs[Long]("end") shouldBe 931188L
@@ -42,6 +47,18 @@ class GnomadCNVV1Spec extends SparkSpec {
     del.getAs[Long]("sc") shouldBe 3L
     del.getAs[Long]("sn") shouldBe 464277L
     del.getAs[Double]("sf") shouldBe 6.46165974192131e-06
+
+    // Same locus, other type: chr1:925634-935994 DUP, 3 carriers out of 464292 releasable samples
+    val dup = rows(1)
+    dup.getAs[Long]("start") shouldBe 925634L
+    dup.getAs[Long]("end") shouldBe 935995L
+    dup.getAs[String]("alternate") shouldBe "<DUP>"
+    dup.getAs[String]("name") shouldBe "variant_is_80_3__DUP"
+    dup.getAs[String]("svtype") shouldBe "DUP"
+    dup.getAs[Int]("svlen") shouldBe 10360
+    dup.getAs[Long]("sc") shouldBe 3L
+    dup.getAs[Long]("sn") shouldBe 464292L
+    dup.getAs[Double]("sf") shouldBe 6.46145098343284e-06
   }
 
   it should "publish nothing beyond the locus, the CNV type and the global counts" in {
@@ -63,8 +80,11 @@ class GnomadCNVV1Spec extends SparkSpec {
     val fixture = getClass.getResource("/input_vcf/gnomadV4CNV.vcf").getPath
     val raw = spark.read.format("vcf").option("flattenInfoFields", "true").load(fixture)
 
-    val failed = raw.withColumn("filters", array(lit("FAIL")))
+    // The fixture holds three records; the FAIL one must not survive alongside the two PASS.
+    raw.count() shouldBe 3
 
-    job.transformSingle(Map(source.id -> failed)).count() shouldBe 0
+    val names = job.transformSingle(Map(source.id -> raw)).collect().map(_.getAs[String]("name"))
+    names should have length 2
+    names should not contain "variant_is_80_265__DEL"
   }
 }
