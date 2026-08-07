@@ -6,6 +6,7 @@ from opendatalake.lib.domain.source_configs import (
     DBSNPSourceConfig,
     GnomadCnvSourceConfig,
     GnomadJointSourceConfig,
+    GnomadSVSourceConfig,
     MondoSourceConfig,
 )
 
@@ -19,6 +20,11 @@ def gnomad_joint_source_config() -> GnomadJointSourceConfig:
 @pytest.fixture
 def gnomad_cnv_source_config() -> GnomadCnvSourceConfig:
     return GnomadCnvSourceConfig()
+
+
+@pytest.fixture
+def gnomad_sv_source_config() -> GnomadSVSourceConfig:
+    return GnomadSVSourceConfig()
 
 
 @pytest.fixture

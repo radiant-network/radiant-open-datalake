@@ -11,6 +11,7 @@ def test_dag_has_expected_tasks(dag_bag):
         "dbsnp_check_for_update",
         "gnomad_cnv_check_for_update",
         "gnomad_joint_check_for_update",
+        "gnomad_sv_check_for_update",
         "mondo_check_for_update",
     }
     assert set(dag.task_ids) == expected_tasks

@@ -1,7 +1,8 @@
 CHROMOSOMES = [str(c) for c in range(1, 23)] + ["X", "Y"]
 
-RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/vcf/joint"
 CNV_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/exome_cnv"
+JOINT_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/vcf/joint"
+SV_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/genome_sv"
 
 
 def test_gnomad_joint_pins_its_version(gnomad_joint_source_config):
@@ -18,8 +19,8 @@ def test_gnomad_joint_urls_match_the_published_layout(gnomad_joint_source_config
     urls = {c.label: c.get_url(version) for c in gnomad_joint_source_config.download_configs}
 
     # Literal, checked against the gnomAD bucket listing.
-    assert urls["vcf_chr1"] == f"{RELEASE_ROOT}/gnomad.joint.v4.1.sites.chr1.vcf.bgz"
-    assert urls["vcf_chrY"] == f"{RELEASE_ROOT}/gnomad.joint.v4.1.sites.chrY.vcf.bgz"
+    assert urls["vcf_chr1"] == f"{JOINT_RELEASE_ROOT}/gnomad.joint.v4.1.sites.chr1.vcf.bgz"
+    assert urls["vcf_chrY"] == f"{JOINT_RELEASE_ROOT}/gnomad.joint.v4.1.sites.chrY.vcf.bgz"
 
     # Every index sits next to its VCF.
     for chromosome in CHROMOSOMES:
@@ -52,3 +53,30 @@ def test_gnomad_cnv_declares_a_single_vcf(gnomad_cnv_source_config):
     # The file is small enough for the ECS local copy. No .md5 exist next to it in the bucket.
     assert config[0].use_stream_upload is False
     assert config[0].md5_present is False
+
+
+def test_gnomad_sv_pins_its_version(gnomad_sv_source_config):
+    # gnomAD ships SV under 4.0 and 4.1 only, and 4.1.1 has no `genome_sv/` directory.
+    assert gnomad_sv_source_config.get_latest_version() == "4.1"
+
+
+def test_gnomad_sv_urls_match_the_published_layout(gnomad_sv_source_config):
+    version = gnomad_sv_source_config.get_latest_version()
+    urls = {c.label: c.get_url(version) for c in gnomad_sv_source_config.download_configs}
+
+    # Literal, checked against the gnomAD bucket listing. The full release, not
+    # `gnomad.v4.1.sv.non_neuro_controls.sites.vcf.gz`, which restricts the sample set.
+    assert urls["vcf"] == f"{SV_RELEASE_ROOT}/gnomad.v4.1.sv.sites.vcf.gz"
+    assert urls["tbi"] == urls["vcf"] + ".tbi"
+    assert len(urls) == 2
+
+
+def test_gnomad_sv_streams_the_vcf_but_not_the_index(gnomad_sv_source_config):
+    # 1.74 GB of VCF goes straight to S3; the 512 KB index takes the ECS path.
+    for config in gnomad_sv_source_config.download_configs:
+        assert config.use_stream_upload is (config.label == "vcf")
+
+
+def test_gnomad_sv_declares_no_md5(gnomad_sv_source_config):
+    # gnomAD publishes no .md5 next to the SV files.
+    assert all(c.md5_present is False for c in gnomad_sv_source_config.download_configs)
