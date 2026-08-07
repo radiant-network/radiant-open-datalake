@@ -39,9 +39,9 @@ class GnomadCNVV1Spec extends SparkSpec {
     del.getAs[Seq[String]]("filters") shouldBe Seq("PASS")
     del.getAs[String]("svtype") shouldBe "DEL"
     del.getAs[Int]("svlen") shouldBe 5553
-    del.getAs[Float]("sc") shouldBe 3f
-    del.getAs[Float]("sn") shouldBe 464277f
-    del.getAs[Float]("sf") shouldBe 6.46165974192131e-06f
+    del.getAs[Double]("sc") shouldBe 3.0
+    del.getAs[Double]("sn") shouldBe 464277.0
+    del.getAs[Double]("sf") shouldBe 6.46165974192131e-06
   }
 
   it should "publish nothing beyond the locus, the CNV type and the global counts" in {
