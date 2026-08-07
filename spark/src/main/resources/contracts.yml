@@ -24,6 +24,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/gnomad_joint/v1.md"
+  gnomad_sv:
+    table_prefix: "gnomad_sv"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/gnomad_sv/v1.md"
   mondo:
     table_prefix: "mondo"
     contracts:

@@ -5,6 +5,7 @@ from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
     GnomadJointSourceConfig,
+    GnomadSVSourceConfig,
     MondoSourceConfig,
 )
 
@@ -57,6 +58,8 @@ class _Source(Enum):
     )
 
     GNOMAD_JOINT = GnomadJointSourceConfig()
+
+    GNOMAD_SV = GnomadSVSourceConfig()
 
     MONDO = MondoSourceConfig(
         short_name="mondo",

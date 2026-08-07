@@ -41,10 +41,11 @@ object ImportPublicTable {
     ContractRunner.run("gnomad_joint", rc, version.value, rawStorage.value)
 
   @main
-  def gnomadv4cnv(rc: RuntimeETLContext): Unit = GnomadV4CNV.run(rc)
+  def gnomad_sv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("gnomad_sv", rc, version.value, rawStorage.value)
 
   @main
-  def gnomadv4sv(rc: RuntimeETLContext): Unit = GnomadV4SV.run(rc)
+  def gnomadv4cnv(rc: RuntimeETLContext): Unit = GnomadV4CNV.run(rc)
 
   @main
   def gnomad_constraint(rc: RuntimeETLContext): Unit = GnomadConstraint.run(rc)
