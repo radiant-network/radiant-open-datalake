@@ -37,15 +37,16 @@ object ImportPublicTable {
   def ensembl_mapping(rc: RuntimeETLContext): Unit = EnsemblMapping.run(rc)
 
   @main
+  def gnomad_cnv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("gnomad_cnv", rc, version.value, rawStorage.value)
+
+  @main
   def gnomad_joint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
     ContractRunner.run("gnomad_joint", rc, version.value, rawStorage.value)
 
   @main
   def gnomad_sv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
     ContractRunner.run("gnomad_sv", rc, version.value, rawStorage.value)
-
-  @main
-  def gnomadv4cnv(rc: RuntimeETLContext): Unit = GnomadV4CNV.run(rc)
 
   @main
   def gnomad_constraint(rc: RuntimeETLContext): Unit = GnomadConstraint.run(rc)
@@ -64,7 +65,8 @@ object ImportPublicTable {
   def omim(rc: RuntimeETLContext): Unit = OmimGeneSet.run(rc)
 
   @main(name = "1000genomes")
-  def one_thousand_genomes(rc: RuntimeETLContext): Unit = OneThousandGenomes.run(rc)
+  def one_thousand_genomes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("1000_genomes", rc, version.value, rawStorage.value)
 
   @main
   def orphanet(rc: RuntimeETLContext): Unit = OrphanetGeneSet.run(rc)

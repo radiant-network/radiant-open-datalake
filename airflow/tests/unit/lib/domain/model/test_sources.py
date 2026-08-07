@@ -4,8 +4,9 @@ import pytest
 
 from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
 from opendatalake.lib.domain.model.sources import (
-    _Source,
+    _get_source,
     get_auto_update_source_ids,
+    get_display_name,
     get_download_config_at_index,
     get_download_configs,
     get_latest_version,
@@ -33,9 +34,21 @@ def test_get_download_configs_invalid_string():
 
 def test_get_auto_update_source_ids():
     result = get_auto_update_source_ids()
+    assert result
     for identifier in result:
         assert identifier.lower() == identifier
-        assert _Source[identifier.upper()].value.update_mode == UpdateMode.AUTO
+        assert not identifier.startswith("_")
+        assert _get_source(identifier).value.update_mode == UpdateMode.AUTO
+
+
+def test_source_id_derived_from_short_name():
+    assert get_display_name("1000_genomes") == "1000 Genomes Project"
+    assert "1000_genomes" not in get_auto_update_source_ids()
+
+
+def test_reverse_lookup_is_case_insensitive():
+    for alias in ("1000_genomes", "1000_GENOMES"):
+        assert get_display_name(alias) == "1000 Genomes Project"
 
 
 def test_get_latest_version():

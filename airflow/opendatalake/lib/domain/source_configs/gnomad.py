@@ -5,7 +5,9 @@ from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, S
 
 _RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release"
 
+# gnomAD publishes each dataset on its own cadence, so we pin the two datasets separately
 JOINT_VERSION = "4.1"
+CNV_VERSION = "4.1"
 
 # gnomAD publishes structural variants only under 4.0 and 4.1, and 4.1.1 carries no `genome_sv/`
 # directory, so 4.1 is the latest SV release. It is also the one clin ingests.
@@ -64,6 +66,30 @@ class GnomadJointSourceConfig(SourceConfig):
     @override
     def get_latest_version(self) -> str:
         return JOINT_VERSION
+
+
+# gnomAD publishes three exome CNV VCFs (all, non_neuro, non_neuro_controls); we take "all"
+@dataclass(frozen=True)
+class GnomadCnvSourceConfig(SourceConfig):
+    short_name: str = field(init=False, default="gnomad_cnv")
+    display_name: str = field(init=False, default="gnomAD Exome CNV")
+    website: str = field(init=False, default="https://gnomad.broadinstitute.org/")
+    download_configs: list[DownloadConfig] = field(
+        init=False,
+        default_factory=lambda: [
+            DownloadConfig(
+                download_url=f"{_RELEASE_ROOT}/{CNV_VERSION}/exome_cnv/gnomad.v{CNV_VERSION}.cnv.all.vcf.gz",
+                md5_present=False,
+                label="vcf",
+            )
+        ],
+    )
+    update_mode: UpdateMode = field(init=False, default=UpdateMode.AUTO)
+    import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_cnv"))
+
+    @override
+    def get_latest_version(self) -> str:
+        return CNV_VERSION
 
 
 # The gnomAD SV callset is genomes-only. We take the full release, not the non_neuro_controls subset
