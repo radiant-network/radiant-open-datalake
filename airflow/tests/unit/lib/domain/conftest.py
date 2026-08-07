@@ -92,6 +92,26 @@ def hpo_source_config() -> HpoSourceConfig:
 
 
 @pytest.fixture
+def hpo_genes_source_config() -> HpoSourceConfig:
+    return HpoSourceConfig(
+        short_name="hpo_genes",
+        display_name="Human Phenotype Ontology (Genes)",
+        website="https://hpo.jax.org/",
+        latest_release_url="https://github.com/obophenotype/human-phenotype-ontology/releases/latest",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    "https://github.com/obophenotype/human-phenotype-ontology/releases/download/"
+                    f"{version}/genes_to_phenotype.txt"
+                ),
+                label="test",
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+
+
+@pytest.fixture
 def dbsnp_valid_listing_html() -> str:
     return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
 <html>

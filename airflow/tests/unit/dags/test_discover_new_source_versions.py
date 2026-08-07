@@ -11,5 +11,6 @@ def test_dag_has_expected_tasks(dag_bag):
         "dbsnp_check_for_update",
         "mondo_check_for_update",
         "hpo_terms_check_for_update",
+        "hpo_genes_check_for_update",
     }
     assert set(dag.task_ids) == expected_tasks
