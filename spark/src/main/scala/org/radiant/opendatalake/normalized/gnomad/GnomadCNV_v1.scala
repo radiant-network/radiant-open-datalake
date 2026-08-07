@@ -30,7 +30,8 @@ case class GnomadCNV_v1(rc: RuntimeETLContext, version: String, rawStorage: Stri
 
     // - Glow reads the CNV end from the INFO END field into its own `end` column, leaving INFO_END null.
     // - qual is not selected: the QUAL column is `.` on every record of the release.
-    // - sc/sn/sf are sample counts, not allele counts: a CNV VCF carries no AC/AF/AN.
+    // - sc/sn/sf are sample counts, not allele counts: a CNV VCF carries no AC/AF/AN
+    // - gnomAD declares sc and sn as Float although they count individuals, hence the cast.
     // - FILTER holds PASS or FAIL only, so the FAIL records are dropped and the column is not published.
     data(gnomad_vcf.id)
       .filter(array_contains($"filters", "PASS"))
@@ -43,8 +44,8 @@ case class GnomadCNV_v1(rc: RuntimeETLContext, version: String, rawStorage: Stri
         name,
         $"INFO_SVTYPE" as "svtype",
         $"INFO_SVLEN" as "svlen",
-        $"INFO_SC" as "sc",
-        $"INFO_SN" as "sn",
+        $"INFO_SC".cast("long") as "sc",
+        $"INFO_SN".cast("long") as "sn",
         $"INFO_SF" as "sf"
       )
   }
