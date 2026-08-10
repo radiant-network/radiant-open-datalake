@@ -14,6 +14,7 @@ from opendatalake.lib.domain.model.sources import (
     get_display_name,
     get_download_config_at_index,
     get_download_configs,
+    get_update_mode,
     is_auto_update,
 )
 from opendatalake.lib.operators.ecs import PythonScriptOperator
@@ -83,7 +84,8 @@ def _make_download_source_dag(source_id: str):
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Download {display_name}",
         schedule=schedule,
         params=VERSION_PARAM,
-        tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download"]],
+        tags=config.DAG_DEFAULT_TAGS
+        + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download", get_update_mode(source_id)]],
         catchup=False,
         # Retries let direct uploads (multipart) resume automatically: a new attempt only
         # downloads the parts that were not already uploaded to S3.

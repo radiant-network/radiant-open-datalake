@@ -24,20 +24,17 @@ does not exist will not run.** Create them from the Airflow UI, under **Admin ->
 
 ## DAG topology
 
-Every source gets a **Download** and an **Import** DAG (one per source), plus the shared
-**Discover New Source Versions** DAG.
+Per source: a **Download** and an **Import** DAG, plus the shared **Discover New Source Versions** DAG.
+Chain is `discover → download → import`, wired by assets.
 
-- **AUTO sources** (`update_mode=AUTO`): the discover DAG detects new versions and fires the chain
-  via assets — discover → download → import — with the version flowing through the asset events.
-- **MANUAL sources** (`update_mode=MANUAL`, e.g. `1000_genomes`): excluded from the discover DAG (no
-  automated version check), so their download DAG is **trigger-only** (`schedule=None`). Trigger it
-  from the UI and supply the version through the **`version`** DAG param. Once the download finishes it
-  emits the *downloaded* asset, which auto-triggers the import DAG — so a manual download still chains
-  into the import.
+- **AUTO** (`update_mode=AUTO`): discover detects new versions and drives the chain; version flows
+  through the asset events.
+- **MANUAL** (`update_mode=MANUAL`, e.g. `1000_genomes`): no discover, download is trigger-only
+  (`schedule=None`). Trigger it and pass the `version` param; finishing emits the downloaded asset,
+  which still auto-triggers import.
 
-Both download and import DAGs expose the `version` param, so any run can be triggered manually for a
-specific version. Asset-triggered runs leave it empty and read the version from the upstream event
-(see `opendatalake.lib.tasks.get_version`).
+Both DAGs expose the `version` param — asset-triggered runs leave it empty and read the version from
+the upstream event (`opendatalake.lib.tasks.get_version`).
 
 ## Operations
 

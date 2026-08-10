@@ -9,7 +9,7 @@ def test_dag_loads_without_errors(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-download-clinvar")
     assert dag is not None
     assert not dag_bag.import_errors
-    assert dag.tags == {"opendatalake", "opendatalake_download", "opendatalake_clinvar"}
+    assert dag.tags == {"opendatalake", "opendatalake_download", "opendatalake_clinvar", "opendatalake_auto"}
 
 
 def test_auto_source_download_dag_is_asset_scheduled_with_version_param(dag_bag):
@@ -24,6 +24,7 @@ def test_manual_source_download_dag_is_trigger_only(dag_bag):
     assert not dag_bag.import_errors
     assert isinstance(dag.timetable, NullTimetable)
     assert "version" in dag.params
+    assert "opendatalake_manual" in dag.tags
 
 
 def test_dag_has_expected_tasks(dag_bag):
