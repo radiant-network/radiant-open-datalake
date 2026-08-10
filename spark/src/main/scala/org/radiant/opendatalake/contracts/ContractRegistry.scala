@@ -3,7 +3,7 @@ package org.radiant.opendatalake.contracts
 import bio.ferlab.datalake.commons.config.SimpleConfiguration
 import bio.ferlab.datalake.spark3.etl.v4.ETL
 import org.radiant.opendatalake.config.Contract
-import org.radiant.opendatalake.normalized.{Clinvar_v1, DBSNP_v1, HpoGenes_v1, HpoTerms_v1, Mondo_v1, OneThousandGenomes_v1, SpliceAi_v1}
+import org.radiant.opendatalake.normalized.{Clinvar_v1, DBSNP_v1, HpoGenes_v1, HpoTerms_v1, Mondo_v1, OneThousandGenomes_v1, SpliceAi_v1, TopMed_v1}
 import org.radiant.opendatalake.normalized.gnomad.{GnomadCNV_v1, GnomadJoint_v1, GnomadSV_v1}
 
 import java.time.LocalDateTime
@@ -23,7 +23,8 @@ object ContractRegistry {
     ("hpo_genes", 1) -> (args => HpoGenes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
     ("hpo_terms", 1) -> (args => HpoTerms_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
     ("mondo", 1) -> (args => Mondo_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix))
+    ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
+    ("topmed_bravo", 1) -> (args => TopMed_v1(args.rc, args.version, args.rawStorage, args.tablePrefix))
   )
 
   def factory(source: String, contract: Contract): Option[NormalizerArgs => NormalizerETL] =

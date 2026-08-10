@@ -76,7 +76,7 @@ object EtlConfiguration extends App {
     DatasetConf("raw_gnomad_cnv", raw_storage_id, "/gnomad_cnv/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
     DatasetConf("raw_gnomad_sv", raw_storage_id, "/gnomad_sv/{{VERSION}}/*.sv.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
     DatasetConf("raw_gnomad_constraint_v2_1_1", raw_storage_id, "/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
-    DatasetConf("raw_topmed_bravo", raw_storage_id, "/topmed/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
+    DatasetConf("raw_topmed_bravo", raw_storage_id, "/topmed_bravo/{{VERSION}}/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_1000_genomes", raw_storage_id, "/1000_genomes/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_dbnsfp", raw_storage_id, "/dbNSFP/dbNSFP4.3a_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_dbnsfp_annovar", raw_storage_id, "/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
@@ -121,7 +121,7 @@ object EtlConfiguration extends App {
     buildNormalizedDatasetConf("mondo"),
     DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
     DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
-    DatasetConf("normalized_topmed_bravo", iceberg_storage_id, "/normalized/topmed_bravo", ICEBERG, OverWrite, partitionby = List(), table = table("topmed_bravo")),
+    buildNormalizedDatasetConf("topmed_bravo", partitionby = List("chromosome")),
     DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
     buildNormalizedDatasetConf("spliceai", partitionby = List("chromosome")),
 

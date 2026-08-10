@@ -10,6 +10,7 @@ from opendatalake.lib.domain.source_configs import (
     HpoSourceConfig,
     MondoSourceConfig,
     SpliceAiSourceConfig,
+    TopMedBravoSourceConfig,
 )
 
 _VCF_LABEL = "vcf"
@@ -144,6 +145,8 @@ class _Source(Enum):
     )
 
     SPLICEAI = SpliceAiSourceConfig()
+
+    TOPMED_BRAVO = TopMedBravoSourceConfig()
 
 
 ###########################################################

@@ -59,3 +59,8 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/spliceai/v1.md"
+  topmed_bravo:
+    table_prefix: "topmed_bravo"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/topmed_bravo/v1.md"

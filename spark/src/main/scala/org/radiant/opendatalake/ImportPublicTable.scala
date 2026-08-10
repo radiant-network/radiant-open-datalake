@@ -90,7 +90,8 @@ object ImportPublicTable {
     ContractRunner.run("spliceai", rc, version.value, rawStorage.value)
 
   @main
-  def topmed_bravo(rc: RuntimeETLContext): Unit = TopMed.run(rc)
+  def topmed_bravo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("topmed_bravo", rc, version.value, rawStorage.value)
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args, allowPositional = true)
 

@@ -4,6 +4,7 @@ from .gnomad import GnomadCnvSourceConfig, GnomadJointSourceConfig, GnomadSVSour
 from .hpo import HpoSourceConfig
 from .mondo import MondoSourceConfig
 from .spliceai import SpliceAiSourceConfig
+from .topmed import TopMedBravoSourceConfig
 
 __all__ = [
     "ClinvarSourceConfig",
@@ -14,4 +15,5 @@ __all__ = [
     "HpoSourceConfig",
     "MondoSourceConfig",
     "SpliceAiSourceConfig",
+    "TopMedBravoSourceConfig",
 ]
