@@ -4,7 +4,7 @@ from airflow.sdk import DAG
 
 from opendatalake.dags.import_source import build_import_operator
 from opendatalake.lib.domain.model.sources import get_import_config
-from opendatalake.lib.operators.spark_k8s import DEFAULT_ENTRY_CLASS, JAR_PATH
+from opendatalake.lib.operators.emr import DEFAULT_ENTRY_CLASS, EmrServerlessConfig
 
 
 def _build_operator(source_id: str):
@@ -13,19 +13,11 @@ def _build_operator(source_id: str):
         return build_import_operator(source_id, version), version
 
 
-def _conf_value(args: list, key: str) -> str | None:
-    """Return the value of a `--conf key=value` flag in a spark-submit arg list, or None."""
-    for i, arg in enumerate(args):
-        if arg == "--conf" and args[i + 1].startswith(f"{key}="):
-            return args[i + 1].split("=", 1)[1]
-    return None
-
-
 def test_dag_loads_without_errors(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-import-clinvar")
     assert dag is not None
     assert not dag_bag.import_errors
-    assert dag.tags == {"opendatalake", "opendatalake_clinvar", "opendatalake_import"}
+    assert dag.tags == {"opendatalake", "opendatalake_clinvar", "opendatalake_import", "opendatalake_auto"}
 
 
 def test_dag_has_expected_tasks(dag_bag):
@@ -54,6 +46,7 @@ def test_manual_source_import_dag_exists(dag_bag):
     assert dag is not None
     assert not dag_bag.import_errors
     assert "version" in dag.params
+    assert "opendatalake_manual" in dag.tags
 
 
 def test_import_dag_has_version_param(dag_bag):
@@ -63,38 +56,32 @@ def test_import_dag_has_version_param(dag_bag):
 
 def test_entry_point_arguments():
     operator, version = _build_operator("clinvar")
-    args = operator.arguments
+    spark_submit = operator.job_driver["sparkSubmit"]
+    args = spark_submit["entryPointArguments"]
 
-    # spark-submit is the pod entrypoint; the ETL command/args follow the app JAR.
-    assert operator.cmds == ["/opt/spark/bin/spark-submit"]
-    jar_at = args.index(JAR_PATH)
-    assert args[jar_at - 2 : jar_at] == ["--class", DEFAULT_ENTRY_CLASS]
-    assert "local[*]" in args  # --master local[*]
+    version_at = args.index("--version")
+    assert args[version_at + 1] is version
+    assert args[:version_at] == ["clinvar", "--config", "config/dev.conf", "--steps", "default"]
+    assert args[version_at + 2 :] == ["--raw-storage", "s3a://opendatalake-dev/raw/landing"]
 
-    entry_args = args[jar_at + 1 :]
-    version_at = entry_args.index("--version")
-    assert entry_args[version_at + 1] is version
-    assert entry_args[:version_at] == ["clinvar", "--config", "config/dev.conf", "--steps", "default"]
-    assert entry_args[version_at + 2 :] == ["--raw-storage", "s3a://opendatalake-dev/raw/landing"]
+    assert spark_submit["entryPoint"] == EmrServerlessConfig.from_env().jar_s3_path
+    assert f"--class {DEFAULT_ENTRY_CLASS}" in spark_submit["sparkSubmitParameters"]
 
 
 def test_dbsnp_tuning_applied():
     operator, _ = _build_operator("dbsnp")
+    spark_submit = operator.job_driver["sparkSubmit"]
 
-    # import_config.spark_conf is passed through as spark-submit --conf flags.
-    assert _conf_value(operator.arguments, "spark.dynamicAllocation.maxExecutors") == "16"
-    # EMR-only waiter tuning is accepted but ignored by the k8s operator.
-    assert not hasattr(operator, "waiter_max_attempts")
+    assert operator.waiter_max_attempts == 960
+    assert "spark.dynamicAllocation.maxExecutors=16" in spark_submit["sparkSubmitParameters"]
 
 
 def test_clinvar_uses_default_tuning():
     operator, _ = _build_operator("clinvar")
+    spark_submit = operator.job_driver["sparkSubmit"]
 
-    # clinvar declares no spark_conf, so no executor override is emitted.
-    assert _conf_value(operator.arguments, "spark.dynamicAllocation.maxExecutors") is None
-    # falls back to the operator's default driver memory.
-    driver_memory_at = operator.arguments.index("--driver-memory")
-    assert operator.arguments[driver_memory_at + 1] == "4g"
+    assert operator.waiter_max_attempts == 480
+    assert "spark.dynamicAllocation.maxExecutors=4" in spark_submit["sparkSubmitParameters"]
 
 
 def test_import_config_sourced_from_source_config():

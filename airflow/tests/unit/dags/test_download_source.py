@@ -16,6 +16,7 @@ def test_auto_source_download_dag_is_asset_scheduled_with_version_param(dag_bag)
     dag = dag_bag.get_dag(dag_id="opendatalake-download-clinvar")
     assert isinstance(dag.timetable, AssetTriggeredTimetable)
     assert "version" in dag.params
+    assert "opendatalake_auto" in dag.tags
 
 
 def test_manual_source_download_dag_is_trigger_only(dag_bag):

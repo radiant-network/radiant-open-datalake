@@ -11,6 +11,7 @@ from opendatalake.lib.domain.model.sources import (
     get_download_config_at_index,
     get_download_configs,
     get_latest_version,
+    get_update_mode,
     is_auto_update,
 )
 
@@ -58,6 +59,12 @@ def test_get_all_source_ids_includes_manual():
 def test_is_auto_update():
     assert is_auto_update("clinvar") is True
     assert is_auto_update("1000_genomes") is False
+
+
+def test_get_update_mode():
+    assert get_update_mode("clinvar") == "auto"
+    assert get_update_mode("1000_genomes") == "manual"
+    assert get_update_mode("gnomad_joint") == "manual"
 
 
 def test_reverse_lookup_is_case_insensitive():
