@@ -162,14 +162,15 @@ location, `IcebergTable.createEmpty` qualifies it first (`/x` → `file:/x`, `s3
 Every job is a `case class Xxx(rc: RuntimeETLContext)` extending a FerLab base
 (`bio.ferlab.datalake.spark3.etl.v4`) and paired with a companion `object` exposing a `@main run` —
 except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`, `GnomadJoint_v1`,
-`GnomadSV_v1`, `Mondo_v1`, `OneThousandGenomes_v1`), which have no companion
-at all: a second `@main` would be a launch path that skips contract selection and the destination
+`GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mondo_v1`, `OneThousandGenomes_v1`, `SpliceAi_v1`), which
+have no companion at all: a second `@main` would be a launch path that skips contract selection and the destination
 check, so their only entry point is `ImportPublicTable` dispatching through `ContractRunner`.
 
-- `SimpleETLP` — normalized jobs (13 of them); publishes/partitions per the `DatasetConf`.
-- `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (4).
-- `contracts.ContractETLP` — the seven contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`,
-  `GnomadJoint_v1`, `GnomadSV_v1`, `Mondo_v1`, `OneThousandGenomes_v1`). It derives their
+- `SimpleETLP` — normalized jobs (12 of them); publishes/partitions per the `DatasetConf`.
+- `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (3).
+- `contracts.ContractETLP` — the ten contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`,
+  `GnomadJoint_v1`, `GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mondo_v1`, `OneThousandGenomes_v1`,
+  `SpliceAi_v1`). It derives their
   destination per MAJOR (see **Data contracts** below) and extends `wap.WapETLP`, a `SimpleETLP` whose
   `loadSingle` publishes by Iceberg branch instead of overwriting the table; see **Write-Audit-Publish**
   below. Nothing extends `WapETLP` directly except a test fixture.
