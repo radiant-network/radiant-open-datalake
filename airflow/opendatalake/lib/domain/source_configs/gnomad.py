@@ -47,7 +47,7 @@ class GnomadJointSourceConfig(SourceConfig):
     display_name: str = field(init=False, default="gnomAD Joint Frequency")
     website: str = field(init=False, default="https://gnomad.broadinstitute.org/")
     download_configs: list[DownloadConfig] = field(init=False, default_factory=_build_joint_download_configs)
-    update_mode: UpdateMode = field(init=False, default=UpdateMode.AUTO)
+    update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(
         init=False,
         default=ImportConfig(
@@ -81,7 +81,7 @@ class GnomadCnvSourceConfig(SourceConfig):
             )
         ],
     )
-    update_mode: UpdateMode = field(init=False, default=UpdateMode.AUTO)
+    update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_cnv"))
 
     @override
@@ -102,7 +102,7 @@ class GnomadSVSourceConfig(SourceConfig):
             DownloadConfig(download_url=f"{_SV_VCF_URL}.tbi", md5_present=False, label="tbi"),
         ],
     )
-    update_mode: UpdateMode = field(init=False, default=UpdateMode.AUTO)
+    update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_sv"))
 
     @override
