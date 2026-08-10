@@ -8,7 +8,7 @@ object SpliceAi {
   def addMaxScore(df: DataFrame): DataFrame = {
     val originalColumns = df.columns.map(col)
 
-    val getDs: Column => Column = _.getItem(0).getField("ds") // delta score of the head element
+    val getDs: Column => Column = _.getItem(0).getField("ds") // Get delta score
     val scoreColumnNames = Array("AG", "AL", "DG", "DL")
     val scoreColumns = scoreColumnNames.map(c => array(struct(col(c) as "ds", lit(c) as "type")))
     val maxScore: Column = scoreColumns.reduce {

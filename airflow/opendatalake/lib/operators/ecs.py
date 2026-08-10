@@ -95,11 +95,6 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
 
         container_override = {"name": self.container_name, "command": command}
 
-        # Inject secrets via ECS `secrets` (valueFrom a Secrets Manager ARN) rather than a plaintext
-        # `environment` value: the RunTask call then carries only the ARN, never the secret (so it is not
-        # exposed in CloudTrail). The ARN itself is not sensitive; it is read from the worker environment
-        # here at execute time — never at DAG parse — so nothing is serialized into the DAG. The ECS task
-        # execution role must be allowed `secretsmanager:GetSecretValue` on the referenced secret.
         secrets = self._resolve_secrets()
         if secrets:
             container_override["secrets"] = secrets
