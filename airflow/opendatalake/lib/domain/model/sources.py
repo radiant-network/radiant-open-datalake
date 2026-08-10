@@ -14,6 +14,7 @@ from opendatalake.lib.domain.source_configs import (
 _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
 _OBO_LABEL = "obo"
+_TSV_LABEL = "tsv"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -121,6 +122,24 @@ class _Source(Enum):
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="hpo_terms"),
+    )
+
+    HPO_GENES = HpoSourceConfig(
+        short_name="hpo_genes",
+        display_name="Human Phenotype Ontology (Genes)",
+        website="https://hpo.jax.org/",
+        latest_release_url="https://github.com/obophenotype/human-phenotype-ontology/releases/latest",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    "https://github.com/obophenotype/human-phenotype-ontology/releases/download/"
+                    f"{version}/genes_to_phenotype.txt"
+                ),
+                label=_TSV_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="hpo_genes"),
     )
 
 

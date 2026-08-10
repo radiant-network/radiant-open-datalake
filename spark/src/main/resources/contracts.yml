@@ -39,6 +39,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/gnomad_sv/v1.md"
+  hpo_genes:
+    table_prefix: "hpo_genes"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/hpo_genes/v1.md"
   hpo_terms:
     table_prefix: "hpo_terms"
     contracts:
