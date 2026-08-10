@@ -27,14 +27,8 @@ does not exist will not run.** Create them from the Airflow UI, under **Admin ->
 Per source: a **Download** and an **Import** DAG, plus the shared **Discover New Source Versions** DAG.
 Chain is `discover → download → import`, wired by assets.
 
-- **AUTO** (`update_mode=AUTO`): discover detects new versions and drives the chain; version flows
-  through the asset events.
-- **MANUAL** (`update_mode=MANUAL`, e.g. `1000_genomes`): no discover, download is trigger-only
-  (`schedule=None`). Trigger it and pass the `version` param; finishing emits the downloaded asset,
-  which still auto-triggers import.
-
-Both DAGs expose the `version` param — asset-triggered runs leave it empty and read the version from
-the upstream event (`opendatalake.lib.tasks.get_version`).
+- **AUTO** (`update_mode=AUTO`): New versions are discovered automatically.
+- **MANUAL** (`update_mode=MANUAL`, e.g. `1000_genomes`): No automatic discovery. Versions download need manual input.
 
 ## Operations
 
