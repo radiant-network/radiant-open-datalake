@@ -8,12 +8,12 @@ from opendatalake.lib.utils.http import http_get
 
 
 @dataclass(frozen=True, kw_only=True)
-class MondoSourceConfig(SourceConfig):
-    """Mondo Disease Ontology source config.
+class HpoSourceConfig(SourceConfig):
+    """Human Phenotype Ontology (HPO) source config.
 
-    The latest release: https://github.com/monarch-initiative/mondo/releases/latest
+    The latest release: https://github.com/obophenotype/human-phenotype-ontology/releases/latest
 
-    Will be redirected by Github to the specific date-based tag (e.g. ``v2024-09-03``).
+    Will be redirected by Github to the specific date-based tag (e.g. ``v2026-06-23``).
     """
 
     latest_release_url: str
@@ -25,12 +25,10 @@ class MondoSourceConfig(SourceConfig):
         resolved_url = http_get(self.latest_release_url).url
         match = self._TAG_PATTERN.search(resolved_url)
         if not match:
-            raise ValueError(f"Could not parse Mondo version from {resolved_url}")
+            raise ValueError(f"Could not parse HPO version from {resolved_url}")
         tag = match.group(1)
         try:
             datetime.strptime(tag, self._VERSION_DATE_FORMAT)
         except ValueError as e:
-            raise ValueError(
-                f"Mondo version {tag!r} is not a valid date (expected {self._VERSION_DATE_FORMAT})"
-            ) from e
+            raise ValueError(f"HPO version {tag!r} is not a valid date (expected {self._VERSION_DATE_FORMAT})") from e
         return tag

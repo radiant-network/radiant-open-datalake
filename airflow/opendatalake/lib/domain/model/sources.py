@@ -7,6 +7,7 @@ from opendatalake.lib.domain.source_configs import (
     GnomadCnvSourceConfig,
     GnomadJointSourceConfig,
     GnomadSVSourceConfig,
+    HpoSourceConfig,
     MondoSourceConfig,
 )
 
@@ -103,6 +104,23 @@ class _Source(Enum):
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="mondo"),
+    )
+
+    HPO_TERMS = HpoSourceConfig(
+        short_name="hpo_terms",
+        display_name="Human Phenotype Ontology (Terms)",
+        website="https://hpo.jax.org/",
+        latest_release_url="https://github.com/obophenotype/human-phenotype-ontology/releases/latest",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://github.com/obophenotype/human-phenotype-ontology/releases/download/{version}/hp.obo"
+                ),
+                label=_OBO_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="hpo_terms"),
     )
 
 
