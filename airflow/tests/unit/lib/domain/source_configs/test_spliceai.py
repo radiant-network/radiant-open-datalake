@@ -60,8 +60,8 @@ def test_spliceai_attaches_auth_headers(spliceai_source_config):
         assert "x-access-token" in config.get_headers()
 
 
-def test_spliceai_is_auto_updated_and_imports_via_the_spliceai_command(spliceai_source_config):
-    assert spliceai_source_config.update_mode is UpdateMode.AUTO
+def test_spliceai_is_manually_updated_and_imports_via_the_spliceai_command(spliceai_source_config):
+    assert spliceai_source_config.update_mode is UpdateMode.MANUAL
     assert spliceai_source_config.import_config.spark_command == "spliceai"
 
 

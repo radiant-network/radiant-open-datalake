@@ -3,15 +3,6 @@ package org.radiant.opendatalake.enriched
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.{Column, DataFrame, functions}
 
-/**
- * Pure `max_score` enrichment for the SpliceAI scores, shared by the contract normalizer
- * [[org.radiant.opendatalake.normalized.SpliceAi_v1]].
- *
- * Appends `max_score` = the strongest of the four acceptor/donor delta scores (`ds_ag/al/dg/dl`) for the
- * row and which event(s) reached it (ties keep every tied event; a zero score yields a null `type`). This
- * is a row-wise derivation with no join, so it runs inside the normalizer rather than as a separate ETL:
- * a standalone enriched job could not read the WAP `main` branch, which is left empty by design.
- */
 object SpliceAi {
 
   def addMaxScore(df: DataFrame): DataFrame = {

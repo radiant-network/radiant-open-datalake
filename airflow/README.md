@@ -13,25 +13,10 @@ This directory contains Airflow DAGs and related code for orchestrating workflow
 
 ### Source credentials (SpliceAI)
 
-The `spliceai` source downloads from an authenticated API and needs an access token, stored in AWS
-Secrets Manager. Its `DownloadConfig`s declare the secret (`secret_env_vars`); `SpliceAiConfig` in
-[`spliceai.py`](opendatalake/lib/domain/source_configs/spliceai.py) hides the download's API details.
-Infra provides two things at deploy time (Terraform):
+The `spliceai` source downloads from an authenticated API and needs an access token, stored in AWS Secrets Manager. 
 
-- the **Airflow worker** — set only `OPENDATALAKE_SPLICEAI_ACCESS_TOKEN_ARN` (the secret's ARN, not
-  sensitive). Version discovery (`get_latest_version`) and `direct_upload` (streaming the large score
-  VCFs) run in the worker; `SpliceAiConfig.from_env` fetches the token from Secrets Manager by that ARN at
-  task runtime, so the token itself never sits in the worker environment. The worker task role must be
-  allowed `secretsmanager:GetSecretValue` on that secret. The ARN is also used to build the ECS override
-  below. (A plaintext `OPENDATALAKE_SPLICEAI_ACCESS_TOKEN`, if set, takes precedence — useful for local
-  runs without AWS.)
-- the **ECS download task** — the tabix indexes upload via the ECS local-copy path. The operator injects
-  the token as an ECS `secrets` entry (`valueFrom` the ARN read from the worker env), so the **RunTask
-  call carries only the ARN, never the token** (nothing sensitive in CloudTrail). The ECS task execution
-  role must be allowed `secretsmanager:GetSecretValue` on that secret.
-
-The token is read lazily at task runtime, never at DAG parse (so it is not serialized into the DAG or
-rendered templates); a missing value fails the task loudly rather than sending an unauthenticated request.
+> It's possible to test locally by setting the `OPENDATALAKE_SPLICEAI_ACCESS_TOKEN` in the `airflow/sandbox/airflow-values.yaml` file.
+However, make sure this is not commited. 
 
 ### Airflow pools
 

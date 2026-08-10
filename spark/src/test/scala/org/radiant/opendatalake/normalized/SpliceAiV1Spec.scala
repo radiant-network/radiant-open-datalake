@@ -21,6 +21,10 @@ class SpliceAiV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanU
   override val dbToCreate: List[String] = List(destination.table.map(_.database).get)
   override val dsToClean: List[DatasetConf] = List(destination)
 
+  // Format of one SpliceAI INFO entry: allele|symbol|ds_ag|ds_al|ds_dg|ds_dl|dp_ag|dp_al|dp_dg|dp_dl
+  private def spliceaiEntry(symbol: String, dsAg: Double, dsAl: Double, dsDg: Double, dsDl: Double): String =
+    s"C|$symbol|$dsAg|$dsAl|$dsDg|$dsDl|0|0|0|0"
+
   "transformSingle" should "normalize the raw SpliceAI scores and append max_score (EnrichedSpliceAi)" in {
     val inputData = Map(source.id -> Seq(RawSpliceAi("2"), RawSpliceAi("3")).toDF())
 
@@ -28,6 +32,20 @@ class SpliceAiV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanU
 
     val expectedResults = Seq(EnrichedSpliceAi("2"), EnrichedSpliceAi("3"))
     resultDF.as[EnrichedSpliceAi].collect() should contain allElementsOf expectedResults
+  }
+
+  it should "emit one row per gene for a multi-gene SpliceAI annotation" in {
+    // A variant overlapping two genes carries two pipe-delimited entries in INFO_SpliceAI; both must survive.
+    val multiGene = RawSpliceAi(`INFO_SpliceAI` = Seq(
+      spliceaiEntry("GENE1", 0.10, 0.20, 0.00, 0.00),
+      spliceaiEntry("GENE2", 0.50, 0.00, 0.00, 0.00),
+    ))
+
+    val result = job.transformSingle(Map(source.id -> Seq(multiGene).toDF()))
+
+    result.count() shouldBe 2
+    val perGene = result.select("symbol", "ds_ag", "ds_al").as[(String, Double, Double)].collect().toSet
+    perGene shouldBe Set(("GENE1", 0.10, 0.20), ("GENE2", 0.50, 0.00))
   }
 
   /*
