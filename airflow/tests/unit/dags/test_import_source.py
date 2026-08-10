@@ -41,6 +41,18 @@ def test_import_dbsnp_dag_exists(dag_bag):
     assert dag_bag.get_dag(dag_id="opendatalake-import-dbsnp") is not None
 
 
+def test_manual_source_import_dag_exists(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-1000_genomes")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert "version" in dag.params
+
+
+def test_import_dag_has_version_param(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-clinvar")
+    assert "version" in dag.params
+
+
 def test_entry_point_arguments():
     operator, version = _build_operator("clinvar")
     spark_submit = operator.job_driver["sparkSubmit"]

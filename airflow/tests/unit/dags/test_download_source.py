@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+from airflow.timetables.simple import AssetTriggeredTimetable, NullTimetable
+
 from opendatalake.dags.download_source import direct_upload
 
 
@@ -8,6 +10,20 @@ def test_dag_loads_without_errors(dag_bag):
     assert dag is not None
     assert not dag_bag.import_errors
     assert dag.tags == {"opendatalake", "opendatalake_download", "opendatalake_clinvar"}
+
+
+def test_auto_source_download_dag_is_asset_scheduled_with_version_param(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-download-clinvar")
+    assert isinstance(dag.timetable, AssetTriggeredTimetable)
+    assert "version" in dag.params
+
+
+def test_manual_source_download_dag_is_trigger_only(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-download-1000_genomes")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert isinstance(dag.timetable, NullTimetable)
+    assert "version" in dag.params
 
 
 def test_dag_has_expected_tasks(dag_bag):

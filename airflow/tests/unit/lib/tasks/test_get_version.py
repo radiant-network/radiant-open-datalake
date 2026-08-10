@@ -44,6 +44,25 @@ def test_get_version_no_events():
         get_version(asset, triggering_asset_events={asset: []})
 
 
+def test_get_version_manual_param_fallback():
+    asset = DummyAsset("test-asset")
+    result = get_version(asset, triggering_asset_events={asset: []}, params={"version": "manual-v9"})
+    assert result == "manual-v9"
+
+
+def test_get_version_no_events_no_param_raises():
+    asset = DummyAsset("test-asset")
+    with pytest.raises(ValueError, match="no 'version' param supplied"):
+        get_version(asset, triggering_asset_events={asset: []}, params={})
+
+
+def test_get_version_asset_event_precedes_param():
+    asset = DummyAsset("test-asset")
+    event = MagicMock(extra={"version": "from-asset"})
+    result = get_version(asset, triggering_asset_events={asset: [event]}, params={"version": "from-param"})
+    assert result == "from-asset"
+
+
 def test_get_version_multiple_events_warns():
     asset = DummyAsset("test-asset")
     triggering_asset_events = {asset: [MagicMock(extra={"version": "v1.0.0"}), MagicMock(extra={"version": "v2.0.0"})]}

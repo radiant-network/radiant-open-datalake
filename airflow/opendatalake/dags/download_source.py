@@ -10,13 +10,14 @@ from opendatalake.lib.assets import downloaded_source_asset, new_source_version_
 from opendatalake.lib.domain.download import S3Downloader
 from opendatalake.lib.domain.model.config import DownloadConfig
 from opendatalake.lib.domain.model.sources import (
-    get_auto_update_source_ids,
+    get_all_source_ids,
     get_display_name,
     get_download_config_at_index,
     get_download_configs,
+    is_auto_update,
 )
 from opendatalake.lib.operators.ecs import PythonScriptOperator
-from opendatalake.lib.tasks import get_version
+from opendatalake.lib.tasks import VERSION_PARAM, get_version
 
 
 @task(pool=config.DIRECT_UPLOAD_TASKS_POOL)
@@ -75,10 +76,13 @@ def _make_download_source_dag(source_id: str):
     output_asset = downloaded_source_asset(source_id)
     display_name = get_display_name(source_id)
 
+    schedule = input_asset if is_auto_update(source_id) else None
+
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-download-{source_id}",
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Download {display_name}",
-        schedule=input_asset,
+        schedule=schedule,
+        params=VERSION_PARAM,
         tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download"]],
         catchup=False,
         # Retries let direct uploads (multipart) resume automatically: a new attempt only
@@ -124,5 +128,5 @@ def _make_download_source_dag(source_id: str):
     _download()
 
 
-for source_id in get_auto_update_source_ids():
+for source_id in get_all_source_ids():
     _make_download_source_dag(source_id)

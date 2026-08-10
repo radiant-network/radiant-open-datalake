@@ -3,12 +3,12 @@ from airflow.sdk import Metadata, XComArg, dag, task
 from opendatalake.lib import config
 from opendatalake.lib.assets import downloaded_source_asset, imported_source_asset
 from opendatalake.lib.domain.model.sources import (
-    get_auto_update_source_ids,
+    get_all_source_ids,
     get_display_name,
     get_import_config,
 )
 from opendatalake.lib.operators.emr import EmrServerlessJobOperator
-from opendatalake.lib.tasks import get_version
+from opendatalake.lib.tasks import VERSION_PARAM, get_version
 
 
 def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobOperator:
@@ -52,6 +52,7 @@ def _make_import_source_dag(source_id: str):
         dag_id=f"{config.DAG_ID_PREFIX}-import-{source_id}",
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Import {display_name}",
         schedule=input_asset,
+        params=VERSION_PARAM,
         tags=config.DAG_DEFAULT_TAGS + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "import"]],
         catchup=False,
     )
@@ -67,5 +68,5 @@ def _make_import_source_dag(source_id: str):
     _import()
 
 
-for source_id in get_auto_update_source_ids():
+for source_id in get_all_source_ids():
     _make_import_source_dag(source_id)
