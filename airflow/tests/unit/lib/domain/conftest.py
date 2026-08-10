@@ -4,7 +4,9 @@ from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
+    GnomadCnvSourceConfig,
     GnomadJointSourceConfig,
+    GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
 )
@@ -14,6 +16,16 @@ from opendatalake.lib.domain.source_configs import (
 def gnomad_joint_source_config() -> GnomadJointSourceConfig:
     # Unlike the other sources, every field is `init=False`: the source declares itself entirely.
     return GnomadJointSourceConfig()
+
+
+@pytest.fixture
+def gnomad_cnv_source_config() -> GnomadCnvSourceConfig:
+    return GnomadCnvSourceConfig()
+
+
+@pytest.fixture
+def gnomad_sv_source_config() -> GnomadSVSourceConfig:
+    return GnomadSVSourceConfig()
 
 
 @pytest.fixture
