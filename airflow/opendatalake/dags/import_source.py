@@ -9,7 +9,7 @@ from opendatalake.lib.domain.model.sources import (
     get_update_mode,
 )
 from opendatalake.lib.operators.emr import EmrServerlessJobOperator
-from opendatalake.lib.tasks import VERSION_PARAM, get_version
+from opendatalake.lib.tasks import get_version, version_param
 
 
 def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobOperator:
@@ -53,7 +53,7 @@ def _make_import_source_dag(source_id: str):
         dag_id=f"{config.DAG_ID_PREFIX}-import-{source_id}",
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Import {display_name}",
         schedule=input_asset,
-        params=VERSION_PARAM,
+        params=version_param(),
         tags=config.DAG_DEFAULT_TAGS
         + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "import", get_update_mode(source_id)]],
         catchup=False,

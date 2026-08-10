@@ -3,17 +3,20 @@ import logging
 from airflow.sdk import Asset, task
 from airflow.sdk.definitions.param import Param
 
-VERSION_PARAM = {
-    "version": Param(
-        None,
-        type=["null", "string"],
-        title="Source version",
-        description=(
-            "Version to process. Required only when triggering this DAG manually; "
-            "asset-triggered runs read the version from the upstream event."
-        ),
-    )
-}
+
+def version_param() -> dict:
+    # To ensure one different version param per DAG
+    return {
+        "version": Param(
+            None,
+            type=["null", "string"],
+            title="Source version",
+            description=(
+                "Version to process. Required only when triggering this DAG manually; "
+                "asset-triggered runs read the version from the upstream event."
+            ),
+        )
+    }
 
 
 def get_version(asset: Asset, **kwargs):

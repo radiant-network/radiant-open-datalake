@@ -18,7 +18,7 @@ from opendatalake.lib.domain.model.sources import (
     is_auto_update,
 )
 from opendatalake.lib.operators.ecs import PythonScriptOperator
-from opendatalake.lib.tasks import VERSION_PARAM, get_version
+from opendatalake.lib.tasks import get_version, version_param
 
 
 @task(pool=config.DIRECT_UPLOAD_TASKS_POOL)
@@ -83,7 +83,7 @@ def _make_download_source_dag(source_id: str):
         dag_id=f"{config.DAG_ID_PREFIX}-download-{source_id}",
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Download {display_name}",
         schedule=schedule,
-        params=VERSION_PARAM,
+        params=version_param(),
         tags=config.DAG_DEFAULT_TAGS
         + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download", get_update_mode(source_id)]],
         catchup=False,
