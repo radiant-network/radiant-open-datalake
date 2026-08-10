@@ -161,14 +161,15 @@ location, `IcebergTable.createEmpty` qualifies it first (`/x` → `file:/x`, `s3
 
 Every job is a `case class Xxx(rc: RuntimeETLContext)` extending a FerLab base
 (`bio.ferlab.datalake.spark3.etl.v4`) and paired with a companion `object` exposing a `@main run` —
-except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`, `GnomadJoint_v1`), which have no companion
+except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`, `GnomadJoint_v1`,
+`GnomadSV_v1`, `Mondo_v1`, `OneThousandGenomes_v1`), which have no companion
 at all: a second `@main` would be a launch path that skips contract selection and the destination
 check, so their only entry point is `ImportPublicTable` dispatching through `ContractRunner`.
 
-- `SimpleETLP` — normalized jobs (17 of them); publishes/partitions per the `DatasetConf`.
+- `SimpleETLP` — normalized jobs (13 of them); publishes/partitions per the `DatasetConf`.
 - `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (4).
-- `contracts.ContractETLP` — the three contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`,
-  `GnomadJoint_v1`). It derives their
+- `contracts.ContractETLP` — the seven contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`,
+  `GnomadJoint_v1`, `GnomadSV_v1`, `Mondo_v1`, `OneThousandGenomes_v1`). It derives their
   destination per MAJOR (see **Data contracts** below) and extends `wap.WapETLP`, a `SimpleETLP` whose
   `loadSingle` publishes by Iceberg branch instead of overwriting the table; see **Write-Audit-Publish**
   below. Nothing extends `WapETLP` directly except a test fixture.
@@ -206,7 +207,7 @@ than be conjured mid-run. Specs that load to Iceberg mix in `CreateDatabasesBefo
 `prepareCleanBase` → `stageOnAuditBranch` → `publishVersionBranch`. New Iceberg verbs (e.g. §2.2 tagging) go
 on the `wap.iceberg` types; new flow logic goes in `wap`.
 
-`Clinvar_v1` and `DBSNP_v1` reach this through `contracts.ContractETLP`, which extends `wap.WapETLP`; the
+Every contract-managed job reaches this through `contracts.ContractETLP`, which extends `wap.WapETLP`; the
 latter overrides `loadSingle` to publish through `wap.WapLoader` instead of the framework's load path. Per run, on the destination table: reset a
 transient `audit_{version}` branch to `main`, write there, `CREATE OR REPLACE BRANCH {version}` at the
 resulting snapshot, drop the audit branch. **`main` is left permanently empty** — it is only a clean base
@@ -289,7 +290,7 @@ the implementing class is named once, in Scala, where the compiler checks it.
 `forMajor(family, prefix, major)` narrows the source's *one* `DatasetConf` into a per-MAJOR destination. The
 prefix is what the name comes from, so a developer picks an arbitrary table name in the yaml and it need not
 match the family's own; the family supplies the database, the storage, the partitioning, and the directory its
-tables sit in. `EtlConfiguration` declares that family through **`buildNormalizedDatasetConfForContractFamily("clinvar", …)`**, which reads
+tables sit in. `EtlConfiguration` declares that family through **`buildNormalizedDatasetConf("clinvar", …)`**, which reads
 `table_prefix` off `contracts.yml` rather than repeating it — so the name is written once, in the yaml, and
 `clinvar_v1`, `clinvar_v2`, … are what actually get created, ingesting in parallel (§3.4). MAJOR 1 is not a
 special case. Adding a MAJOR touches no configuration and needs no regenerate.
@@ -317,7 +318,7 @@ Consequences worth knowing:
   Iceberg path to `/` + table name. Nothing enforces it beyond that, so a family pathed like `normalized_dbnsfp`
   (`/normalized/dbnsfp/variant`) would derive `/normalized/dbnsfp/dbnsfp_v1` — correctly *named*, two levels
   deep, accepted by Glue and rejected by the Hadoop catalog. Unreachable while every family comes from
-  `buildNormalizedDatasetConfForContractFamily`, which emits `/normalized/<prefix>`.
+  `buildNormalizedDatasetConf`, which emits `/normalized/<prefix>`.
 - A contract normalizer extends **`ContractETLP(rc, sourceDatasetId, tablePrefix, major)`** and no longer
   overrides `mainDestination` — it states which family it reads and which MAJOR it implements, while the prefix
   arrives as *data*, resolved from the yaml by `ContractRunner` and carried in `NormalizerArgs`, so a class
@@ -362,8 +363,8 @@ or a job whose destination is not the table its MAJOR implies all fail before th
 testable without Spark. Execution itself is sequential with no cross-contract rollback — fine while every
 contract destination is `OverWrite`. Each contract also re-extracts the raw input independently; §3.1
 encourages sharing intermediate transforms between MAJORs of one source, which nothing does yet because
-no source has two. `clinvar`, `dbsnp` and `gnomad_joint` are wired; the other commands still dispatch
-directly until they get contract entries.
+no source has two. `1000_genomes`, `clinvar`, `dbsnp`, `gnomad_cnv`, `gnomad_joint`, `gnomad_sv` and
+`mondo` are wired; the other commands still dispatch directly until they get contract entries.
 
 `ContractFanOutSpec` is the end-to-end proof: it declares two MAJORs of a fictional source through
 `ContractRunner.run`'s injectable `contracts` / `factories` seams — no row in `contracts.yml`, no dataset

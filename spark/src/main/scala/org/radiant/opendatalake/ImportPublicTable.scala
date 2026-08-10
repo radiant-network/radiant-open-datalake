@@ -37,14 +37,16 @@ object ImportPublicTable {
   def ensembl_mapping(rc: RuntimeETLContext): Unit = EnsemblMapping.run(rc)
 
   @main
+  def gnomad_cnv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("gnomad_cnv", rc, version.value, rawStorage.value)
+
+  @main
   def gnomad_joint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
     ContractRunner.run("gnomad_joint", rc, version.value, rawStorage.value)
 
   @main
-  def gnomadv4cnv(rc: RuntimeETLContext): Unit = GnomadV4CNV.run(rc)
-
-  @main
-  def gnomadv4sv(rc: RuntimeETLContext): Unit = GnomadV4SV.run(rc)
+  def gnomad_sv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("gnomad_sv", rc, version.value, rawStorage.value)
 
   @main
   def gnomad_constraint(rc: RuntimeETLContext): Unit = GnomadConstraint.run(rc)
