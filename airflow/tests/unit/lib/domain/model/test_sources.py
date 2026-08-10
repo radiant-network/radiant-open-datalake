@@ -5,11 +5,14 @@ import pytest
 from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
 from opendatalake.lib.domain.model.sources import (
     _get_source,
+    get_all_source_ids,
     get_auto_update_source_ids,
     get_display_name,
     get_download_config_at_index,
     get_download_configs,
     get_latest_version,
+    get_update_mode,
+    is_auto_update,
 )
 
 
@@ -44,6 +47,24 @@ def test_get_auto_update_source_ids():
 def test_source_id_derived_from_short_name():
     assert get_display_name("1000_genomes") == "1000 Genomes Project"
     assert "1000_genomes" not in get_auto_update_source_ids()
+
+
+def test_get_all_source_ids_includes_manual():
+    ids = get_all_source_ids()
+    assert "1000_genomes" in ids
+    assert set(get_auto_update_source_ids()).issubset(set(ids))
+    assert len(ids) == len(set(ids)), "source ids must be unique"
+
+
+def test_is_auto_update():
+    assert is_auto_update("clinvar") is True
+    assert is_auto_update("1000_genomes") is False
+
+
+def test_get_update_mode():
+    assert get_update_mode("clinvar") == "auto"
+    assert get_update_mode("1000_genomes") == "manual"
+    assert get_update_mode("gnomad_joint") == "manual"
 
 
 def test_reverse_lookup_is_case_insensitive():

@@ -17,7 +17,7 @@ def test_dag_loads_without_errors(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-import-clinvar")
     assert dag is not None
     assert not dag_bag.import_errors
-    assert dag.tags == {"opendatalake", "opendatalake_clinvar", "opendatalake_import"}
+    assert dag.tags == {"opendatalake", "opendatalake_clinvar", "opendatalake_import", "opendatalake_auto"}
 
 
 def test_dag_has_expected_tasks(dag_bag):
@@ -39,6 +39,19 @@ def test_import_emits_output_asset(dag_bag):
 
 def test_import_dbsnp_dag_exists(dag_bag):
     assert dag_bag.get_dag(dag_id="opendatalake-import-dbsnp") is not None
+
+
+def test_manual_source_import_dag_exists(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-1000_genomes")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert "version" in dag.params
+    assert "opendatalake_manual" in dag.tags
+
+
+def test_import_dag_has_version_param(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-clinvar")
+    assert "version" in dag.params
 
 
 def test_entry_point_arguments():

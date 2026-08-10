@@ -189,5 +189,17 @@ def get_auto_update_source_ids() -> list[str]:
     return [_normalize_source_id(s.value.short_name) for s in _Source if s.value.update_mode == UpdateMode.AUTO]
 
 
+def get_all_source_ids() -> list[str]:
+    return [_normalize_source_id(s.value.short_name) for s in _Source]
+
+
+def is_auto_update(source: str) -> bool:
+    return _get_source(source).value.update_mode == UpdateMode.AUTO
+
+
+def get_update_mode(source: str) -> str:
+    return _get_source(source).value.update_mode.value
+
+
 def get_latest_version(source: str) -> str:
     return _get_source(source).value.get_latest_version()

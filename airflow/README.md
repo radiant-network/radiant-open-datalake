@@ -22,6 +22,14 @@ does not exist will not run.** Create them from the Airflow UI, under **Admin ->
 | `opendatalake_download_tasks_pool`      | `upload_via_local_copy` (transfer runs on ECS) | -               |
 | `opendatalake_direct_upload_tasks_pool` | `direct_upload` (transfer runs on the worker)  | 3               |
 
+## DAG topology
+
+Per source: a **Download** and an **Import** DAG, plus the shared **Discover New Source Versions** DAG.
+Chain is `discover → download → import`, wired by assets.
+
+- **AUTO** (`update_mode=AUTO`): New versions are discovered automatically.
+- **MANUAL** (`update_mode=MANUAL`, e.g. `1000_genomes`): No automatic discovery. Versions download need manual input.
+
 ## Operations
 
 Manual deployment (no CI automation yet). 
