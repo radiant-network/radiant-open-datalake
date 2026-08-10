@@ -30,7 +30,5 @@ class HpoSourceConfig(SourceConfig):
         try:
             datetime.strptime(tag, self._VERSION_DATE_FORMAT)
         except ValueError as e:
-            raise ValueError(
-                f"HPO version {tag!r} is not a valid date (expected {self._VERSION_DATE_FORMAT})"
-            ) from e
+            raise ValueError(f"HPO version {tag!r} is not a valid date (expected {self._VERSION_DATE_FORMAT})") from e
         return tag
