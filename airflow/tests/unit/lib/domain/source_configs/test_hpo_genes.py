@@ -3,9 +3,7 @@ from unittest.mock import Mock, patch
 
 def test_hpo_genes_get_latest_version(hpo_genes_source_config):
     mock_response = Mock(url="https://github.com/obophenotype/human-phenotype-ontology/releases/tag/v2026-06-23")
-    with patch(
-        "opendatalake.lib.domain.source_configs.hpo.http_get", return_value=mock_response
-    ) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.hpo.http_get", return_value=mock_response) as mock_http_get:
         version = hpo_genes_source_config.get_latest_version()
 
     assert version == "v2026-06-23"
