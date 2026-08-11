@@ -6,9 +6,12 @@ RUN chown -R airflow:airflow /opt/opendatalake
 USER airflow
 
 COPY requirements.txt /opt/opendatalake/requirements.txt
+COPY requirements-operator.txt /opt/opendatalake/requirements-operator.txt
 COPY constraints-python3.12.txt /opt/opendatalake/constraints-python3.12.txt
 
 RUN pip install -r /opt/opendatalake/requirements.txt --constraint /opt/opendatalake/constraints-python3.12.txt
+# Container-only extras (e.g. stream-unzip): the download transfers run here, not in MWAA.
+RUN pip install -r /opt/opendatalake/requirements-operator.txt --constraint /opt/opendatalake/constraints-python3.12.txt
 
 COPY opendatalake /opt/opendatalake/opendatalake
 

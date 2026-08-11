@@ -10,10 +10,35 @@ from opendatalake.lib.domain.model.sources import (
     get_display_name,
     get_download_config_at_index,
     get_download_configs,
+    get_import_config,
     get_latest_version,
     get_update_mode,
     is_auto_update,
+    requires_download_url,
 )
+
+
+def test_dbnsfp_is_manual_url_source():
+    assert get_update_mode("dbnsfp") == "manual"
+    assert is_auto_update("dbnsfp") is False
+    assert requires_download_url("dbnsfp") is True
+    # fixed-URL sources do not take a runtime URL
+    assert requires_download_url("clinvar") is False
+
+
+def test_dbnsfp_download_config_stream_unzips_variant_members():
+    (conf,) = get_download_configs("dbnsfp")
+    assert conf.url_from_param is True
+    assert conf.use_stream_unzip is True
+    assert conf.download_url is None
+    assert conf.member_pattern == "*_variant.chr*.gz"
+
+
+def test_dbnsfp_import_config():
+    import_config = get_import_config("dbnsfp")
+    assert import_config.spark_command == "dbnsfp"
+    assert import_config.waiter_max_attempts == 960
+    assert import_config.spark_conf == {"spark.dynamicAllocation.maxExecutors": "16"}
 
 
 def test_get_download_configs_with_string_lowercase():

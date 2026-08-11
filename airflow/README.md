@@ -26,7 +26,7 @@ does not exist will not run.** Create them from the Airflow UI, under **Admin ->
 
 | Pool name                               | Used by                                        | Suggested slots |
 |-----------------------------------------|------------------------------------------------|-----------------|
-| `opendatalake_download_tasks_pool`      | `upload_via_local_copy` (transfer runs on ECS) | -               |
+| `opendatalake_download_tasks_pool`      | `upload_via_local_copy` and `stream_unzip_download` (transfer runs in the task-operator container) | - |
 | `opendatalake_direct_upload_tasks_pool` | `direct_upload` (transfer runs on the worker)  | 3               |
 
 ## DAG topology
@@ -36,6 +36,14 @@ Chain is `discover → download → import`, wired by assets.
 
 - **AUTO** (`update_mode=AUTO`): New versions are discovered automatically.
 - **MANUAL** (`update_mode=MANUAL`, e.g. `1000_genomes`): No automatic discovery. Versions download need manual input.
+
+### Manual URL-based sources (dbNSFP)
+
+`dbnsfp` is a MANUAL source whose archive URL is not derivable from a version, so the triggerer
+supplies it directly. When triggering **Download dbNSFP**, set two params:
+
+- `version` — e.g. `4.9a`; names the landing folder `raw/landing/dbnsfp/<version>/`.
+- `download_url` — the direct URL of the dbNSFP `.zip`.
 
 ## Operations
 

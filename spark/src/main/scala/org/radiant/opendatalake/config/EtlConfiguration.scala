@@ -78,7 +78,7 @@ object EtlConfiguration extends App {
     DatasetConf("raw_gnomad_constraint_v2_1_1", raw_storage_id, "/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_topmed_bravo", raw_storage_id, "/topmed/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
     DatasetConf("raw_1000_genomes", raw_storage_id, "/1000_genomes/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
-    DatasetConf("raw_dbnsfp", raw_storage_id, "/dbNSFP/dbNSFP4.3a_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
+    DatasetConf("raw_dbnsfp", raw_storage_id, "/dbnsfp/{{VERSION}}/*_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_dbnsfp_annovar", raw_storage_id, "/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_omim_gene_set", raw_storage_id, "/omim/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
     DatasetConf("raw_orphanet_gene_association", raw_storage_id, "/orphanet/en_product6.xml", XML, OverWrite),
@@ -105,7 +105,7 @@ object EtlConfiguration extends App {
     buildNormalizedDatasetConf("clinvar", repartition = Some(Coalesce())),
     DatasetConf("normalized_cosmic_gene_set", iceberg_storage_id, "/normalized/cosmic_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
     DatasetConf("normalized_cosmic_mutation_set", iceberg_storage_id, "/normalized/cosmic_mutation_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_mutation_set")),
-    DatasetConf("normalized_dbnsfp", iceberg_storage_id, "/normalized/dbnsfp/variant", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp")),
+    buildNormalizedDatasetConf("dbnsfp", partitionby = List("chromosome")),
     DatasetConf("normalized_dbnsfp_annovar", iceberg_storage_id, "/normalized/annovar/dbnsfp", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_annovar")),
     buildNormalizedDatasetConf("dbsnp", partitionby = List("chromosome")),
     DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
@@ -126,8 +126,7 @@ object EtlConfiguration extends App {
     buildNormalizedDatasetConf("spliceai", partitionby = List("chromosome")),
 
     // enriched
-    DatasetConf("enriched_genes", iceberg_storage_id, "/enriched/genes", ICEBERG, OverWrite, partitionby = List(), table = table("genes")),
-    DatasetConf("enriched_dbnsfp", iceberg_storage_id, "/enriched/dbnsfp/scores", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_original"))
+    DatasetConf("enriched_genes", iceberg_storage_id, "/enriched/genes", ICEBERG, OverWrite, partitionby = List(), table = table("genes"))
   )
 
   val prd_conf = SimpleConfiguration(DatalakeConf(

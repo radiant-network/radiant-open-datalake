@@ -1,0 +1,4 @@
+# Extra dependencies for the task-operator container image only (scripts/ecs/* download scripts).
+# NOT installed in the MWAA/Airflow environment -- the worker only launches the container, it does
+# not run these transfers. Installed on top of requirements.txt by Dockerfile.opendatalake.operator.
+stream-unzip==0.0.101  # streaming .zip extraction to S3 (dbNSFP download); pure-python, dep: stream-inflate

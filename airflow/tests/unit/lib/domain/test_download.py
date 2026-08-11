@@ -113,6 +113,24 @@ def test_direct_upload_with_dynamic_url(s3_hook):
         s3_hook.load_string.assert_not_called()
 
 
+def test_stream_unzip_upload(s3_hook):
+    download_config = DownloadConfig(
+        url_from_param=True, use_stream_unzip=True, member_pattern="*_variant.chr*.gz", label="variant"
+    )
+    with patch("opendatalake.lib.domain.download.stream_unzip_to_s3") as mock_stream_unzip:
+        downloader = S3Downloader(s3=s3_hook, s3_prefix="prefix", version="4.9a", download_conf=download_config)
+        downloader.stream_unzip_upload("http://example.com/dbNSFP4.9a.zip")
+
+        mock_stream_unzip.assert_called_once_with(
+            s3=s3_hook,
+            s3_bucket=raw_datalake_bucket,
+            s3_prefix="prefix",
+            url="http://example.com/dbNSFP4.9a.zip",
+            headers={},
+            member_pattern="*_variant.chr*.gz",
+        )
+
+
 def test_upload_via_local_copy(s3_hook):
     download_config = DownloadConfig(download_url="http://example.com/file2.txt", use_stream_upload=False)
 

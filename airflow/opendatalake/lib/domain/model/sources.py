@@ -16,6 +16,9 @@ _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
 _OBO_LABEL = "obo"
 _TSV_LABEL = "tsv"
+_VARIANT_LABEL = "variant"
+
+_DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -145,6 +148,26 @@ class _Source(Enum):
 
     SPLICEAI = SpliceAiSourceConfig()
 
+    DBNSFP = SourceConfig(
+        short_name="dbnsfp",
+        display_name="dbNSFP",
+        website="https://www.dbnsfp.org/",
+        download_configs=[
+            DownloadConfig(
+                url_from_param=True,
+                use_stream_unzip=True,
+                member_pattern=_DBNSFP_MEMBER_PATTERN,
+                label=_VARIANT_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.MANUAL,
+        import_config=ImportConfig(
+            spark_command="dbnsfp",
+            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            waiter_max_attempts=960,  # ~16h
+        ),
+    )
+
 
 ###########################################################
 # Use the functions below to access source configuration. #
@@ -198,6 +221,10 @@ def get_all_source_ids() -> list[str]:
 
 def is_auto_update(source: str) -> bool:
     return _get_source(source).value.update_mode == UpdateMode.AUTO
+
+
+def requires_download_url(source: str) -> bool:
+    return any(dc.url_from_param for dc in _get_source(source).value.download_configs)
 
 
 def get_update_mode(source: str) -> str:
