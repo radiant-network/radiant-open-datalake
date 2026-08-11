@@ -33,11 +33,22 @@ def direct_upload(source: str, prefix: str, version: str, download_index: int):
     downloader.direct_upload()
 
 
-def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, download_index: int, label: str):
+def upload_via_local_copy(
+    task_id: str,
+    source: str,
+    prefix: str,
+    version: str,
+    download_index: int,
+    label: str,
+    secret_env_vars: tuple[tuple[str, str], ...] = (),
+):
     """
     Creates a PythonScriptOperator to upload files via a local copy.
     Note: We pass only source and download config index (not the DownloadConfig object)
     to avoid serialization issues and prevent exposing sensitive info in the Airflow UI.
+    `secret_env_vars` carries only names (the container env var and the env var holding its Secrets
+    Manager ARN); the operator injects them into the ECS task via `secrets`/`valueFrom`, so the secret
+    itself never travels in the RunTask call.
     """
     script_args = {
         "source": source,
@@ -51,6 +62,7 @@ def upload_via_local_copy(task_id: str, source: str, prefix: str, version: str, 
         pool=config.DOWNLOAD_TASKS_POOL,
         task_id=task_id,
         task_display_name=f"[ECS] Local Copy Upload {label}/{download_index}",
+        secret_env_vars=secret_env_vars,
     )
 
 
@@ -111,7 +123,15 @@ def _make_download_source_dag(source_id: str):
                         task_display_name=f"[PyOp] Direct Upload {download_conf.label}/{i}",
                     )(source_id, prefix, version, i)
                 else:
-                    task = upload_via_local_copy(task_id, source_id, prefix, version, i, download_conf.label or "")
+                    task = upload_via_local_copy(
+                        task_id,
+                        source_id,
+                        prefix,
+                        version,
+                        i,
+                        download_conf.label or "",
+                        download_conf.secret_env_vars,
+                    )
                 tasks.append(task)
             return tasks
 

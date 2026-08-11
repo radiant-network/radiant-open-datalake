@@ -106,6 +106,56 @@ def test_python_script_operator_uses_injected_config():
         assert op.network_configuration["awsvpcConfiguration"]["securityGroups"] == ["sg-1"]
 
 
+def test_python_script_operator_injects_secrets_by_arn_into_the_container():
+    with (
+        patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"),
+        patch.dict(os.environ, {"TOKEN_ARN": "arn:aws:secretsmanager:...:secret:token"}),
+    ):
+        op = PythonScriptOperator(
+            task_id="test_task",
+            script_name="myscript.py",
+            script_args={},
+            ecs_config=TEST_ECS_CONFIG,
+            secret_env_vars=(("TOKEN", "TOKEN_ARN"),),
+        )
+        op.execute(MagicMock())
+
+        override = op.overrides["containerOverrides"][0]
+        # valueFrom carries the ARN, not the secret value — nothing sensitive in the RunTask call.
+        assert override["secrets"] == [{"name": "TOKEN", "valueFrom": "arn:aws:secretsmanager:...:secret:token"}]
+        assert "environment" not in override
+
+
+def test_python_script_operator_omits_secrets_when_none_declared():
+    with patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"):
+        op = PythonScriptOperator(
+            task_id="test_task", script_name="myscript.py", script_args={}, ecs_config=TEST_ECS_CONFIG
+        )
+        op.execute(MagicMock())
+
+        assert "secrets" not in op.overrides["containerOverrides"][0]
+
+
+def test_python_script_operator_skips_secret_when_arn_unset():
+    # No ARN in the worker environment -> no secret injected; the download then fails loudly on its own
+    # auth check inside the container.
+    with (
+        patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"),
+        patch.dict(os.environ, {}, clear=False),
+    ):
+        os.environ.pop("DEFINITELY_UNSET_ARN", None)
+        op = PythonScriptOperator(
+            task_id="test_task",
+            script_name="myscript.py",
+            script_args={},
+            ecs_config=TEST_ECS_CONFIG,
+            secret_env_vars=(("TOKEN", "DEFINITELY_UNSET_ARN"),),
+        )
+        op.execute(MagicMock())
+
+        assert "secrets" not in op.overrides["containerOverrides"][0]
+
+
 def test_python_script_operator_appends_to_user_container_overrides():
     user_overrides = {"containerOverrides": [{"name": "user-container", "command": ["echo", "hi"]}]}
     script_name = "myscript.py"

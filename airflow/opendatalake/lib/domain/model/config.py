@@ -27,11 +27,12 @@ class DownloadConfig:
 
     download_url: str | Callable[[str], str]
     name: str | None = None
-    headers: dict | None = None
+    headers: dict | Callable[[], dict] | None = None
     extract_members: list[str] | None = None
     use_stream_upload: bool = False
     md5_present: bool = False
     label: str | None = None  # Optional, use for display purposes in airflow UI
+    secret_env_vars: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self):
         if not self.download_url:
@@ -42,6 +43,11 @@ class DownloadConfig:
 
     def get_url(self, version: str) -> str:
         return self.download_url if isinstance(self.download_url, str) else self.download_url(version)
+
+    def get_headers(self) -> dict:
+        if self.headers is None:
+            return {}
+        return self.headers() if callable(self.headers) else self.headers
 
 
 class UpdateMode(Enum):

@@ -60,6 +60,7 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
         script_args: dict,
         container_name: str | None = None,
         ecs_config: EcsConfig | None = None,
+        secret_env_vars: tuple[tuple[str, str], ...] | None = None,
         **kwargs,
     ):
         ecs_config = ecs_config or EcsConfig.from_env()
@@ -83,6 +84,8 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
         self.script_name = script_name
         self.script_args = script_args
         self.container_name = container_name or ecs_config.container_name
+        # Pairs of (container env var name, name of the worker env var holding its Secrets Manager ARN).
+        self.secret_env_vars = tuple(secret_env_vars or ())
 
     def execute(self, context, **kwargs):
         command = ["python", self.script_name]
@@ -90,10 +93,24 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
             command.append(f"--{k}")
             command.append(str(v))
 
+        container_override = {"name": self.container_name, "command": command}
+
+        secrets = self._resolve_secrets()
+        if secrets:
+            container_override["secrets"] = secrets
+
         self.overrides = self.overrides or {}
-        self.overrides.setdefault("containerOverrides", []).append({"name": self.container_name, "command": command})
+        self.overrides.setdefault("containerOverrides", []).append(container_override)
 
         return super().execute(context, **kwargs)
+
+    def _resolve_secrets(self) -> list[dict[str, str]]:
+        secrets = []
+        for name, arn_env_var in self.secret_env_vars:
+            arn = os.getenv(arn_env_var)
+            if arn:
+                secrets.append({"name": name, "valueFrom": arn})
+        return secrets
 
 
 def _get_ecs_context(ecs_config: EcsConfig):

@@ -9,6 +9,7 @@ from opendatalake.lib.domain.source_configs import (
     GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
+    SpliceAiSourceConfig,
 )
 
 _VCF_LABEL = "vcf"
@@ -141,6 +142,8 @@ class _Source(Enum):
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="hpo_genes"),
     )
+
+    SPLICEAI = SpliceAiSourceConfig()
 
 
 ###########################################################

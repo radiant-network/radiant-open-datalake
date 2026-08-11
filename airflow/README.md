@@ -11,6 +11,13 @@ This directory contains Airflow DAGs and related code for orchestrating workflow
 
 - The ECS container must be pre-configured so that S3 credentials and connection info are available at runtime (e.g., via environment variables or IAM roles) to allow the S3 hook to function properly.
 
+### Source credentials (SpliceAI)
+
+The `spliceai` source downloads from an authenticated API and needs an access token, stored in AWS Secrets Manager. 
+
+> It's possible to test locally by setting the `OPENDATALAKE_SPLICEAI_ACCESS_TOKEN` in the `airflow/sandbox/airflow-values.yaml` file.
+However, make sure this is not commited. 
+
 ### Airflow pools
 
 The download DAGs limit their concurrency through Airflow pools. Pools live in the Airflow database,
