@@ -10,6 +10,7 @@ from opendatalake.lib.domain.source_configs.spliceai import (
     ACCESS_TOKEN_ENV_VAR,
     SpliceAiConfig,
     _fetch_token_from_secrets_manager,
+    _sanitize_etag,
 )
 
 VARIANT_TYPES = ("snv", "indel")
@@ -66,10 +67,9 @@ def test_spliceai_is_manually_updated_and_imports_via_the_spliceai_command(splic
 
 
 def test_spliceai_version_joins_both_vcf_etags(spliceai_source_config):
-    # V2 returns the file object directly — no V1pre3 `{"Response": ...}` envelope.
     responses = {
-        FILE_IDS["snv"]["vcf"]: Mock(**{"json.return_value": {"ETag": "snv-etag"}}),
-        FILE_IDS["indel"]["vcf"]: Mock(**{"json.return_value": {"ETag": "indel-etag"}}),
+        FILE_IDS["snv"]["vcf"]: Mock(**{"json.return_value": {"ETag": '"snv-etag"'}}),
+        FILE_IDS["indel"]["vcf"]: Mock(**{"json.return_value": {"ETag": 'W/"indel-etag"'}}),
     }
 
     def fake_http_get(url, headers=None):
@@ -88,35 +88,24 @@ def test_spliceai_version_joins_both_vcf_etags(spliceai_source_config):
 
 
 def test_config_from_env_prefers_the_plaintext_token_over_secrets_manager():
-    SpliceAiConfig.from_env.cache_clear()
-    try:
-        with (
-            patch.dict(os.environ, {ACCESS_TOKEN_ENV_VAR: "secret-token"}),
-            patch(
-                "opendatalake.lib.domain.source_configs.spliceai._fetch_token_from_secrets_manager"
-            ) as fetch,
-        ):
-            assert SpliceAiConfig.from_env().access_token == "secret-token"
-            fetch.assert_not_called()
-    finally:
-        SpliceAiConfig.from_env.cache_clear()
+    with (
+        patch.dict(os.environ, {ACCESS_TOKEN_ENV_VAR: "secret-token"}),
+        patch("opendatalake.lib.domain.source_configs.spliceai._fetch_token_from_secrets_manager") as fetch,
+    ):
+        assert SpliceAiConfig.from_env().access_token == "secret-token"
+        fetch.assert_not_called()
 
 
 def test_config_from_env_fetches_from_secrets_manager_when_no_plaintext_token():
-    SpliceAiConfig.from_env.cache_clear()
-    try:
-        # clear=True drops conftest's seeded plaintext token so the ARN path is exercised.
-        with (
-            patch.dict(os.environ, {ACCESS_TOKEN_ARN_ENV_VAR: "arn:aws:secretsmanager:...:secret:tok"}, clear=True),
-            patch(
-                "opendatalake.lib.domain.source_configs.spliceai._fetch_token_from_secrets_manager",
-                return_value="sm-token",
-            ) as fetch,
-        ):
-            assert SpliceAiConfig.from_env().access_token == "sm-token"
-            fetch.assert_called_once_with("arn:aws:secretsmanager:...:secret:tok")
-    finally:
-        SpliceAiConfig.from_env.cache_clear()
+    with (
+        patch.dict(os.environ, {ACCESS_TOKEN_ARN_ENV_VAR: "arn:aws:secretsmanager:...:secret:tok"}, clear=True),
+        patch(
+            "opendatalake.lib.domain.source_configs.spliceai._fetch_token_from_secrets_manager",
+            return_value="sm-token",
+        ) as fetch,
+    ):
+        assert SpliceAiConfig.from_env().access_token == "sm-token"
+        fetch.assert_called_once_with("arn:aws:secretsmanager:...:secret:tok")
 
 
 def test_fetch_token_from_secrets_manager_returns_stripped_secret_string():
@@ -151,3 +140,22 @@ def test_config_missing_token_is_detected():
 def test_config_auth_headers_raises_when_token_absent():
     with pytest.raises(AirflowException, match=ACCESS_TOKEN_ENV_VAR):
         SpliceAiConfig(access_token="").auth_headers()
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("d41d8cd98f00b204e9800998ecf8427e", "d41d8cd98f00b204e9800998ecf8427e"),
+        ('"d41d8cd98f00b204e9800998ecf8427e"', "d41d8cd98f00b204e9800998ecf8427e"),  # RFC 7232 quoted
+        ('W/"abc123-2"', "abc123-2"),  # weak validator + multipart ETag
+        ("  abc123  ", "abc123"),  # surrounding whitespace
+    ],
+)
+def test_sanitize_etag_strips_quotes_weak_prefix_and_whitespace(raw, expected):
+    assert _sanitize_etag(raw) == expected
+
+
+@pytest.mark.parametrize("bad", ['"abc/def"', 'a"b', "abc def", "", '""'])
+def test_sanitize_etag_rejects_unsafe_values(bad):
+    with pytest.raises(AirflowException, match="not usable as a version"):
+        _sanitize_etag(bad)

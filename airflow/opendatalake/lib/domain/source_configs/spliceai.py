@@ -1,6 +1,6 @@
 import os
+import re
 from dataclasses import dataclass, field
-from functools import lru_cache
 from typing import override
 
 from airflow.exceptions import AirflowException
@@ -34,13 +34,14 @@ _FILE_IDS = {
     "indel": {"vcf": "16525003580", "tbi": "16525276839"},
 }
 
+_SAFE_ETAG = re.compile(r"^[A-Za-z0-9._-]+$")
+
 
 @dataclass(frozen=True)
 class SpliceAiConfig:
     access_token: str
 
     @classmethod
-    @lru_cache(maxsize=1)
     def from_env(cls) -> "SpliceAiConfig":
         token = os.getenv(ACCESS_TOKEN_ENV_VAR, "")
         if not token:
@@ -57,6 +58,16 @@ class SpliceAiConfig:
                 f"{ACCESS_TOKEN_ARN_ENV_VAR} (or the token value {ACCESS_TOKEN_ENV_VAR})."
             )
         return {_AUTH_HEADER: self.access_token}
+
+
+def _sanitize_etag(raw: str) -> str:
+    etag = raw.strip()
+    if etag.startswith("W/"):
+        etag = etag[2:]
+    etag = etag.strip('"').strip()
+    if not _SAFE_ETAG.fullmatch(etag):
+        raise AirflowException(f"SpliceAI ETag {raw!r} is not usable as a version (path/branch) segment.")
+    return etag
 
 
 def _content_url(file_id: str) -> str:
@@ -118,7 +129,7 @@ class SpliceAiSourceConfig(SourceConfig):
     def get_latest_version(self) -> str:
         headers = _auth_headers()
         etags = [
-            http_get(f"{_API_ROOT}/{_FILE_IDS[variant_type]['vcf']}", headers).json()["ETag"]
+            _sanitize_etag(http_get(f"{_API_ROOT}/{_FILE_IDS[variant_type]['vcf']}", headers).json()["ETag"])
             for variant_type in ("snv", "indel")
         ]
         return "_".join(etags)
