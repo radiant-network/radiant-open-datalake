@@ -76,9 +76,7 @@ def test_spliceai_version_joins_both_vcf_etags(spliceai_source_config):
         file_id = url.rsplit("/", 1)[-1]
         return responses[file_id]
 
-    with patch(
-        "opendatalake.lib.domain.source_configs.spliceai.http_get", side_effect=fake_http_get
-    ) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.spliceai.http_get", side_effect=fake_http_get) as mock_http_get:
         assert spliceai_source_config.get_latest_version() == "snv-etag_indel-etag"
 
     # One metadata call per VCF, and the auth header is passed.

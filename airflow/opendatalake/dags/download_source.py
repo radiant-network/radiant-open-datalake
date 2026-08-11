@@ -18,7 +18,7 @@ from opendatalake.lib.domain.model.sources import (
     is_auto_update,
     requires_download_url,
 )
-from opendatalake.lib.operators.k8s import PythonScriptOperator
+from opendatalake.lib.operators.ecs import PythonScriptOperator
 from opendatalake.lib.tasks import download_url_param, get_version, version_param
 
 

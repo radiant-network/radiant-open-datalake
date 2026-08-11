@@ -1,45 +1,28 @@
 package org.radiant.opendatalake.enriched
 
-import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleSingleETL
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits.DatasetConfOperations
 import bio.ferlab.datalake.spark3.transformation.Cast.{castDouble, castLong}
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{DoubleType, IntegerType}
 import org.apache.spark.sql.{Column, DataFrame}
 
-import java.time.LocalDateTime
+object dbnsfp {
 
-case class DBNSFP(rc: RuntimeETLContext) extends SimpleSingleETL(rc) {
-override val mainDestination: DatasetConf = conf.getDataset("enriched_dbnsfp")
-  val normalized_dbnsfp: DatasetConf = conf.getDataset("normalized_dbnsfp")
-
-  def split_semicolon(colName: String, outputColName: String): Column =
+  private def split_semicolon(colName: String, outputColName: String): Column =
     split(col(colName), ";") as outputColName
 
-  def split_semicolon(colName: String): Column = split_semicolon(colName, colName)
+  private def split_semicolon(colName: String): Column = split_semicolon(colName, colName)
 
-  def element_at_postion(colName: String): Column =
+  private def element_at_postion(colName: String): Column =
     element_at(col(colName), col("position")) as colName
 
-  def score(colName: String): Column = when(element_at_postion(colName) === ".", null)
+  private def score(colName: String): Column = when(element_at_postion(colName) === ".", null)
     .otherwise(element_at_postion(colName).cast(DoubleType)) as colName
 
-  def pred(colName: String): Column = when(element_at_postion(colName) === ".", null)
+  private def pred(colName: String): Column = when(element_at_postion(colName) === ".", null)
     .otherwise(element_at_postion(colName)) as colName
 
-  override def extract(lastRunValue: LocalDateTime = minValue,
-                       currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
-    Map(
-      normalized_dbnsfp.id-> normalized_dbnsfp.read
-    )
-  }
-
-  override def transformSingle(data: Map[String, DataFrame],
-                               lastRunValue: LocalDateTime = minValue,
-                               currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
-    data(normalized_dbnsfp.id)
+  def transform(df: DataFrame): DataFrame =
+    df
       .select(
         col("chromosome"),
         castLong("start"),
@@ -307,18 +290,4 @@ override val mainDestination: DatasetConf = conf.getDataset("enriched_dbnsfp")
         col("GTEx_V8_tissue")
       )
       .drop("position")
-
-  }
-
-  override def defaultRepartition: DataFrame => DataFrame = RepartitionByColumns(columnNames = Seq("chromosome"), sortColumns = Seq("start"))
-
-}
-
-object DBNSFP {
-  @main
-  def run(rc: RuntimeETLContext): Unit = {
-    DBNSFP(rc).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }
