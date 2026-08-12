@@ -112,3 +112,15 @@ def test_import_config_sourced_from_source_config():
 def test_unknown_source_raises():
     with pytest.raises(KeyError):
         get_import_config("does-not-exist")
+
+
+def test_import_orphanet_dag_exists(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-orphanet")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert "version" in dag.params
+    assert "opendatalake_auto" in dag.tags
+
+
+def test_orphanet_import_config_uses_orphanet_command():
+    assert get_import_config("orphanet").spark_command == "orphanet"

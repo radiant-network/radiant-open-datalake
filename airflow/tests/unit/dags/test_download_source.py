@@ -51,6 +51,17 @@ def test_fixed_url_source_download_dag_has_no_download_url_param(dag_bag):
     assert "download_url" not in dag.params
 
 
+def test_auto_multi_file_source_download_dag(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-download-orphanet")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert isinstance(dag.timetable, AssetTriggeredTimetable)
+    assert "download_url" not in dag.params
+    assert "opendatalake_auto" in dag.tags
+    assert "download_files.1_local_upload_xml" in dag.task_ids
+    assert "download_files.2_local_upload_xml" in dag.task_ids
+
+
 def test_manual_source_get_version_has_no_asset_inlet(dag_bag):
     # MANUAL sources: the input asset is inactive (never produced/scheduled), so get_version must
     # not declare it as an inlet -- otherwise AirflowInactiveAssetInInletOrOutletException at runtime.

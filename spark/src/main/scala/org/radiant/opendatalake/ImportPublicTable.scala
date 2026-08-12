@@ -6,7 +6,6 @@ import org.radiant.opendatalake.enriched.Genes
 import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
 import org.radiant.opendatalake.normalized.omim.OmimGeneSet
-import org.radiant.opendatalake.normalized.orphanet.OrphanetGeneSet
 import org.radiant.opendatalake.normalized.refseq.{RefSeqAnnotation, RefSeqHumanGenes}
 import org.radiant.opendatalake.mainutils.{RawStorage, Version}
 import mainargs.{ParserForMethods, main}
@@ -76,7 +75,8 @@ object ImportPublicTable {
     ContractRunner.run("1000_genomes", rc, version.value, rawStorage.value)
 
   @main
-  def orphanet(rc: RuntimeETLContext): Unit = OrphanetGeneSet.run(rc)
+  def orphanet(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("orphanet", rc, version.value, rawStorage.value)
 
   @main
   def refseq_annotation(rc: RuntimeETLContext): Unit = RefSeqAnnotation.run(rc)

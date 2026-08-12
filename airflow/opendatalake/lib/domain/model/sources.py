@@ -10,6 +10,7 @@ from opendatalake.lib.domain.source_configs import (
     GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
+    OrphanetSourceConfig,
     SpliceAiSourceConfig,
 )
 
@@ -18,9 +19,11 @@ _TBI_LABEL = "tbi"
 _OBO_LABEL = "obo"
 _TSV_LABEL = "tsv"
 _CSV_LABEL = "csv"
+_XML_LABEL = "xml"
 _VARIANT_LABEL = "variant"
 
 _DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
+_ORPHANET_BASE_URL = "https://www.orphadata.com/data/xml"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -188,6 +191,26 @@ class _Source(Enum):
             spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
             waiter_max_attempts=960,  # ~16h
         ),
+    )
+
+    ORPHANET = OrphanetSourceConfig(
+        short_name="orphanet",
+        display_name="Orphanet",
+        website="https://www.orphadata.com/",
+        download_configs=[
+            DownloadConfig(
+                download_url=f"{_ORPHANET_BASE_URL}/en_product6.xml",  # gene-disorder associations
+                name="en_product6.xml",
+                label=_XML_LABEL,
+            ),
+            DownloadConfig(
+                download_url=f"{_ORPHANET_BASE_URL}/en_product9_ages.xml",  # disorder ages/inheritance
+                name="en_product9_ages.xml",
+                label=_XML_LABEL,
+            ),
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="orphanet"),
     )
 
 
