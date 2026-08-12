@@ -109,8 +109,6 @@ object EtlConfiguration extends App {
     DatasetConf("normalized_dbnsfp_annovar", iceberg_storage_id, "/normalized/annovar/dbnsfp", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_annovar")),
     buildNormalizedDatasetConf("dbsnp", partitionby = List("chromosome")),
     buildNormalizedDatasetConf("ddd", repartition = Some(Coalesce())),
-    // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
-    // contract table normalized_ddd (ddd_v1); DDD ingestion itself is now the WAP contract DDD_v1.
     DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
     DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
     DatasetConf("normalized_gnomad_constraint_v2_1_1", iceberg_storage_id, "/normalized/gnomad_constraint_v2_1_1", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
