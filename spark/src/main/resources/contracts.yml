@@ -64,6 +64,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/mondo/v1.md"
+  orphanet:
+    table_prefix: "orphanet"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/orphanet/v1.md"
   spliceai:
     table_prefix: "spliceai"
     contracts:
