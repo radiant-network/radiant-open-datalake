@@ -29,6 +29,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/dbnsfp/v1.md"
+  ddd:
+    table_prefix: "ddd"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/ddd/v1.md"
   gnomad_cnv:
     table_prefix: "gnomad_cnv"
     contracts:

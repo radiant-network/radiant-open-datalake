@@ -41,6 +41,26 @@ def test_dbnsfp_import_config():
     assert import_config.spark_conf == {"spark.dynamicAllocation.maxExecutors": "16"}
 
 
+def test_ddd_is_auto_source():
+    assert get_update_mode("ddd") == "auto"
+    assert is_auto_update("ddd") is True
+    assert requires_download_url("ddd") is False
+    assert "ddd" in get_auto_update_source_ids()
+
+
+def test_ddd_download_config():
+    (conf,) = get_download_configs("ddd")
+    assert conf.md5_present is True
+    assert conf.name == "DDG2P.csv.gz"
+    assert conf.get_url("2026_07_28") == (
+        "https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/2026_07_28/DDG2P_2026-07-28.csv.gz"
+    )
+
+
+def test_ddd_import_config():
+    assert get_import_config("ddd").spark_command == "ddd"
+
+
 def test_get_download_configs_with_string_lowercase():
     configs = get_download_configs("clinvar")
     assert isinstance(configs, list)
