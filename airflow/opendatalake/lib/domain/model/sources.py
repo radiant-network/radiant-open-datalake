@@ -4,6 +4,7 @@ from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, S
 from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
+    DDDSourceConfig,
     GnomadCnvSourceConfig,
     GnomadJointSourceConfig,
     GnomadSVSourceConfig,
@@ -16,6 +17,7 @@ _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
 _OBO_LABEL = "obo"
 _TSV_LABEL = "tsv"
+_CSV_LABEL = "csv"
 _VARIANT_LABEL = "variant"
 
 _DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
@@ -144,6 +146,26 @@ class _Source(Enum):
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="hpo_genes"),
+    )
+
+    DDD = DDDSourceConfig(
+        short_name="ddd",
+        display_name="Gene2Phenotype",
+        website="https://www.ebi.ac.uk/gene2phenotype/",
+        listing_url="https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/"
+                    f"{version}/DDG2P_{version.replace('_', '-')}.csv.gz"
+                ),
+                name="DDG2P.csv.gz",
+                md5_present=True,
+                label=_CSV_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="ddd"),
     )
 
     SPLICEAI = SpliceAiSourceConfig()

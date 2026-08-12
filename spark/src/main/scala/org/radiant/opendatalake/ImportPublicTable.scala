@@ -29,7 +29,8 @@ object ImportPublicTable {
     ContractRunner.run("dbsnp", rc, version.value, rawStorage.value)
 
   @main
-  def ddd(rc: RuntimeETLContext): Unit = DDDGeneSet.run(rc)
+  def ddd(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("ddd", rc, version.value, rawStorage.value)
 
   @main
   def ensembl_mapping(rc: RuntimeETLContext): Unit = EnsemblMapping.run(rc)
