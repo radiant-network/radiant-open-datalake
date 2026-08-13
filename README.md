@@ -24,6 +24,8 @@ New versions are discovered and imported automatically.
 | [Mondo Disease Ontology](https://mondo.monarchinitiative.org/) | `mondo_v1` | [v1](spark/doc/release-notes/mondo/v1.md) |
 | [Human Phenotype Ontology (Terms)](https://hpo.jax.org/) | `hpo_terms_v1` | [v1](spark/doc/release-notes/hpo_terms/v1.md) |
 | [Human Phenotype Ontology (Genes)](https://hpo.jax.org/) | `hpo_genes_v1` | [v1](spark/doc/release-notes/hpo_genes/v1.md) |
+| [Gene2Phenotype (DDD)](https://www.ebi.ac.uk/gene2phenotype/) | `ddd_v1` | [v1](spark/doc/release-notes/ddd/v1.md) |
+| [Orphanet](https://www.orphadata.com/) | `orphanet_v1` | [v1](spark/doc/release-notes/orphanet/v1.md) |
 
 ### Manual
 

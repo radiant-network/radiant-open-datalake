@@ -41,6 +41,25 @@ def test_dbnsfp_import_config():
     assert import_config.spark_conf == {"spark.dynamicAllocation.maxExecutors": "16"}
 
 
+def test_orphanet_is_auto_source():
+    assert get_update_mode("orphanet") == "auto"
+    assert is_auto_update("orphanet") is True
+    assert requires_download_url("orphanet") is False
+    assert "orphanet" in get_auto_update_source_ids()
+
+
+def test_orphanet_download_configs_are_two_fixed_url_xml_files():
+    configs = get_download_configs("orphanet")
+    assert [c.name for c in configs] == ["en_product6.xml", "en_product9_ages.xml"]
+    assert all(c.url_from_param is False for c in configs)
+    assert configs[0].get_url("") == "https://www.orphadata.com/data/xml/en_product6.xml"
+    assert configs[1].get_url("") == "https://www.orphadata.com/data/xml/en_product9_ages.xml"
+
+
+def test_orphanet_import_config():
+    assert get_import_config("orphanet").spark_command == "orphanet"
+
+
 def test_ddd_is_auto_source():
     assert get_update_mode("ddd") == "auto"
     assert is_auto_update("ddd") is True

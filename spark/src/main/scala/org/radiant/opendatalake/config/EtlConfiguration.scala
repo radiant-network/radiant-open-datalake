@@ -81,8 +81,8 @@ object EtlConfiguration extends App {
     DatasetConf("raw_dbnsfp", raw_storage_id, "/dbnsfp/{{VERSION}}/*_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_dbnsfp_annovar", raw_storage_id, "/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
     DatasetConf("raw_omim_gene_set", raw_storage_id, "/omim/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
-    DatasetConf("raw_orphanet_gene_association", raw_storage_id, "/orphanet/en_product6.xml", XML, OverWrite),
-    DatasetConf("raw_orphanet_disease_history", raw_storage_id, "/orphanet/en_product9_ages.xml", XML, OverWrite),
+    DatasetConf("raw_orphanet_gene_association", raw_storage_id, "/orphanet/{{VERSION}}/en_product6.xml", BINARY, OverWrite),
+    DatasetConf("raw_orphanet_disease_history", raw_storage_id, "/orphanet/{{VERSION}}/en_product9_ages.xml", BINARY, OverWrite),
     DatasetConf("raw_cosmic_gene_set", raw_storage_id, "/cosmic/Cosmic_CancerGeneCensus_GRCh38.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_cosmic_mutation_set", raw_storage_id, "/cosmic/cmc_export.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
     DatasetConf("raw_ddd_gene_set", raw_storage_id, "/ddd/{{VERSION}}/DDG2P.csv.gz", CSV, OverWrite, readoptions = Map("header" -> "true")),
@@ -121,6 +121,9 @@ object EtlConfiguration extends App {
     buildNormalizedDatasetConf("hpo_terms"),
     buildNormalizedDatasetConf("mondo"),
     DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
+    buildNormalizedDatasetConf("orphanet", repartition = Some(Coalesce())),
+    // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
+    // contract table normalized_orphanet (orphanet_v1); Orphanet ingestion itself is now the WAP contract Orphanet_v1.
     DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
     DatasetConf("normalized_topmed_bravo", iceberg_storage_id, "/normalized/topmed_bravo", ICEBERG, OverWrite, partitionby = List(), table = table("topmed_bravo")),
     DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
