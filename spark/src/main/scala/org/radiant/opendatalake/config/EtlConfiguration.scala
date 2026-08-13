@@ -109,9 +109,6 @@ object EtlConfiguration extends App {
     DatasetConf("normalized_dbnsfp_annovar", iceberg_storage_id, "/normalized/annovar/dbnsfp", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("dbnsfp_annovar")),
     buildNormalizedDatasetConf("dbsnp", partitionby = List("chromosome")),
     buildNormalizedDatasetConf("ddd", repartition = Some(Coalesce())),
-    // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
-    // contract table normalized_ddd (ddd_v1); DDD ingestion itself is now the WAP contract DDD_v1.
-    // See the shared note on normalized_omim_gene_set below.
     DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
     DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
     DatasetConf("normalized_gnomad_constraint_v2_1_1", iceberg_storage_id, "/normalized/gnomad_constraint_v2_1_1", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
@@ -124,21 +121,8 @@ object EtlConfiguration extends App {
     buildNormalizedDatasetConf("hpo_terms"),
     buildNormalizedDatasetConf("mondo"),
     buildNormalizedDatasetConf("omim", repartition = Some(Coalesce())),
-    // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
-    // contract table normalized_omim (omim_v1); OMIM ingestion itself is now the WAP contract Omim_v1.
-    //
-    // Shared debt (omim, orphanet, ddd): the contract migration replaced the three SimpleETLP gene-set
-    // jobs with contract jobs that publish to normalized_<source> (<source>_v1), so nothing now feeds
-    // these three normalized_*_gene_set inputs of enriched.Genes. Rewiring Genes to the contract tables
-    // is NOT a one-liner: WAP publishes to a `dataset_version` branch and leaves `main` empty, so a
-    // plain `.read` on the contract table returns zero rows -- the read must select the version branch.
-    // Do the three together, not omim-only. enriched.Genes is not triggered by any DAG in this repo (no
-    // `genes` source; only the standalone @main), so it stays dormant meanwhile. Tracked as a follow-up.
     DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
     buildNormalizedDatasetConf("orphanet", repartition = Some(Coalesce())),
-    // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
-    // contract table normalized_orphanet (orphanet_v1); Orphanet ingestion itself is now the WAP contract Orphanet_v1.
-    // See the shared note on normalized_omim_gene_set above.
     DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
     DatasetConf("normalized_topmed_bravo", iceberg_storage_id, "/normalized/topmed_bravo", ICEBERG, OverWrite, partitionby = List(), table = table("topmed_bravo")),
     DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
