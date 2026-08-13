@@ -41,6 +41,24 @@ def test_import_dbsnp_dag_exists(dag_bag):
     assert dag_bag.get_dag(dag_id="opendatalake-import-dbsnp") is not None
 
 
+def test_import_dbnsfp_dag_exists(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-import-dbnsfp")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert "version" in dag.params
+    assert "opendatalake_manual" in dag.tags
+
+
+def test_dbnsfp_import_uses_dbnsfp_command_and_tuning():
+    operator, _ = _build_operator("dbnsfp")
+    spark_submit = operator.job_driver["sparkSubmit"]
+    args = spark_submit["entryPointArguments"]
+
+    assert args[0] == "dbnsfp"
+    assert operator.waiter_max_attempts == 960
+    assert "spark.dynamicAllocation.maxExecutors=16" in spark_submit["sparkSubmitParameters"]
+
+
 def test_manual_source_import_dag_exists(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-import-1000_genomes")
     assert dag is not None

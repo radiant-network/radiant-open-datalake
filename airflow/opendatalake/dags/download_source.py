@@ -16,9 +16,10 @@ from opendatalake.lib.domain.model.sources import (
     get_download_configs,
     get_update_mode,
     is_auto_update,
+    requires_download_url,
 )
 from opendatalake.lib.operators.ecs import PythonScriptOperator
-from opendatalake.lib.tasks import get_version, version_param
+from opendatalake.lib.tasks import download_url_param, get_version, version_param
 
 
 @task(pool=config.DIRECT_UPLOAD_TASKS_POOL)
@@ -66,6 +67,30 @@ def upload_via_local_copy(
     )
 
 
+def stream_unzip_download(
+    task_id: str,
+    source: str,
+    prefix: str,
+    version: str,
+    download_index: int,
+    label: str,
+):
+    script_args = {
+        "source": source,
+        "prefix": prefix,
+        "version": version,
+        "download_index": download_index,
+        "download_url": "{{ params.download_url }}",
+    }
+    return PythonScriptOperator(
+        script_name="/opt/opendatalake/stream_unzip_download.py",
+        script_args=script_args,
+        pool=config.DOWNLOAD_TASKS_POOL,
+        task_id=task_id,
+        task_display_name=f"[ECS] Stream Unzip {label}/{download_index}",
+    )
+
+
 def _generate_download_task_id(download_conf: DownloadConfig, rank: int) -> str:
     description = ""
     if download_conf.label:
@@ -79,7 +104,12 @@ def _generate_download_task_id(download_conf: DownloadConfig, rank: int) -> str:
     sanitized_description = re.sub(r"[^A-Za-z0-9]+", "-", description).strip("-")[:max_length]
     description_part = f"_{sanitized_description}" if sanitized_description else ""
 
-    mode = "direct_upload" if download_conf.use_stream_upload else "local_upload"
+    if download_conf.use_stream_unzip:
+        mode = "stream_unzip"
+    elif download_conf.use_stream_upload:
+        mode = "direct_upload"
+    else:
+        mode = "local_upload"
 
     return f"{rank}_{mode}{description_part}"
 
@@ -91,11 +121,16 @@ def _make_download_source_dag(source_id: str):
 
     schedule = input_asset if is_auto_update(source_id) else None
 
+    # Manual URL-based sources (e.g. dbNSFP) take the archive URL at trigger time.
+    params = version_param()
+    if requires_download_url(source_id):
+        params = {**params, **download_url_param()}
+
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-download-{source_id}",
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Download {display_name}",
         schedule=schedule,
-        params=version_param(),
+        params=params,
         tags=config.DAG_DEFAULT_TAGS
         + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "download", get_update_mode(source_id)]],
         catchup=False,
@@ -117,7 +152,16 @@ def _make_download_source_dag(source_id: str):
             tasks = []
             for i, download_conf in enumerate(get_download_configs(source_id)):
                 task_id = _generate_download_task_id(download_conf, i + 1)
-                if download_conf.use_stream_upload:
+                if download_conf.use_stream_unzip:
+                    task = stream_unzip_download(
+                        task_id,
+                        source_id,
+                        prefix,
+                        version,
+                        i,
+                        download_conf.label or "",
+                    )
+                elif download_conf.use_stream_upload:
                     task = direct_upload.override(
                         task_id=task_id,
                         task_display_name=f"[PyOp] Direct Upload {download_conf.label}/{i}",
@@ -141,7 +185,7 @@ def _make_download_source_dag(source_id: str):
             s3_client.delete_object(Bucket=config.raw_datalake_bucket, Key=f"{prefix}/.in_progress")
             yield Metadata(asset=output_asset, extra={"version": version})
 
-        version = get_version(input_asset)
+        version = get_version(input_asset, asset_active=is_auto_update(source_id))
         prefix = get_prefix(version)
         download_tasks = download_files(prefix, version)
         finalize_download_task = finalize_download(version, prefix)

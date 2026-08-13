@@ -19,29 +19,41 @@ class DownloadConfig:
     The `download_url` attribute can be either:
     - A string (for a fixed URL)
     - A callable that takes a version as a parameter and returns the URL (for dynamic URLs)
+    - None, when `url_from_param=True` (the URL arrives at trigger time instead)
 
     If `extract_members` is provided (e.g., `extract_members=["file1.txt", "file2.txt"]`),
     the downloaded file is assumed to be a tar archive, and only the specified members will
     be extracted and copied.
     """
 
-    download_url: str | Callable[[str], str]
+    download_url: str | Callable[[str], str] | None = None
     name: str | None = None
     headers: dict | Callable[[], dict] | None = None
     extract_members: list[str] | None = None
     use_stream_upload: bool = False
+    use_stream_unzip: bool = False
+    member_pattern: str | None = None
+    url_from_param: bool = False
     md5_present: bool = False
     label: str | None = None  # Optional, use for display purposes in airflow UI
     secret_env_vars: tuple[tuple[str, str], ...] = ()
 
     def __post_init__(self):
-        if not self.download_url:
+        if not self.url_from_param and not self.download_url:
             raise ValueError("download_url must be provided as either a `str` or a `Callable`")
+
+        if self.url_from_param and self.download_url:
+            raise ValueError("url_from_param takes the URL at runtime; do not also set download_url")
 
         if self.use_stream_upload and self.extract_members:
             raise ValueError("stream upload does not support tar extract")
 
+        if self.use_stream_unzip and (self.use_stream_upload or self.extract_members):
+            raise ValueError("stream unzip is exclusive with stream upload and tar extract")
+
     def get_url(self, version: str) -> str:
+        if not self.download_url:
+            raise ValueError("download_url is not set on this config; the URL is supplied at runtime")
         return self.download_url if isinstance(self.download_url, str) else self.download_url(version)
 
     def get_headers(self) -> dict:

@@ -47,6 +47,31 @@ def test_download_config_asserts_on_direct_upload_and_extract_members():
         )
 
 
+def test_download_config_url_from_param_allows_missing_url():
+    conf = DownloadConfig(url_from_param=True, use_stream_unzip=True, member_pattern="*.gz")
+    assert conf.download_url is None
+    assert conf.url_from_param is True
+    assert conf.use_stream_unzip is True
+    assert conf.member_pattern == "*.gz"
+    with pytest.raises(ValueError, match="URL is supplied at runtime"):
+        conf.get_url("v1")
+
+
+def test_download_config_url_from_param_rejects_explicit_url():
+    with pytest.raises(ValueError, match="url_from_param takes the URL at runtime"):
+        DownloadConfig(download_url="http://example.com/a.zip", url_from_param=True)
+
+
+def test_download_config_stream_unzip_exclusive_with_stream_upload():
+    with pytest.raises(ValueError, match="stream unzip is exclusive"):
+        DownloadConfig(download_url="http://example.com/a.zip", use_stream_unzip=True, use_stream_upload=True)
+
+
+def test_download_config_stream_unzip_exclusive_with_extract_members():
+    with pytest.raises(ValueError, match="stream unzip is exclusive"):
+        DownloadConfig(download_url="http://example.com/a.zip", use_stream_unzip=True, extract_members=["a.txt"])
+
+
 def test_source_config_defaults():
     source_conf = SourceConfig(
         short_name="clinvar",

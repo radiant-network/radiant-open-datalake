@@ -2,7 +2,7 @@ package org.radiant.opendatalake
 
 import bio.ferlab.datalake.commons.config.RuntimeETLContext
 import org.radiant.opendatalake.contracts.ContractRunner
-import org.radiant.opendatalake.enriched.{DBNSFP, Genes}
+import org.radiant.opendatalake.enriched.Genes
 import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
 import org.radiant.opendatalake.normalized.omim.OmimGeneSet
@@ -21,10 +21,8 @@ object ImportPublicTable {
     ContractRunner.run("clinvar", rc, version.value, rawStorage.value)
 
   @main
-  def dbnsfp_raw(rc: RuntimeETLContext): Unit = DBNSFPRaw.run(rc)
-
-  @main
-  def dbnsfp(rc: RuntimeETLContext): Unit = DBNSFP.run(rc)
+  def dbnsfp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
+    ContractRunner.run("dbnsfp", rc, version.value, rawStorage.value)
 
   @main
   def dbsnp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =

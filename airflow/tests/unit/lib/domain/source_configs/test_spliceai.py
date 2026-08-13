@@ -26,7 +26,7 @@ def test_spliceai_declares_a_vcf_and_an_index_per_variant_type(spliceai_source_c
     assert labels == [f"{vt}_{kind}" for vt in VARIANT_TYPES for kind in ("vcf", "tbi")]
 
 
-def test_spliceai_names_match_the_spark_raw_glob(spliceai_source_config):
+def test_spliceai_names_match_the_spark_raw_pattern(spliceai_source_config):
     names = {c.label: c.name for c in spliceai_source_config.download_configs}
     assert names["snv_vcf"] == "spliceai_scores.raw.snv.hg38.vcf.gz"
     assert names["indel_vcf"] == "spliceai_scores.raw.indel.hg38.vcf.gz"
@@ -76,9 +76,7 @@ def test_spliceai_version_joins_both_vcf_etags(spliceai_source_config):
         file_id = url.rsplit("/", 1)[-1]
         return responses[file_id]
 
-    with patch(
-        "opendatalake.lib.domain.source_configs.spliceai.http_get", side_effect=fake_http_get
-    ) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.spliceai.http_get", side_effect=fake_http_get) as mock_http_get:
         assert spliceai_source_config.get_latest_version() == "snv-etag_indel-etag"
 
     # One metadata call per VCF, and the auth header is passed.

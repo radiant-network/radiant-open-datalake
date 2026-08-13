@@ -56,6 +56,18 @@ def test_get_version_no_events_no_param_raises():
         get_version(asset, triggering_asset_events={asset: []}, params={})
 
 
+def test_get_version_inactive_asset_reads_param_only():
+    # MANUAL source: inactive input asset -> no inlet, version read solely from the param.
+    asset = DummyAsset("test-asset")
+    assert get_version(asset, asset_active=False, params={"version": "4.9a"}) == "4.9a"
+
+
+def test_get_version_inactive_asset_no_param_raises():
+    asset = DummyAsset("test-asset")
+    with pytest.raises(ValueError, match="'version' param"):
+        get_version(asset, asset_active=False, params={})
+
+
 def test_get_version_asset_event_precedes_param():
     asset = DummyAsset("test-asset")
     event = MagicMock(extra={"version": "from-asset"})

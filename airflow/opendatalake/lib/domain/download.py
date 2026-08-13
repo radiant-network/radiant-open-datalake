@@ -5,7 +5,7 @@ from pathlib import Path
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
 from opendatalake.lib.config import raw_datalake_bucket, s3_conn_id
-from opendatalake.lib.s3_transfer import multipart_upload_with_resume
+from opendatalake.lib.s3_transfer import multipart_upload_with_resume, stream_unzip_to_s3
 from opendatalake.lib.utils.http import http_get, stream_download_file
 from opendatalake.lib.utils.md5 import check_md5, compute_file_md5, extract_md5_from_checksum_file_content
 from opendatalake.lib.utils.s3 import load_file
@@ -68,6 +68,16 @@ class S3Downloader:
         if md5_hash:
             self.s3.load_string(md5_hash, f"{s3_key}.md5", self.s3_bucket, replace=True)
             logging.info("Md5 file saved, but not checked (cannot be done on stream upload)")
+
+    def stream_unzip_upload(self, url: str) -> None:
+        stream_unzip_to_s3(
+            s3=self.s3,
+            s3_bucket=self.s3_bucket,
+            s3_prefix=self.s3_prefix,
+            url=url,
+            headers=self.download_conf.get_headers(),
+            member_pattern=self.download_conf.member_pattern,
+        )
 
     def _extract_and_upload_tar_members(self, tar_file_name: str, save_md5: bool):
         member_names = self.download_conf.extract_members
