@@ -4,6 +4,7 @@ from .ddd import DDDSourceConfig
 from .gnomad import GnomadCnvSourceConfig, GnomadJointSourceConfig, GnomadSVSourceConfig
 from .hpo import HpoSourceConfig
 from .mondo import MondoSourceConfig
+from .omim import OmimSourceConfig
 from .orphanet import OrphanetSourceConfig
 from .spliceai import SpliceAiSourceConfig
 
@@ -16,6 +17,7 @@ __all__ = [
     "GnomadSVSourceConfig",
     "HpoSourceConfig",
     "MondoSourceConfig",
+    "OmimSourceConfig",
     "OrphanetSourceConfig",
     "SpliceAiSourceConfig",
 ]

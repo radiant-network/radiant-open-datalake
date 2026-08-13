@@ -80,6 +80,23 @@ def test_ddd_import_config():
     assert get_import_config("ddd").spark_command == "ddd"
 
 
+def test_omim_is_manual_source():
+    assert get_update_mode("omim") == "manual"
+    assert is_auto_update("omim") is False
+    assert requires_download_url("omim") is False
+
+
+def test_omim_download_config_declares_the_key_secret():
+    (conf,) = get_download_configs("omim")
+    assert conf.name == "genemap2.txt"
+    # the container reads the injected key from this env var; the ARN env var names its Secrets Manager ARN
+    assert conf.secret_env_vars == (("OPENDATALAKE_OMIM_DOWNLOAD_KEY", "OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN"),)
+
+
+def test_omim_import_config():
+    assert get_import_config("omim").spark_command == "omim"
+
+
 def test_get_download_configs_with_string_lowercase():
     configs = get_download_configs("clinvar")
     assert isinstance(configs, list)

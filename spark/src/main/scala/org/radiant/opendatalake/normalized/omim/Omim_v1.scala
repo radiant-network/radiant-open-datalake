@@ -1,28 +1,26 @@
 package org.radiant.opendatalake.normalized.omim
 
 import bio.ferlab.datalake.commons.config.{Coalesce, DatasetConf, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
-import bio.ferlab.datalake.spark3.publictables.normalized.omim.OmimPhenotype.parse_pheno
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
+import org.radiant.opendatalake.contracts.ContractETLP
+import org.radiant.opendatalake.normalized.io.RawInput
+import org.radiant.opendatalake.normalized.omim.OmimPhenotype.parse_pheno
 
 import java.time.LocalDateTime
 
-case class OmimGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc)  {
+case class Omim_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_omim", tablePrefix, major = 1) {
 
-  override val mainDestination: DatasetConf = conf.getDataset("normalized_omim_gene_set")
-  val raw_omim_gene_set: DatasetConf = conf.getDataset("raw_omim_gene_set")
+  private val raw_omim_gene_set: DatasetConf = conf.getDataset("raw_omim_gene_set")
 
-  override def extract(lastRunValue: LocalDateTime,
-                       currentRunValue: LocalDateTime): Map[String, DataFrame] = {
-    Map(raw_omim_gene_set.id -> raw_omim_gene_set.read)
-  }
+  override def extract(lastRunValue: LocalDateTime = minValue,
+                       currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] =
+    Map(raw_omim_gene_set.id -> RawInput.readVersioned(raw_omim_gene_set.id, version, rawStorage))
 
   override def transformSingle(data: Map[String, DataFrame],
-                               lastRunValue: LocalDateTime,
-                               currentRunValue: LocalDateTime): DataFrame = {
+                               lastRunValue: LocalDateTime = minValue,
+                               currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
     val intermediateDf =
       data(raw_omim_gene_set.id)
         .select(
@@ -62,16 +60,3 @@ case class OmimGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc)  {
 
   override val defaultRepartition: DataFrame => DataFrame = Coalesce()
 }
-
-object OmimGeneSet {
-  @main
-  def run(rc: RuntimeETLContext): Unit = {
-    OmimGeneSet(rc).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
-}
-
-
-
-
