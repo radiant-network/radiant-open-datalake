@@ -10,7 +10,6 @@ all variables to be present.
 # This is fixed in newer Airflow versions, so you can switch back to airflow.sdk if we upgrade.
 import os
 
-
 # S3 settings
 environment = os.getenv("OPENDATALAKE_ENVIRONMENT", "qa")
 s3_conn_id = "opendatalake_s3"

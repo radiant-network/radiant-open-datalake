@@ -19,6 +19,7 @@ SPARK_CONF_CATALOG_NAME = "opendatalake"
 def job_name_timestamp() -> str:
     return datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
 
+
 # These come from EmrServerlessConfig, not the caller. Passing them directly is almost always a
 # mistake, so the operator rejects them.
 _RESERVED_KWARGS = ("application_id", "execution_role_arn", "job_driver", "region_name")
