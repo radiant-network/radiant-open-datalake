@@ -32,6 +32,16 @@ class ContractDestinationSpec extends AnyFlatSpec with Matchers {
     destination.table.map(_.database) shouldBe Some("reference")
   }
 
+  it should "override the database when one is supplied and keep the anchor database otherwise" in {
+    val overridden = ContractDestination.forMajor(family, "clinvar", 1, database = Some("opendatalake_qa"))
+
+    overridden.table.map(_.database) shouldBe Some("opendatalake_qa")
+    overridden.table.map(_.name) shouldBe Some("clinvar_v1")
+    overridden.path shouldBe "/normalized/clinvar_v1"
+
+    ContractDestination.forMajor(family, "clinvar", 1).table.map(_.database) shouldBe Some("reference")
+  }
+
   it should "take an arbitrary prefix, not the family's table name" in {
     val destination = ContractDestination.forMajor(family, "clinvar_open", 1)
 

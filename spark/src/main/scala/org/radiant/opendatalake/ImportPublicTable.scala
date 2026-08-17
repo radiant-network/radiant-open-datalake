@@ -7,7 +7,7 @@ import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
 import org.radiant.opendatalake.normalized.omim.OmimGeneSet
 import org.radiant.opendatalake.normalized.refseq.{RefSeqAnnotation, RefSeqHumanGenes}
-import org.radiant.opendatalake.mainutils.{RawStorage, Version}
+import org.radiant.opendatalake.mainutils.{Database, RawStorage, Version, Warehouse}
 import mainargs.{ParserForMethods, main}
 
 object ImportPublicTable {
@@ -16,35 +16,35 @@ object ImportPublicTable {
   def annovar_scores(rc: RuntimeETLContext): Unit = AnnovarScores.run(rc)
 
   @main
-  def clinvar(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("clinvar", rc, version.value, rawStorage.value)
+  def clinvar(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("clinvar", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def dbnsfp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("dbnsfp", rc, version.value, rawStorage.value)
+  def dbnsfp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("dbnsfp", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def dbsnp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("dbsnp", rc, version.value, rawStorage.value)
+  def dbsnp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("dbsnp", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def ddd(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("ddd", rc, version.value, rawStorage.value)
+  def ddd(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("ddd", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
   def ensembl_mapping(rc: RuntimeETLContext): Unit = EnsemblMapping.run(rc)
 
   @main
-  def gnomad_cnv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("gnomad_cnv", rc, version.value, rawStorage.value)
+  def gnomad_cnv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("gnomad_cnv", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def gnomad_joint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("gnomad_joint", rc, version.value, rawStorage.value)
+  def gnomad_joint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("gnomad_joint", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def gnomad_sv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("gnomad_sv", rc, version.value, rawStorage.value)
+  def gnomad_sv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("gnomad_sv", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
   def gnomad_constraint(rc: RuntimeETLContext): Unit = GnomadConstraint.run(rc)
@@ -56,27 +56,27 @@ object ImportPublicTable {
   def hpo(rc: RuntimeETLContext): Unit = HPOGeneSet.run(rc)
 
   @main
-  def hpo_genes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("hpo_genes", rc, version.value, rawStorage.value)
+  def hpo_genes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("hpo_genes", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def hpo_terms(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("hpo_terms", rc, version.value, rawStorage.value)
+  def hpo_terms(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("hpo_terms", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def mondo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("mondo", rc, version.value, rawStorage.value)
+  def mondo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("mondo", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
   def omim(rc: RuntimeETLContext): Unit = OmimGeneSet.run(rc)
 
   @main(name = "1000genomes")
-  def one_thousand_genomes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("1000_genomes", rc, version.value, rawStorage.value)
+  def one_thousand_genomes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("1000_genomes", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def orphanet(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("orphanet", rc, version.value, rawStorage.value)
+  def orphanet(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("orphanet", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
   def refseq_annotation(rc: RuntimeETLContext): Unit = RefSeqAnnotation.run(rc)
@@ -85,8 +85,8 @@ object ImportPublicTable {
   def refseq_human_genes(rc: RuntimeETLContext): Unit = RefSeqHumanGenes.run(rc)
 
   @main
-  def spliceai(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("spliceai", rc, version.value, rawStorage.value)
+  def spliceai(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("spliceai", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
   def topmed_bravo(rc: RuntimeETLContext): Unit = TopMed.run(rc)

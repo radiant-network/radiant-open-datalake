@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from airflow.exceptions import AirflowException
 
+from opendatalake.lib import config
 from opendatalake.lib.operators.ecs import EcsConfig, PythonScriptOperator
 
 TEST_ECS_CONFIG = EcsConfig(
@@ -93,6 +94,21 @@ def test_python_script_operator_inject_command_correctly():
         assert "script_name" in PythonScriptOperator.template_fields
 
 
+def test_python_script_operator_injects_raw_storage_env():
+    with patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"):
+        op = PythonScriptOperator(
+            task_id="test_task", script_name="myscript.py", script_args={}, ecs_config=TEST_ECS_CONFIG
+        )
+        op.execute(MagicMock())
+
+    env = op.overrides["containerOverrides"][0]["environment"]
+    # ECS requires {name, value} pairs inside the container override, not {key: value} at task level.
+    assert env == [
+        {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket},
+        {"name": "OPENDATALAKE_RAW_LANDING_ROOT", "value": config.raw_landing_root},
+    ]
+
+
 def test_python_script_operator_uses_injected_config():
     with patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"):
         op = PythonScriptOperator(
@@ -123,7 +139,8 @@ def test_python_script_operator_injects_secrets_by_arn_into_the_container():
         override = op.overrides["containerOverrides"][0]
         # valueFrom carries the ARN, not the secret value — nothing sensitive in the RunTask call.
         assert override["secrets"] == [{"name": "TOKEN", "valueFrom": "arn:aws:secretsmanager:...:secret:token"}]
-        assert "environment" not in override
+        # Raw-storage env is always injected (secrets and environment coexist).
+        assert {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket} in override["environment"]
 
 
 def test_python_script_operator_omits_secrets_when_none_declared():
@@ -181,6 +198,10 @@ def test_python_script_operator_appends_to_user_container_overrides():
         assert container_overrides[1] == {
             "name": TEST_ECS_CONFIG.container_name,
             "command": ["python", "myscript.py", "--foo", "bar"],
+            "environment": [
+                {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket},
+                {"name": "OPENDATALAKE_RAW_LANDING_ROOT", "value": config.raw_landing_root},
+            ],
         }
 
         assert result == "done"

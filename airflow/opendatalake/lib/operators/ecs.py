@@ -93,7 +93,14 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
             command.append(f"--{k}")
             command.append(str(v))
 
-        container_override = {"name": self.container_name, "command": command}
+        container_override = {
+            "name": self.container_name,
+            "command": command,
+            "environment": [
+                {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket},
+                {"name": "OPENDATALAKE_RAW_LANDING_ROOT", "value": config.raw_landing_root},
+            ],
+        }
 
         secrets = self._resolve_secrets()
         if secrets:

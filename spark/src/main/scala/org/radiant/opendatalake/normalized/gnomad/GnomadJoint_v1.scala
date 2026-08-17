@@ -11,8 +11,8 @@ import java.time.LocalDateTime
 
 // Here "v1" represents the opendatalake contract version (1.x.x).
 // The raw dataset version compatible with this normalizer is 4.1.
-case class GnomadJoint_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_gnomad_joint", tablePrefix, major = 1) {
+case class GnomadJoint_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_gnomad_joint", tablePrefix, major = 1, database) {
 
 
   val gnomad_vcf: DatasetConf = conf.getDataset("raw_gnomad_joint")

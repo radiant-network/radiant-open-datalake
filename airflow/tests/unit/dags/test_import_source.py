@@ -3,6 +3,7 @@ from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.sdk import DAG
 
 from opendatalake.dags.import_source import build_import_operator
+from opendatalake.lib import config
 from opendatalake.lib.domain.model.sources import get_import_config
 from opendatalake.lib.operators.emr import DEFAULT_ENTRY_CLASS, EmrServerlessConfig
 
@@ -79,8 +80,15 @@ def test_entry_point_arguments():
 
     version_at = args.index("--version")
     assert args[version_at + 1] is version
-    assert args[:version_at] == ["clinvar", "--config", "config/dev.conf", "--steps", "default"]
-    assert args[version_at + 2 :] == ["--raw-storage", "s3a://opendatalake-dev/raw/landing"]
+    assert args[:version_at] == ["clinvar", "--config", f"config/{config.environment}.conf", "--steps", "default"]
+    assert args[version_at + 2 :] == [
+        "--raw-storage",
+        config.raw_storage_uri(),
+        "--database",
+        config.iceberg_database,
+        "--warehouse",
+        config.iceberg_warehouse,
+    ]
 
     assert spark_submit["entryPoint"] == EmrServerlessConfig.from_env().jar_s3_path
     assert f"--class {DEFAULT_ENTRY_CLASS}" in spark_submit["sparkSubmitParameters"]

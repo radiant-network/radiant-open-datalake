@@ -15,8 +15,8 @@ case class HpoTerm(id: String,
                    parents: Seq[String],
                    alt_ids: Seq[String])
 
-case class HpoTerms_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_hpo_terms", tablePrefix, major = 1) {
+case class HpoTerms_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_hpo_terms", tablePrefix, major = 1, database) {
 
   import spark.implicits._
 

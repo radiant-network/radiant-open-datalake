@@ -8,7 +8,7 @@ from opendatalake.lib.domain.model.sources import (
     get_import_config,
     get_update_mode,
 )
-from opendatalake.lib.operators.emr import EmrServerlessJobOperator
+from opendatalake.lib.operators.emr import EmrServerlessJobOperator, job_name_timestamp
 from opendatalake.lib.tasks import get_version, version_param
 
 
@@ -28,7 +28,7 @@ def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobO
     return EmrServerlessJobOperator(
         task_id="run_spark_import",
         task_display_name=f"[EMR] Import {display_name}",
-        name=f"opendatalake-{config.environment}-import-{source_id}-{{{{ ts_nodash }}}}",
+        name=f"opendatalake-{config.environment}-import-{source_id}-{job_name_timestamp()}",
         entry_point_arguments=[
             import_config.spark_command,
             "--config",
@@ -39,6 +39,10 @@ def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobO
             version,
             "--raw-storage",
             config.raw_storage_uri(),
+            "--database",
+            config.iceberg_database,
+            "--warehouse",
+            config.iceberg_warehouse,
         ],
         **tuning,
     )

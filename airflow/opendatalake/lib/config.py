@@ -10,27 +10,32 @@ all variables to be present.
 # This is fixed in newer Airflow versions, so you can switch back to airflow.sdk if we upgrade.
 import os
 
-from airflow.models import Variable
 
 # S3 settings
-environment = Variable.get("environment", "dev")
+environment = os.getenv("OPENDATALAKE_ENVIRONMENT", "qa")
 s3_conn_id = "opendatalake_s3"
 
 raw_datalake_bucket = os.getenv("OPENDATALAKE_RAW_BUCKET", f"opendatalake-{environment}")
 
 # Root under the bucket where raw source files land. (passed to Spark as --raw-storage).
 # Keep in sync with the Spark raw_storage root.
-_raw_landing_root = os.getenv("OPENDATALAKE_RAW_LANDING_ROOT", "raw/landing")
+raw_landing_root = os.getenv("OPENDATALAKE_RAW_LANDING_ROOT", "raw/landing")
+
+iceberg_database = os.getenv("OPENDATALAKE_EMR_GLUE_DATABASE", f"opendatalake_{environment}")
+
+iceberg_warehouse = os.getenv(
+    "OPENDATALAKE_EMR_WAREHOUSE_S3", f"s3a://{raw_datalake_bucket}/iceberg/{iceberg_database}"
+)
 
 
 def raw_landing_prefix(source: str, version: str) -> str:
     """S3 key prefix (within raw_datalake_bucket) for a source version's raw files."""
-    return f"{_raw_landing_root}/{source}/{version}"
+    return f"{raw_landing_root}/{source}/{version}"
 
 
 def raw_storage_uri() -> str:
     """Full s3a:// root the Spark job reads raw data from (overrides the baked config at runtime)."""
-    return f"s3a://{raw_datalake_bucket}/{_raw_landing_root}"
+    return f"s3a://{raw_datalake_bucket}/{raw_landing_root}"
 
 
 # DAGs settings
