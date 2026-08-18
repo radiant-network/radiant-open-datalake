@@ -88,7 +88,11 @@ class _Source(Enum):
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(
             spark_command="dbsnp",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "16",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "60G",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )
