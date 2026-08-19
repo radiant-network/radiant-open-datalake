@@ -18,6 +18,14 @@ case class DBNSFP_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
     df.withColumn("locus", concat_ws("-", col("chromosome"), col("start"), col("reference"), col("alternate")))
       .withColumn("locus_hash", sha2(col("locus"), 256))
 
+
+  private[normalized] def toPlatformColumns(df: DataFrame): DataFrame = {
+    val renames = Map("#chr" -> "chromosome", "pos(1-based)" -> "start", "ref" -> "reference", "alt" -> "alternate")
+    val missing = renames.keys.filterNot(df.columns.contains).toSeq.sorted
+    require(missing.isEmpty, s"raw dbNSFP is missing expected column(s): ${missing.mkString(", ")}")
+    renames.foldLeft(df) { case (acc, (from, to)) => acc.withColumnRenamed(from, to) }
+  }
+
   override def extract(lastRunValue: LocalDateTime = minValue,
                        currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] =
     Map(raw_dbnsfp.id -> RawInput.readVersioned(raw_dbnsfp.id, version, rawStorage))
@@ -25,13 +33,7 @@ case class DBNSFP_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
   override def transformSingle(data: Map[String, DataFrame],
                                lastRunValue: LocalDateTime = minValue,
                                currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
-    val renamed = data(raw_dbnsfp.id)
-      .withColumnRenamed("#chr", "chromosome")
-      .withColumnRenamed("position_1-based", "start")
-      .withColumnRenamed("ref", "reference")
-      .withColumnRenamed("alt", "alternate")
-
-    withLocus(dbnsfp.transform(renamed))
+    withLocus(dbnsfp.transform(toPlatformColumns(data(raw_dbnsfp.id))))
   }
 
   override val defaultRepartition: DataFrame => DataFrame =

@@ -27,6 +27,21 @@ class DBNSFP_v1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
   override val dbToCreate: List[String] = List(destination.table.map(_.database).get)
   override val dsToClean: List[DatasetConf] = List(destination)
 
+  "toPlatformColumns" should "rename the real dbNSFP header to platform locus columns" in {
+    // Raw column names exactly as they appear in the dbNSFP4 academic distribution header.
+    val raw = Seq(("1", "69091", "A", "G")).toDF("#chr", "pos(1-based)", "ref", "alt")
+
+    job.toPlatformColumns(raw).columns.toSet shouldBe Set("chromosome", "start", "reference", "alternate")
+  }
+
+  it should "fail loudly when an expected raw column is absent (guards the silent-no-op footgun)" in {
+    // "position_1-based" is wrong -- the real header is "pos(1-based)". Must fail here, not downstream.
+    val wrong = Seq(("1", "69091", "A", "G")).toDF("#chr", "position_1-based", "ref", "alt")
+
+    val ex = intercept[IllegalArgumentException](job.toPlatformColumns(wrong))
+    ex.getMessage should include("pos(1-based)")
+  }
+
   "withLocus" should "append the platform locus / locus_hash join key" in {
     val df = Seq(("1", 69091L, "A", "G")).toDF("chromosome", "start", "reference", "alternate")
 
