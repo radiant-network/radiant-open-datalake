@@ -9,11 +9,15 @@ prefer using `utils/s3.py`.
 import fnmatch
 import logging
 
-import requests
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
+from opendatalake.lib.utils.http import get_session
 from opendatalake.lib.utils.humanize import bytes_to_human_readable as human_readable
 from opendatalake.lib.utils.s3 import MultipartUpload
+
+# (connect, read) timeout in seconds. Read timeout is per-read (time between bytes), so it is
+# safe for large streamed downloads while still catching a stalled connection.
+_DEFAULT_TIMEOUT = (10, 60)
 
 
 def multipart_upload_with_resume(
@@ -46,8 +50,9 @@ def multipart_upload_with_resume(
             if multipart_upload.uploaded_bytes > 0:
                 headers["Range"] = f"bytes={multipart_upload.uploaded_bytes}-"
 
-            # Upload remaining bytes in chunks (parts)
-            with requests.get(url, stream=True, headers=headers) as r:
+            # Upload remaining bytes in chunks (parts). Shared session applies the MSS clamp
+            # so this large streamed download survives a PMTU-black-holed egress path.
+            with get_session().get(url, stream=True, headers=headers, timeout=_DEFAULT_TIMEOUT) as r:
                 # If resuming, ensure we get a partial content response (206)
                 if len(multipart_upload.uploaded_parts) > 0 and r.status_code != 206:
                     logging.info("File cannot be resumed, starting from the beginning")
@@ -94,7 +99,7 @@ def stream_unzip_to_s3(
     s3_client = s3.get_conn()
     uploaded: list[str] = []
 
-    with requests.get(url, stream=True, headers=headers) as r:
+    with get_session().get(url, stream=True, headers=headers, timeout=_DEFAULT_TIMEOUT) as r:
         r.raise_for_status()
         logging.info(f"Start stream-unzip of '{url}' into s3://{s3_bucket}/{s3_prefix}/")
         for member_name, _uncompressed_size, member_chunks in stream_unzip(r.iter_content(chunk_size=read_chunk)):

@@ -1,10 +1,35 @@
+import socket
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
 import requests_mock
 
-from opendatalake.lib.utils.http import http_get, stream_download_file
+from opendatalake.lib.utils.http import _MSSClampAdapter, get_session, http_get, stream_download_file
+
+
+@pytest.mark.skipif(not hasattr(socket, "TCP_MAXSEG"), reason="TCP_MAXSEG not available on this platform")
+def test_mss_clamp_adapter_sets_tcp_maxseg():
+    adapter = _MSSClampAdapter(mss=1200)
+    socket_options = adapter.poolmanager.connection_pool_kw["socket_options"]
+    assert (socket.IPPROTO_TCP, socket.TCP_MAXSEG, 1200) in socket_options
+    # Must not clobber urllib3's defaults (e.g. TCP_NODELAY).
+    from urllib3.connection import HTTPConnection
+
+    for default_option in HTTPConnection.default_socket_options:
+        assert default_option in socket_options
+
+
+def test_get_session_returns_shared_singleton():
+    assert get_session() is get_session()
+    assert isinstance(get_session(), requests.Session)
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="MSS clamp adapter is mounted on Linux only")
+def test_session_mounts_mss_adapter_on_linux():
+    adapter = get_session().get_adapter("https://ftp.ncbi.nlm.nih.gov/")
+    assert isinstance(adapter, _MSSClampAdapter)
 
 
 def test_http_get_successful_response():
@@ -36,6 +61,14 @@ def test_http_get_raises_for_unsuccessful_status_code():
         m.get(url, status_code=404)
         with pytest.raises(requests.HTTPError):
             http_get(url)
+
+
+def test_http_get_passes_timeout():
+    url = "http://example.com"
+    with requests_mock.Mocker() as m:
+        m.get(url, text="hello", status_code=200)
+        http_get(url)
+        assert m.last_request.timeout == (10, 60)
 
 
 def test_stream_download_file_happy_path(tmp_path):
@@ -90,7 +123,8 @@ def test_stream_download_file_respects_chunk_size(tmp_path):
 
     mock_response.iter_content.side_effect = fake_iter_content
 
-    with patch("requests.get", return_value=mock_response):
+    # Downloads go through the shared MSS-clamped session, not the module-level requests.get.
+    with patch("opendatalake.lib.utils.http._SESSION.get", return_value=mock_response):
         stream_download_file(url, str(dest_file), chunk_size=expected_chunk_size)
 
     # Check file exists and content matches

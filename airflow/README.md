@@ -20,14 +20,22 @@ However, make sure this is not commited.
 
 ### Airflow pools
 
-The download DAGs limit their concurrency through Airflow pools. Pools live in the Airflow database,
-not in this repository, so they must exist in the target environment. **Tasks referencing a pool that
-does not exist will not run.** Create them from the Airflow UI, under **Admin -> Pools**.
+The download and import DAGs limit their concurrency through Airflow pools. Pools live in the Airflow
+database, not in this repository, so they must exist in the target environment. **Tasks referencing a
+pool that does not exist will not run.** Create them from the Airflow UI, under **Admin -> Pools**.
 
 | Pool name                               | Used by                                        | Suggested slots |
 |-----------------------------------------|------------------------------------------------|-----------------|
 | `opendatalake_download_tasks_pool`      | `upload_via_local_copy` and `stream_unzip_download` (transfer runs in the task-operator container) | - |
 | `opendatalake_direct_upload_tasks_pool` | `direct_upload` (transfer runs on the worker)  | 3               |
+| `opendatalake_import_tasks_pool`        | `run_spark_import` in every import DAG (EMR Serverless job) | 1               |
+
+**`opendatalake_import_tasks_pool` must be created with `include_deferred` enabled** ("Include
+deferred tasks in slot calculation" in the UI). The EMR operator is deferrable: it submits the job and
+then defers to poll for completion. A deferred task holds its pool slot *only* when the pool counts
+deferred tasks — otherwise the task submits, defers, releases the slot, and the next import starts
+immediately, so multiple EMR jobs run at once and the 1-slot limit does nothing. With `include_deferred`
+on and `slots = 1`, exactly one import runs at a time; raise the slot count to allow more concurrency.
 
 ## DAG topology
 
