@@ -121,9 +121,9 @@ class SpliceAiSourceConfig(SourceConfig):
         default=ImportConfig(
             spark_command="spliceai",
             spark_conf={
-                "spark.dynamicAllocation.maxExecutors": "5",
+                "spark.dynamicAllocation.maxExecutors": "8",
                 "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
-                "spark.emr-serverless.executor.disk": "190G",
+                "spark.emr-serverless.executor.disk": "200G",
             },
             waiter_max_attempts=960,  # ~16h
         ),
