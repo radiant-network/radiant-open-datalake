@@ -122,7 +122,7 @@ def test_python_script_operator_uses_injected_config():
         assert op.network_configuration["awsvpcConfiguration"]["securityGroups"] == ["sg-1"]
 
 
-def test_python_script_operator_injects_secrets_by_arn_into_the_container():
+def test_python_script_operator_forwards_secret_arn_as_plain_env():
     with (
         patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"),
         patch.dict(os.environ, {"TOKEN_ARN": "arn:aws:secretsmanager:...:secret:token"}),
@@ -132,29 +132,34 @@ def test_python_script_operator_injects_secrets_by_arn_into_the_container():
             script_name="myscript.py",
             script_args={},
             ecs_config=TEST_ECS_CONFIG,
-            secret_env_vars=(("TOKEN", "TOKEN_ARN"),),
+            secret_arn_env_vars=("TOKEN_ARN",),
         )
         op.execute(MagicMock())
 
         override = op.overrides["containerOverrides"][0]
-        # valueFrom carries the ARN, not the secret value — nothing sensitive in the RunTask call.
-        assert override["secrets"] == [{"name": "TOKEN", "valueFrom": "arn:aws:secretsmanager:...:secret:token"}]
-        # Raw-storage env is always injected (secrets and environment coexist).
+        # No `secrets` key — the RunTask call would be rejected by AWS if it carried one.
+        assert "secrets" not in override
+        # The ARN travels as a plain env entry; the secret value never appears in the RunTask call.
+        assert {"name": "TOKEN_ARN", "value": "arn:aws:secretsmanager:...:secret:token"} in override["environment"]
+        # Raw-storage env is always injected alongside.
         assert {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket} in override["environment"]
 
 
-def test_python_script_operator_omits_secrets_when_none_declared():
+def test_python_script_operator_omits_secret_env_when_none_declared():
     with patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"):
         op = PythonScriptOperator(
             task_id="test_task", script_name="myscript.py", script_args={}, ecs_config=TEST_ECS_CONFIG
         )
         op.execute(MagicMock())
 
-        assert "secrets" not in op.overrides["containerOverrides"][0]
+        override = op.overrides["containerOverrides"][0]
+        assert "secrets" not in override
+        env_names = {e["name"] for e in override["environment"]}
+        assert env_names == {"OPENDATALAKE_RAW_BUCKET", "OPENDATALAKE_RAW_LANDING_ROOT"}
 
 
-def test_python_script_operator_skips_secret_when_arn_unset():
-    # No ARN in the worker environment -> no secret injected; the download then fails loudly on its own
+def test_python_script_operator_skips_secret_arn_when_unset():
+    # No ARN in the worker environment -> nothing forwarded; the download then fails loudly on its own
     # auth check inside the container.
     with (
         patch("opendatalake.lib.operators.ecs.ecs.EcsRunTaskOperator.execute", return_value="done"),
@@ -166,11 +171,13 @@ def test_python_script_operator_skips_secret_when_arn_unset():
             script_name="myscript.py",
             script_args={},
             ecs_config=TEST_ECS_CONFIG,
-            secret_env_vars=(("TOKEN", "DEFINITELY_UNSET_ARN"),),
+            secret_arn_env_vars=("DEFINITELY_UNSET_ARN",),
         )
         op.execute(MagicMock())
 
-        assert "secrets" not in op.overrides["containerOverrides"][0]
+        override = op.overrides["containerOverrides"][0]
+        assert "secrets" not in override
+        assert all(e["name"] != "DEFINITELY_UNSET_ARN" for e in override["environment"])
 
 
 def test_python_script_operator_appends_to_user_container_overrides():

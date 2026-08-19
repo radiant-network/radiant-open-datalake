@@ -60,7 +60,7 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
         script_args: dict,
         container_name: str | None = None,
         ecs_config: EcsConfig | None = None,
-        secret_env_vars: tuple[tuple[str, str], ...] | None = None,
+        secret_arn_env_vars: tuple[str, ...] | None = None,
         **kwargs,
     ):
         ecs_config = ecs_config or EcsConfig.from_env()
@@ -84,8 +84,7 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
         self.script_name = script_name
         self.script_args = script_args
         self.container_name = container_name or ecs_config.container_name
-        # Pairs of (container env var name, name of the worker env var holding its Secrets Manager ARN).
-        self.secret_env_vars = tuple(secret_env_vars or ())
+        self.secret_arn_env_vars = tuple(secret_arn_env_vars or ())
 
     def execute(self, context, **kwargs):
         command = ["python", self.script_name]
@@ -93,31 +92,30 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
             command.append(f"--{k}")
             command.append(str(v))
 
+        environment = [
+            {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket},
+            {"name": "OPENDATALAKE_RAW_LANDING_ROOT", "value": config.raw_landing_root},
+        ]
+        environment.extend(self._resolve_secret_arn_env())
+
         container_override = {
             "name": self.container_name,
             "command": command,
-            "environment": [
-                {"name": "OPENDATALAKE_RAW_BUCKET", "value": config.raw_datalake_bucket},
-                {"name": "OPENDATALAKE_RAW_LANDING_ROOT", "value": config.raw_landing_root},
-            ],
+            "environment": environment,
         }
-
-        secrets = self._resolve_secrets()
-        if secrets:
-            container_override["secrets"] = secrets
 
         self.overrides = self.overrides or {}
         self.overrides.setdefault("containerOverrides", []).append(container_override)
 
         return super().execute(context, **kwargs)
 
-    def _resolve_secrets(self) -> list[dict[str, str]]:
-        secrets = []
-        for name, arn_env_var in self.secret_env_vars:
+    def _resolve_secret_arn_env(self) -> list[dict[str, str]]:
+        resolved = []
+        for arn_env_var in self.secret_arn_env_vars:
             arn = os.getenv(arn_env_var)
             if arn:
-                secrets.append({"name": name, "valueFrom": arn})
-        return secrets
+                resolved.append({"name": arn_env_var, "value": arn})
+        return resolved
 
 
 def _get_ecs_context(ecs_config: EcsConfig):
