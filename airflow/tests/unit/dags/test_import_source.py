@@ -94,6 +94,14 @@ def test_entry_point_arguments():
     assert f"--class {DEFAULT_ENTRY_CLASS}" in spark_submit["sparkSubmitParameters"]
 
 
+def test_import_task_uses_shared_import_pool():
+    # All import DAGs share one 1-slot pool so their EMR jobs run one at a time.
+    for source_id in ("clinvar", "dbsnp", "dbnsfp", "1000_genomes"):
+        operator, _ = _build_operator(source_id)
+        assert operator.pool == config.IMPORT_TASKS_POOL
+        assert operator.pool_slots == 1
+
+
 def test_dbsnp_tuning_applied():
     operator, _ = _build_operator("dbsnp")
     spark_submit = operator.job_driver["sparkSubmit"]

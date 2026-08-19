@@ -192,7 +192,11 @@ class _Source(Enum):
         update_mode=UpdateMode.MANUAL,
         import_config=ImportConfig(
             spark_command="dbnsfp",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "8",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "100G",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )

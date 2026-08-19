@@ -28,6 +28,7 @@ def build_import_operator(source_id: str, version: XComArg) -> EmrServerlessJobO
     return EmrServerlessJobOperator(
         task_id="run_spark_import",
         task_display_name=f"[EMR] Import {display_name}",
+        pool=config.IMPORT_TASKS_POOL,
         name=f"opendatalake-{config.environment}-import-{source_id}-{job_name_timestamp()}",
         entry_point_arguments=[
             import_config.spark_command,

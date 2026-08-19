@@ -78,7 +78,7 @@ def _auth_headers() -> dict:
     return SpliceAiConfig.from_env().auth_headers()
 
 
-_SECRET_ENV_VARS = ((ACCESS_TOKEN_ENV_VAR, ACCESS_TOKEN_ARN_ENV_VAR),)
+_SECRET_ARN_ENV_VARS = (ACCESS_TOKEN_ARN_ENV_VAR,)
 
 
 def _build_download_configs() -> list[DownloadConfig]:
@@ -93,7 +93,7 @@ def _build_download_configs() -> list[DownloadConfig]:
                 use_stream_upload=True,
                 md5_present=False,
                 label=f"{variant_type}_vcf",
-                secret_env_vars=_SECRET_ENV_VARS,
+                secret_arn_env_vars=_SECRET_ARN_ENV_VARS,
             )
         )
         configs.append(
@@ -103,7 +103,7 @@ def _build_download_configs() -> list[DownloadConfig]:
                 headers=_auth_headers,
                 md5_present=False,
                 label=f"{variant_type}_tbi",
-                secret_env_vars=_SECRET_ENV_VARS,
+                secret_arn_env_vars=_SECRET_ARN_ENV_VARS,
             )
         )
     return configs
@@ -120,7 +120,11 @@ class SpliceAiSourceConfig(SourceConfig):
         init=False,
         default=ImportConfig(
             spark_command="spliceai",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "5",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "190G",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )
