@@ -121,9 +121,19 @@ class SpliceAiSourceConfig(SourceConfig):
         default=ImportConfig(
             spark_command="spliceai",
             spark_conf={
-                "spark.dynamicAllocation.maxExecutors": "8",
+                "spark.dynamicAllocation.enabled": "false",
+                "spark.executor.instances": "12",
+                "spark.executor.cores": "4",
+                "spark.executor.memory": "20g",
+                "spark.executor.memoryOverhead": "8g",  # exit 137 was off-heap overshoot, not heap
                 "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
-                "spark.emr-serverless.executor.disk": "200G",
+                "spark.emr-serverless.executor.disk": "100G",
+                "spark.network.timeout": "600s",
+                "spark.executor.heartbeatInterval": "30s",
+                "spark.shuffle.io.maxRetries": "10",
+                "spark.shuffle.io.retryWait": "15s",
+                "spark.sql.adaptive.enabled": "true",
+                "spark.sql.adaptive.coalescePartitions.enabled": "true",
             },
             waiter_max_attempts=960,  # ~16h
         ),

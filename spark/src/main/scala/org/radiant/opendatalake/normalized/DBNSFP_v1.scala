@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.normalized
 
-import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, RuntimeETLContext}
+import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, RuntimeETLContext}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions.{col, concat_ws, sha2}
 import org.radiant.opendatalake.contracts.ContractETLP
@@ -37,5 +37,5 @@ case class DBNSFP_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
   }
 
   override val defaultRepartition: DataFrame => DataFrame =
-    RepartitionByColumns(columnNames = Seq("chromosome"), sortColumns = Seq("start"))
+    RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1000))
 }

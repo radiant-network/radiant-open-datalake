@@ -122,7 +122,11 @@ def test_import_config_sourced_from_source_config():
     import_config = get_import_config("dbsnp")
     assert import_config.spark_command == "dbsnp"
     assert import_config.waiter_max_attempts == 960
-    assert import_config.spark_conf == {"spark.dynamicAllocation.maxExecutors": "16"}
+    assert import_config.spark_conf == {
+        "spark.dynamicAllocation.maxExecutors": "16",
+        "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+        "spark.emr-serverless.executor.disk": "60G",
+    }
 
 
 def test_unknown_source_raises():
