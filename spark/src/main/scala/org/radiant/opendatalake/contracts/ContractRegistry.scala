@@ -15,19 +15,19 @@ object ContractRegistry {
   type NormalizerETL = ETL[LocalDateTime, SimpleConfiguration]
 
   private val factories: Map[(String, Int), NormalizerArgs => NormalizerETL] = Map(
-    ("1000_genomes", 1) -> (args => OneThousandGenomes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("clinvar", 1) -> (args => Clinvar_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("dbnsfp", 1) -> (args => DBNSFP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("dbsnp", 1) -> (args => DBSNP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("ddd", 1) -> (args => DDD_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("gnomad_cnv", 1) -> (args => GnomadCNV_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("gnomad_joint", 1) -> (args => GnomadJoint_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("gnomad_sv", 1) -> (args => GnomadSV_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("hpo_genes", 1) -> (args => HpoGenes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("hpo_terms", 1) -> (args => HpoTerms_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("mondo", 1) -> (args => Mondo_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("orphanet", 1) -> (args => Orphanet_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
-    ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix))
+    ("1000_genomes", 1) -> (args => OneThousandGenomes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("clinvar", 1) -> (args => Clinvar_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("dbnsfp", 1) -> (args => DBNSFP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("dbsnp", 1) -> (args => DBSNP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("ddd", 1) -> (args => DDD_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("gnomad_cnv", 1) -> (args => GnomadCNV_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("gnomad_joint", 1) -> (args => GnomadJoint_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("gnomad_sv", 1) -> (args => GnomadSV_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("hpo_genes", 1) -> (args => HpoGenes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("hpo_terms", 1) -> (args => HpoTerms_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("mondo", 1) -> (args => Mondo_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("orphanet", 1) -> (args => Orphanet_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse))
   )
 
   def factory(source: String, contract: Contract): Option[NormalizerArgs => NormalizerETL] =

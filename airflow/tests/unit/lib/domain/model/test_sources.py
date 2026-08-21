@@ -38,7 +38,17 @@ def test_dbnsfp_import_config():
     import_config = get_import_config("dbnsfp")
     assert import_config.spark_command == "dbnsfp"
     assert import_config.waiter_max_attempts == 960
-    assert import_config.spark_conf == {"spark.dynamicAllocation.maxExecutors": "16"}
+    assert import_config.spark_conf == {
+        "spark.dynamicAllocation.maxExecutors": "16",
+        "spark.dynamicAllocation.initialExecutors": "5",
+        "spark.executor.cores": "4",
+        "spark.executor.memory": "16g",
+        "spark.executor.memoryOverhead": "2g",
+        "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+        "spark.emr-serverless.executor.disk": "100G",
+        "spark.sql.adaptive.enabled": "true",
+        "spark.sql.adaptive.coalescePartitions.enabled": "true",
+    }
 
 
 def test_orphanet_is_auto_source():

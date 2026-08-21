@@ -15,8 +15,8 @@ case class MondoTerm(id: String,
                      parents: Seq[String],
                      alt_ids: Seq[String])
 
-case class Mondo_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_mondo", tablePrefix, major = 1) {
+case class Mondo_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_mondo", tablePrefix, major = 1, database) {
 
   import spark.implicits._
 

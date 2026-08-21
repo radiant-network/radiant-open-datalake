@@ -7,8 +7,9 @@ import org.radiant.opendatalake.wap.WapETLP
 abstract class ContractETLP(rc: RuntimeETLContext,
                             sourceDatasetId: String,
                             tablePrefix: String,
-                            major: Int) extends WapETLP(rc) {
+                            major: Int,
+                            database: Option[String] = None) extends WapETLP(rc) {
 
   override lazy val mainDestination: DatasetConf =
-    ContractDestination.forMajor(conf.getDataset(sourceDatasetId), tablePrefix, major)
+    ContractDestination.forMajor(conf.getDataset(sourceDatasetId), tablePrefix, major, database)
 }

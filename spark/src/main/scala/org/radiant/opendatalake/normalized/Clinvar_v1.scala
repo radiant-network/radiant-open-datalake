@@ -13,8 +13,8 @@ import org.radiant.opendatalake.normalized.io.RawInput
 import java.time.LocalDateTime
 import scala.collection.mutable
 
-case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_clinvar", tablePrefix, major = 1) {
+case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_clinvar", tablePrefix, major = 1, database) {
 
   val clinvar_vcf: DatasetConf = conf.getDataset("raw_clinvar")
 

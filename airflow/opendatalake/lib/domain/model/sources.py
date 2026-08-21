@@ -88,7 +88,11 @@ class _Source(Enum):
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(
             spark_command="dbsnp",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "16",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "60G",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )
@@ -188,7 +192,17 @@ class _Source(Enum):
         update_mode=UpdateMode.MANUAL,
         import_config=ImportConfig(
             spark_command="dbnsfp",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "16",
+                "spark.dynamicAllocation.initialExecutors": "5",
+                "spark.executor.cores": "4",
+                "spark.executor.memory": "16g",
+                "spark.executor.memoryOverhead": "2g",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "100G",
+                "spark.sql.adaptive.enabled": "true",
+                "spark.sql.adaptive.coalescePartitions.enabled": "true",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )
