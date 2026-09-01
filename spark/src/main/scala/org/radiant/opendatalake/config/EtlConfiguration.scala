@@ -80,7 +80,7 @@ object EtlConfiguration extends App {
       DatasetConf("raw_gnomad_joint", raw_storage_id, "/gnomad_joint/{{VERSION}}/*.vcf.bgz",  VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
       DatasetConf("raw_gnomad_cnv", raw_storage_id, "/gnomad_cnv/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
       DatasetConf("raw_gnomad_sv", raw_storage_id, "/gnomad_sv/{{VERSION}}/*.sv.sites.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
-      DatasetConf("raw_gnomad_constraint_v2_1_1", raw_storage_id, "/gnomad_v2_1_1/gnomad.v2.1.1.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
+      DatasetConf("raw_gnomad_constraint", raw_storage_id, "/gnomad_constraint/{{VERSION}}/gnomad.v{{VERSION}}.lof_metrics.by_gene.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
       DatasetConf("raw_topmed_bravo", raw_storage_id, "/topmed/bravo-dbsnp-*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
       DatasetConf("raw_1000_genomes", raw_storage_id, "/1000_genomes/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
       DatasetConf("raw_dbnsfp", raw_storage_id, "/dbnsfp/{{VERSION}}/*_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
@@ -116,8 +116,12 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "ddd", repartition = Some(Coalesce())),
       DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
       DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
+      // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
+      // contract table normalized_gnomad_constraint (gnomad_constraint_v1); gnomAD constraint ingestion
+      // itself is now the WAP contract GnomadConstraint_v1.
       DatasetConf("normalized_gnomad_constraint_v2_1_1", iceberg_storage_id, "/normalized/gnomad_constraint_v2_1_1", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
       buildNormalizedDatasetConf(database, "gnomad_cnv", partitionby = List("chromosome")),
+      buildNormalizedDatasetConf(database, "gnomad_constraint", partitionby = List("chromosome")),
       buildNormalizedDatasetConf(database, "gnomad_joint", partitionby = List("chromosome")),
       buildNormalizedDatasetConf(database, "gnomad_sv", partitionby = List("chromosome")),
       DatasetConf("normalized_human_genes", iceberg_storage_id, "/normalized/human_genes", ICEBERG, OverWrite, partitionby = List(), table = table("human_genes")),

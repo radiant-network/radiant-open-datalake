@@ -12,6 +12,11 @@ SV_VERSION = "4.1"
 
 _SV_VCF_URL = f"{_RELEASE_ROOT}/{SV_VERSION}/genome_sv/gnomad.v{SV_VERSION}.sv.sites.vcf.gz"
 
+CONSTRAINT_VERSION = "2.1.1"
+_CONSTRAINT_URL = (
+    f"{_RELEASE_ROOT}/{CONSTRAINT_VERSION}/constraint/gnomad.v{CONSTRAINT_VERSION}.lof_metrics.by_gene.txt.bgz"
+)
+
 
 def _joint_vcf_url(chromosome: str) -> str:
     return f"{_RELEASE_ROOT}/{JOINT_VERSION}/vcf/joint/gnomad.joint.v{JOINT_VERSION}.sites.chr{chromosome}.vcf.bgz"
@@ -108,3 +113,35 @@ class GnomadSVSourceConfig(SourceConfig):
     @override
     def get_latest_version(self) -> str:
         return SV_VERSION
+
+
+# Pinned to v2.1.1, not the current v4.1.1: gnomAD now recommends v4.1.1's LOEUF threshold over v2's
+# (https://gnomad.broadinstitute.org/news/2026-03-gnomad-v4-1-1/), but v4.1.1's constraint file
+# (gnomad.v4.1.1.constraint_metrics.tsv.bgz) uses a different, nested/array-valued schema (e.g.
+# `lof.pLI`, per-ancestry array columns) than v2.1.1's flat lof_metrics.by_gene columns that
+# normalized/gnomad/GnomadConstraint.scala and enriched/Genes.scala are built against. Moving to
+# v4.1.1 needs a schema migration there first (tracked as follow-up), not just a version bump here.
+# bgzip is valid gzip, but Spark's CSV reader only auto-decompresses on a registered codec suffix
+# (.gz), so the upload is renamed from .txt.bgz to .txt.gz.
+@dataclass(frozen=True)
+class GnomadConstraintSourceConfig(SourceConfig):
+    short_name: str = field(init=False, default="gnomad_constraint")
+    display_name: str = field(init=False, default="gnomAD Constraint")
+    website: str = field(init=False, default="https://gnomad.broadinstitute.org/")
+    download_configs: list[DownloadConfig] = field(
+        init=False,
+        default_factory=lambda: [
+            DownloadConfig(
+                download_url=_CONSTRAINT_URL,
+                name=f"gnomad.v{CONSTRAINT_VERSION}.lof_metrics.by_gene.txt.gz",
+                md5_present=False,
+                label="tsv",
+            )
+        ],
+    )
+    update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
+    import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_constraint"))
+
+    @override
+    def get_latest_version(self) -> str:
+        return CONSTRAINT_VERSION

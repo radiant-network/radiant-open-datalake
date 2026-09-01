@@ -197,6 +197,7 @@ Connect to the Airflow UI at http://localhost:8080
 
 In the airflow UI, using the Admin tab, create pool "opendatalake_download_tasks_pool" with 1 slots.
 Also create pool "opendatalake_direct_upload_tasks_pool" with 1 slots.
+Also create pool "opendatalake_import_tasks_pool" with 1 slots (used by the import DAG's EMR/Spark task).
 
 ## Ensure DAGs are activated before running
 

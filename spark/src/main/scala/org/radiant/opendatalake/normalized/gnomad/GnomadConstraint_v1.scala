@@ -1,21 +1,21 @@
 package org.radiant.opendatalake.normalized.gnomad
 
 import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits.DatasetConfOperations
 import bio.ferlab.datalake.spark3.transformation.Cast.{castDouble, castFloat, castInt, castLong}
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
+import org.radiant.opendatalake.contracts.ContractETLP
+import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class GnomadConstraint(rc: RuntimeETLContext) extends SimpleETLP(rc) {
-  override val mainDestination: DatasetConf = conf.getDataset("normalized_gnomad_constraint_v2_1_1")
-  val raw_gnomad_constraint: DatasetConf = conf.getDataset("raw_gnomad_constraint_v2_1_1")
+case class GnomadConstraint_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_gnomad_constraint", tablePrefix, major = 1, database) {
+
+  val raw_gnomad_constraint: DatasetConf = conf.getDataset("raw_gnomad_constraint")
 
   override def extract(lastRunValue: LocalDateTime = minValue,
                        currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
-    Map(raw_gnomad_constraint.id -> raw_gnomad_constraint.read)
+    Map(raw_gnomad_constraint.id -> RawInput.readVersioned(raw_gnomad_constraint.id, version, rawStorage))
   }
 
   override def transformSingle(data: Map[String, DataFrame],
@@ -108,13 +108,3 @@ case class GnomadConstraint(rc: RuntimeETLContext) extends SimpleETLP(rc) {
   override def defaultRepartition: DataFrame => DataFrame = RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1))
 
 }
-
-object GnomadConstraint {
-  @main
-  def run(rc: RuntimeETLContext): Unit = {
-    GnomadConstraint(rc).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
-}
-
