@@ -11,7 +11,7 @@ all variables to be present.
 import os
 
 # S3 settings
-environment = os.getenv("OPENDATALAKE_ENVIRONMENT", "qa")
+environment = os.getenv("OPENDATALAKE_ENVIRONMENT", "dev")
 s3_conn_id = "opendatalake_s3"
 
 raw_datalake_bucket = os.getenv("OPENDATALAKE_RAW_BUCKET", f"opendatalake-{environment}")

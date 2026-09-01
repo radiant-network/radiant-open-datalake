@@ -77,6 +77,8 @@ extraEnv: |
     value: "opendatalake"
   - name: OPENDATALAKE_SPLICEAI_ACCESS_TOKEN
     value: "<REPLACE_ME_WITH_ACCESS_TOKEN>"
+  - name: OPENDATALAKE_EMR_GLUE_DATABASE
+    value: "reference"
 
   # Also to test ecs operator (although not needed for compilation). Strangely the boto3 client does not read AWS_REGION
   - name: AWS_DEFAULT_REGION
