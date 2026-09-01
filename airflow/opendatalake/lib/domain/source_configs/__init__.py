@@ -1,7 +1,12 @@
 from .clinvar import ClinvarSourceConfig
 from .dbsnp import DBSNPSourceConfig
 from .ddd import DDDSourceConfig
-from .gnomad import GnomadCnvSourceConfig, GnomadJointSourceConfig, GnomadSVSourceConfig
+from .gnomad import (
+    GnomadCnvSourceConfig,
+    GnomadConstraintSourceConfig,
+    GnomadJointSourceConfig,
+    GnomadSVSourceConfig,
+)
 from .hpo import HpoSourceConfig
 from .mondo import MondoSourceConfig
 from .omim import OmimSourceConfig
@@ -13,6 +18,7 @@ __all__ = [
     "DBSNPSourceConfig",
     "DDDSourceConfig",
     "GnomadCnvSourceConfig",
+    "GnomadConstraintSourceConfig",
     "GnomadJointSourceConfig",
     "GnomadSVSourceConfig",
     "HpoSourceConfig",

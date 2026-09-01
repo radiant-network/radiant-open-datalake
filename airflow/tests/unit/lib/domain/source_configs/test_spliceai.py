@@ -50,9 +50,10 @@ def test_spliceai_declares_no_md5(spliceai_source_config):
 
 
 def test_spliceai_declares_the_token_secret(spliceai_source_config):
-    # So the ECS local-copy operator injects the token via secrets/valueFrom (the ARN), not plaintext.
+    # So the ECS local-copy operator forwards the ARN env var to the container, which self-resolves the
+    # secret via its task role — the token value never travels in the RunTask call.
     for config in spliceai_source_config.download_configs:
-        assert config.secret_env_vars == ((ACCESS_TOKEN_ENV_VAR, ACCESS_TOKEN_ARN_ENV_VAR),)
+        assert config.secret_arn_env_vars == (ACCESS_TOKEN_ARN_ENV_VAR,)
 
 
 def test_spliceai_attaches_auth_headers(spliceai_source_config):

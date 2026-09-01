@@ -68,10 +68,12 @@ object ContractRunner {
             version: String,
             rawStorage: String,
             contracts: Contracts,
-            factories: FactoryLookup = ContractRegistry.factory): List[(Contract, NormalizerETL)] = {
+            factories: FactoryLookup = ContractRegistry.factory,
+            database: Option[String] = None,
+            warehouse: Option[String] = None): List[(Contract, NormalizerETL)] = {
 
     val contractPlan = plan(source, contracts, factories)
-    val args = NormalizerArgs(rc, version, rawStorage, contractPlan.tablePrefix)
+    val args = NormalizerArgs(rc, version, rawStorage, contractPlan.tablePrefix, database, warehouse)
     val jobs = contractPlan.jobs.map { case (c, factory) => c -> factory(args) }
 
     val mismatches = jobs.flatMap {
@@ -88,9 +90,11 @@ object ContractRunner {
           version: String,
           rawStorage: String,
           contracts: Contracts = Contracts.load(),
-          factories: FactoryLookup = ContractRegistry.factory): Unit = {
+          factories: FactoryLookup = ContractRegistry.factory,
+          database: Option[String] = None,
+          warehouse: Option[String] = None): Unit = {
 
-    val jobs = build(source, rc, version, rawStorage, contracts, factories)
+    val jobs = build(source, rc, version, rawStorage, contracts, factories, database, warehouse)
     
     jobs.foreach { case (c, job) =>
       log.info(s"Running contract ${c.lineage} of '$source' into table '${destinationTableOf(job)}' (${job.getClass.getName}) for version '$version'")

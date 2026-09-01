@@ -3,6 +3,7 @@ from airflow.providers.standard.operators.empty import EmptyOperator
 from airflow.sdk import DAG
 
 from opendatalake.dags.import_source import build_import_operator
+from opendatalake.lib import config
 from opendatalake.lib.domain.model.sources import get_import_config
 from opendatalake.lib.operators.emr import DEFAULT_ENTRY_CLASS, EmrServerlessConfig
 
@@ -79,11 +80,26 @@ def test_entry_point_arguments():
 
     version_at = args.index("--version")
     assert args[version_at + 1] is version
-    assert args[:version_at] == ["clinvar", "--config", "config/dev.conf", "--steps", "default"]
-    assert args[version_at + 2 :] == ["--raw-storage", "s3a://opendatalake-dev/raw/landing"]
+    assert args[:version_at] == ["clinvar", "--config", f"config/{config.environment}.conf", "--steps", "default"]
+    assert args[version_at + 2 :] == [
+        "--raw-storage",
+        config.raw_storage_uri(),
+        "--database",
+        config.iceberg_database,
+        "--warehouse",
+        config.iceberg_warehouse,
+    ]
 
     assert spark_submit["entryPoint"] == EmrServerlessConfig.from_env().jar_s3_path
     assert f"--class {DEFAULT_ENTRY_CLASS}" in spark_submit["sparkSubmitParameters"]
+
+
+def test_import_task_uses_shared_import_pool():
+    # All import DAGs share one 1-slot pool so their EMR jobs run one at a time.
+    for source_id in ("clinvar", "dbsnp", "dbnsfp", "1000_genomes"):
+        operator, _ = _build_operator(source_id)
+        assert operator.pool == config.IMPORT_TASKS_POOL
+        assert operator.pool_slots == 1
 
 
 def test_dbsnp_tuning_applied():
@@ -106,7 +122,11 @@ def test_import_config_sourced_from_source_config():
     import_config = get_import_config("dbsnp")
     assert import_config.spark_command == "dbsnp"
     assert import_config.waiter_max_attempts == 960
-    assert import_config.spark_conf == {"spark.dynamicAllocation.maxExecutors": "16"}
+    assert import_config.spark_conf == {
+        "spark.dynamicAllocation.maxExecutors": "16",
+        "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+        "spark.emr-serverless.executor.disk": "60G",
+    }
 
 
 def test_unknown_source_raises():

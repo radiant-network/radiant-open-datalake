@@ -1,6 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from functools import lru_cache
 from typing import Any
 
@@ -13,6 +14,11 @@ from opendatalake.lib import config
 
 DEFAULT_ENTRY_CLASS = "org.radiant.opendatalake.ImportPublicTable"
 SPARK_CONF_CATALOG_NAME = "opendatalake"
+
+
+def job_name_timestamp() -> str:
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+
 
 # These come from EmrServerlessConfig, not the caller. Passing them directly is almost always a
 # mistake, so the operator rejects them.
@@ -76,6 +82,11 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
         Settings come from `EmrServerlessConfig` (read from environment variables) and build the
         Spark/Iceberg config plus the job definition sent to EMR.
 
+    Entry point:
+        Defaults to the ETL fat JAR (`--class`). Pass `entry_point` (an s3:// path to a `.py`) to run
+        a PySpark script instead; the fat JAR is then added as `spark.jars` so the Iceberg/Glue classes
+        are on the classpath, and no `--class` is emitted.
+
     Spark conf overrides:
         `spark_conf` overrides any default Spark setting and wins over the defaults — use carefully.
 
@@ -95,6 +106,7 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
         *,
         entry_point_arguments: list[str],
         entry_class: str = DEFAULT_ENTRY_CLASS,
+        entry_point: str | None = None,
         spark_conf: dict | None = None,
         name: str | None = None,
         emr_config: EmrServerlessConfig | None = None,
@@ -134,7 +146,14 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
         cloudwatch_region = emr_config.cloudwatch_region or emr_config.region
 
         merged_conf = {**_base_spark_conf(emr_config), **(spark_conf or {})}
-        job_driver = _build_job_driver(emr_config.jar_s3_path, entry_class, entry_point_arguments, merged_conf)
+        if entry_point is None:
+            driver_entry_point = emr_config.jar_s3_path
+            driver_entry_class = entry_class
+        else:
+            driver_entry_point = entry_point
+            driver_entry_class = None
+            merged_conf.setdefault("spark.jars", emr_config.jar_s3_path)
+        job_driver = _build_job_driver(driver_entry_point, driver_entry_class, entry_point_arguments, merged_conf)
 
         kwargs["configuration_overrides"] = self._merge_monitoring(
             kwargs.get("configuration_overrides"),
@@ -146,7 +165,7 @@ class EmrServerlessJobOperator(EmrServerlessStartJobOperator):
             application_id=emr_config.application_id,
             execution_role_arn=emr_config.execution_role_arn,
             job_driver=job_driver,
-            name=name or f"opendatalake-{config.environment}-{{{{ ts_nodash }}}}",
+            name=name or f"opendatalake-{config.environment}-{job_name_timestamp()}",
             region_name=emr_config.region,
             **kwargs,
         )
@@ -234,16 +253,17 @@ def _base_spark_conf(cfg: EmrServerlessConfig) -> dict[str, str]:
     }
 
 
-def _build_job_driver(jar_s3_path: str, entry_class: str, args: list[str], conf: dict[str, str]) -> dict:
+def _build_job_driver(entry_point: str, entry_class: str | None, args: list[str], conf: dict[str, str]) -> dict:
     # Add quotes "" to conf values with whitespaces because spark-submit splits its params on whitespace.
-    parts = [f"--class {entry_class}"]
+    # entry_class is None for a PySpark entry point (no --class).
+    parts = [] if entry_class is None else [f"--class {entry_class}"]
     for k, v in conf.items():
         token = f"{k}={v}"
         parts.append(f'--conf "{token}"' if " " in token else f"--conf {token}")
     params = " ".join(parts)
     return {
         "sparkSubmit": {
-            "entryPoint": jar_s3_path,
+            "entryPoint": entry_point,
             "entryPointArguments": args,
             "sparkSubmitParameters": params,
         }

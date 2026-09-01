@@ -41,15 +41,15 @@ def upload_via_local_copy(
     version: str,
     download_index: int,
     label: str,
-    secret_env_vars: tuple[tuple[str, str], ...] = (),
+    secret_arn_env_vars: tuple[str, ...] = (),
 ):
     """
     Creates a PythonScriptOperator to upload files via a local copy.
     Note: We pass only source and download config index (not the DownloadConfig object)
     to avoid serialization issues and prevent exposing sensitive info in the Airflow UI.
-    `secret_env_vars` carries only names (the container env var and the env var holding its Secrets
-    Manager ARN); the operator injects them into the ECS task via `secrets`/`valueFrom`, so the secret
-    itself never travels in the RunTask call.
+    `secret_arn_env_vars` names the worker env vars holding Secrets Manager ARNs; the operator forwards
+    the ARN (not the secret value) to the ECS container, which self-resolves it via its task role, so the
+    secret itself never travels in the RunTask call.
     """
     script_args = {
         "source": source,
@@ -63,7 +63,7 @@ def upload_via_local_copy(
         pool=config.DOWNLOAD_TASKS_POOL,
         task_id=task_id,
         task_display_name=f"[ECS] Local Copy Upload {label}/{download_index}",
-        secret_env_vars=secret_env_vars,
+        secret_arn_env_vars=secret_arn_env_vars,
     )
 
 
@@ -174,7 +174,7 @@ def _make_download_source_dag(source_id: str):
                         version,
                         i,
                         download_conf.label or "",
-                        download_conf.secret_env_vars,
+                        download_conf.secret_arn_env_vars,
                     )
                 tasks.append(task)
             return tasks

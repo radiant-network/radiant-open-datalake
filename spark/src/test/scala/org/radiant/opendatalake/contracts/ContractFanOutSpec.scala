@@ -140,6 +140,44 @@ class ContractFanOutSpec extends SparkSpec with CreateDatabasesBeforeAll {
     }
   }
 
+  it should "thread the injected --database through to every contract's destination" in {
+    val source = "dbscoped"
+    val databaseAware: ContractRunner.FactoryLookup = (_, contract) =>
+      Some { args =>
+        val destination = ContractDestination.forMajor(familyOf(source), args.tablePrefix, contract.major, args.database)
+        FixedRowsNormalizer(args.rc, args.version, destination, rowsOf(contract.major).toDF())
+      }
+
+    val jobs = ContractRunner.build(
+      source,
+      TestETLContext(),
+      version = datasetVersion,
+      rawStorage = "",
+      contracts = twoMajorsOf(source),
+      factories = databaseAware,
+      database = Some("opendatalake_qa")
+    )
+
+    jobs.flatMap(_._2.mainDestination.table.map(_.database)) should contain only "opendatalake_qa"
+    jobs.flatMap(_._2.mainDestination.table.map(_.name)) should contain theSameElementsAs tablesOf(source)
+  }
+
+  it should "thread the injected --warehouse to every contract job through the real registry" in {
+    val contracts = Contracts.load()
+    val warehouse = "s3a://override/iceberg/opendatalake_qa"
+
+    val jobs = ContractRunner.build(
+      "clinvar",
+      TestETLContext(),
+      version = datasetVersion,
+      rawStorage = "",
+      contracts,
+      warehouse = Some(warehouse)
+    )
+
+    jobs.map(_._2).collect { case w: WapETLP => w.warehouse } should contain only Some(warehouse)
+  }
+
   it should "write nothing when one of the declared contracts is unregistered" in {
     val onlyMajorOne: ContractRunner.FactoryLookup = {
       case (source, c) if c.major == 1 => derivingFactories(source)(source, c)

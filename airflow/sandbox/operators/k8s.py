@@ -25,19 +25,21 @@ def _get_k8s_context(extra_env_vars=None):
 class PythonScriptOperator(KubernetesPodOperator):
     template_fields = (*KubernetesPodOperator.template_fields, "script_args", "script_name")
 
-    def __init__(self, script_name, script_args, secret_env_vars=(), **kwargs):
+    def __init__(self, script_name, script_args, secret_arn_env_vars=(), **kwargs):
         assert "cmds" not in kwargs, "Don't pass cmds: generated dynamically."
 
-        # `secret_env_vars` is accepted for parity with the ECS operator, whose callers
-        # (e.g. spliceai) pass it. Each entry is (container env var name, name of the env var
-        # holding its Secrets Manager ARN). The sandbox has no Secrets Manager: the value is set
-        # directly in the worker env under the container env var name (see
-        # sandbox/values/airflow-values.yaml), so we forward it straight into the pod env.
+        # `secret_arn_env_vars` is accepted for parity with the ECS operator, whose callers (e.g.
+        # spliceai) pass it. Each entry names a worker env var holding a Secrets Manager ARN. The ECS
+        # container self-resolves that ARN via its task role, but the sandbox has no Secrets Manager: it
+        # seeds the plaintext token directly under the non-ARN var name (see airflow-values.yaml), which
+        # the container's `from_env` reads first. Strip the `_ARN` suffix to forward that plaintext var;
+        # forward the ARN too when present (harmless).
         extra_env_vars = {}
-        for name, _arn_env_var in secret_env_vars or ():
-            value = os.getenv(name)
-            if value:
-                extra_env_vars[name] = value
+        for arn_env_var in secret_arn_env_vars or ():
+            for var in (arn_env_var.removesuffix("_ARN"), arn_env_var):
+                value = os.getenv(var)
+                if value:
+                    extra_env_vars[var] = value
 
         super().__init__(**_get_k8s_context(extra_env_vars), **kwargs)
         self.script_name = script_name

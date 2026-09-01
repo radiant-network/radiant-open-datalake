@@ -9,8 +9,8 @@ import java.io.ByteArrayInputStream
 import java.time.LocalDateTime
 import scala.xml.{Elem, Node, XML}
 
-case class Orphanet_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_orphanet", tablePrefix, major = 1) {
+case class Orphanet_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_orphanet", tablePrefix, major = 1, database) {
 
   import spark.implicits._
 
