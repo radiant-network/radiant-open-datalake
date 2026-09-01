@@ -6,6 +6,7 @@ from opendatalake.lib.domain.source_configs import (
     DBSNPSourceConfig,
     DDDSourceConfig,
     GnomadCnvSourceConfig,
+    GnomadConstraintSourceConfig,
     GnomadJointSourceConfig,
     GnomadSVSourceConfig,
     HpoSourceConfig,
@@ -102,6 +103,8 @@ class _Source(Enum):
     GNOMAD_CNV = GnomadCnvSourceConfig()
 
     GNOMAD_SV = GnomadSVSourceConfig()
+
+    GNOMAD_CONSTRAINT = GnomadConstraintSourceConfig()
 
     MONDO = MondoSourceConfig(
         short_name="mondo",

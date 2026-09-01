@@ -47,7 +47,8 @@ object ImportPublicTable {
     ContractRunner.run("gnomad_sv", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def gnomad_constraint(rc: RuntimeETLContext): Unit = GnomadConstraint.run(rc)
+  def gnomad_constraint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("gnomad_constraint", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
   def genes(rc: RuntimeETLContext): Unit = Genes.run(rc)
