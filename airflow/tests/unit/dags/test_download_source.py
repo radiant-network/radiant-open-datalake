@@ -51,6 +51,41 @@ def test_fixed_url_source_download_dag_has_no_download_url_param(dag_bag):
     assert "download_url" not in dag.params
 
 
+def test_topmed_bravo_download_dag_has_cookie_param(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-download-topmed_bravo")
+    assert dag is not None
+    assert not dag_bag.import_errors
+    assert isinstance(dag.timetable, NullTimetable)
+    assert "cookie" in dag.params
+
+
+def test_fixed_url_source_download_dag_has_no_cookie_param(dag_bag):
+    dag = dag_bag.get_dag(dag_id="opendatalake-download-clinvar")
+    assert "cookie" not in dag.params
+
+
+def test_direct_upload_sets_cookie_when_required():
+    source = "topmed_bravo"
+    prefix = "raw/topmed_bravo/freeze8"
+    version = "freeze8"
+    download_index = 0
+
+    fake_download_conf = MagicMock()
+    fake_download_conf.cookie_from_param = True
+    fake_downloader = MagicMock()
+    with (
+        patch(
+            "opendatalake.dags.download_source.get_download_config_at_index", return_value=fake_download_conf
+        ),
+        patch("opendatalake.dags.download_source.S3Downloader", return_value=fake_downloader),
+        patch("opendatalake.dags.download_source.set_cookie") as mock_set_cookie,
+    ):
+        direct_upload.function(source, prefix, version, download_index, params={"cookie": "session-cookie"})
+
+        mock_set_cookie.assert_called_once_with("session-cookie")
+        fake_downloader.direct_upload.assert_called_once()
+
+
 def test_manual_secret_backed_source_download_dag(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-download-omim")
     assert dag is not None

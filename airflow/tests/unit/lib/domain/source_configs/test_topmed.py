@@ -1,19 +1,21 @@
-import os
 from unittest.mock import Mock, patch
 
 import pytest
 from airflow.exceptions import AirflowException
 
 from opendatalake.lib.domain.model.config import UpdateMode
-from opendatalake.lib.domain.source_configs.topmed import (
-    COOKIE_ARN_ENV_VAR,
-    COOKIE_ENV_VAR,
-    TopMedBravoConfig,
-    _fetch_cookie_from_secrets_manager,
-)
+from opendatalake.lib.domain.source_configs import topmed
+from opendatalake.lib.domain.source_configs.topmed import set_cookie
 
 CHROMOSOMES = [str(c) for c in range(1, 23)] + ["X"]
 LINK_API_ROOT = "https://api.bravo.sph.umich.edu/ui/link?chrom=chr"
+
+
+@pytest.fixture(autouse=True)
+def _reset_cookie():
+    set_cookie("")
+    yield
+    set_cookie("")
 
 
 def test_topmed_declares_one_config_per_chromosome(topmed_source_config):
@@ -30,6 +32,8 @@ def test_topmed_names_match_the_spark_raw_glob(topmed_source_config):
 
 
 def test_topmed_resolves_the_signed_url_per_chromosome(topmed_source_config):
+    set_cookie("ck")
+
     def fake_http_get(url, headers=None):
         chrom = url.rsplit("chrom=", 1)[-1]
         return Mock(**{"json.return_value": {"url": f"https://signed/{chrom}.vcf.gz"}})
@@ -55,15 +59,15 @@ def test_topmed_streams_every_file_and_declares_no_md5(topmed_source_config):
         assert config.md5_present is False
 
 
-def test_topmed_declares_the_cookie_secret(topmed_source_config):
+def test_topmed_declares_cookie_from_param(topmed_source_config):
     for config in topmed_source_config.download_configs:
-        assert config.secret_env_vars == ((COOKIE_ENV_VAR, COOKIE_ARN_ENV_VAR),)
+        assert config.cookie_from_param is True
 
 
 def test_topmed_attaches_the_cookie_header(topmed_source_config):
-    # The cookie is resolved lazily at download time from the env (conftest seeds it for the test run).
+    set_cookie("ck")
     for config in topmed_source_config.download_configs:
-        assert "Cookie" in config.get_headers()
+        assert config.get_headers() == {"Cookie": "ck"}
 
 
 def test_topmed_is_manually_updated_and_imports_via_the_topmed_command(topmed_source_config):
@@ -71,66 +75,16 @@ def test_topmed_is_manually_updated_and_imports_via_the_topmed_command(topmed_so
     assert topmed_source_config.import_config.spark_command == "topmed_bravo"
 
 
-def test_config_from_env_prefers_the_plaintext_cookie_over_secrets_manager():
-    TopMedBravoConfig.from_env.cache_clear()
-    try:
-        with (
-            patch.dict(os.environ, {COOKIE_ENV_VAR: "plaintext-cookie"}),
-            patch(
-                "opendatalake.lib.domain.source_configs.topmed._fetch_cookie_from_secrets_manager"
-            ) as fetch,
-        ):
-            assert TopMedBravoConfig.from_env().cookie == "plaintext-cookie"
-            fetch.assert_not_called()
-    finally:
-        TopMedBravoConfig.from_env.cache_clear()
+def test_set_cookie_updates_module_state():
+    set_cookie("a-cookie")
+    assert topmed._cookie == "a-cookie"
 
 
-def test_config_from_env_fetches_from_secrets_manager_when_no_plaintext_cookie():
-    TopMedBravoConfig.from_env.cache_clear()
-    try:
-        # clear=True drops conftest's seeded plaintext cookie so the ARN path is exercised.
-        with (
-            patch.dict(os.environ, {COOKIE_ARN_ENV_VAR: "arn:aws:secretsmanager:...:secret:ck"}, clear=True),
-            patch(
-                "opendatalake.lib.domain.source_configs.topmed._fetch_cookie_from_secrets_manager",
-                return_value="sm-cookie",
-            ) as fetch,
-        ):
-            assert TopMedBravoConfig.from_env().cookie == "sm-cookie"
-            fetch.assert_called_once_with("arn:aws:secretsmanager:...:secret:ck")
-    finally:
-        TopMedBravoConfig.from_env.cache_clear()
+def test_auth_headers_uses_the_set_cookie():
+    set_cookie("ck")
+    assert topmed._auth_headers() == {"Cookie": "ck"}
 
 
-def test_fetch_cookie_from_secrets_manager_returns_stripped_secret_string():
-    with patch("opendatalake.lib.domain.source_configs.topmed.SecretsManagerHook") as hook_cls:
-        hook_cls.return_value.get_secret.return_value = "  sm-cookie\n"
-        assert _fetch_cookie_from_secrets_manager("arn:aws:secretsmanager:...:secret:ck") == "sm-cookie"
-        hook_cls.assert_called_once_with(aws_conn_id="aws_default")
-
-
-def test_fetch_cookie_from_secrets_manager_decodes_binary_secret():
-    with patch("opendatalake.lib.domain.source_configs.topmed.SecretsManagerHook") as hook_cls:
-        hook_cls.return_value.get_secret.return_value = b"sm-cookie"
-        assert _fetch_cookie_from_secrets_manager("arn:aws:secretsmanager:...:secret:ck") == "sm-cookie"
-
-
-def test_fetch_cookie_from_secrets_manager_skips_aws_without_an_arn():
-    with patch("opendatalake.lib.domain.source_configs.topmed.SecretsManagerHook") as hook_cls:
-        assert _fetch_cookie_from_secrets_manager("") == ""
-        hook_cls.assert_not_called()
-
-
-def test_config_auth_headers_uses_the_cookie_header():
-    assert TopMedBravoConfig(cookie="ck").auth_headers() == {"Cookie": "ck"}
-
-
-def test_config_missing_cookie_is_detected():
-    assert TopMedBravoConfig(cookie="").missing() is True
-    assert TopMedBravoConfig(cookie="ck").missing() is False
-
-
-def test_config_auth_headers_raises_when_cookie_absent():
-    with pytest.raises(AirflowException, match=COOKIE_ENV_VAR):
-        TopMedBravoConfig(cookie="").auth_headers()
+def test_auth_headers_raises_when_cookie_not_set():
+    with pytest.raises(AirflowException, match="cookie"):
+        topmed._auth_headers()

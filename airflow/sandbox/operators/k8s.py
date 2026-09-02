@@ -26,6 +26,12 @@ class PythonScriptOperator(KubernetesPodOperator):
     def __init__(self, script_name, script_args, **kwargs):
         assert "cmds" not in kwargs, "Don't pass cmds: generated dynamically."
 
+        # ECS-only kwargs (secrets forwarded via Secrets Manager ARN -> ECS task def env). The sandbox
+        # pod gets its secrets from cluster-wide env vars (airflow-values.yaml extraEnv), so drop them
+        # here rather than forwarding to KubernetesPodOperator.
+        for ecs_only in ("secret_env_vars", "secret_arn_env_vars"):
+            kwargs.pop(ecs_only, None)
+
         super().__init__(**_get_k8s_context(), **kwargs)
         self.template_fields = self.template_fields + ("script_args", "script_name")
 

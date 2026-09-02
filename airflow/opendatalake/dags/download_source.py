@@ -16,20 +16,24 @@ from opendatalake.lib.domain.model.sources import (
     get_download_configs,
     get_update_mode,
     is_auto_update,
+    requires_cookie_param,
     requires_download_url,
 )
+from opendatalake.lib.domain.source_configs.topmed import set_cookie
 from opendatalake.lib.operators.ecs import PythonScriptOperator
-from opendatalake.lib.tasks import download_url_param, get_version, version_param
+from opendatalake.lib.tasks import cookie_param, download_url_param, get_version, version_param
 
 
 @task(pool=config.DIRECT_UPLOAD_TASKS_POOL)
-def direct_upload(source: str, prefix: str, version: str, download_index: int):
+def direct_upload(source: str, prefix: str, version: str, download_index: int, params: dict | None = None):
     """
     Runs a direct upload for a given source and download config.
     Note: We pass only source and download config index (not the DownloadConfig object)
     to avoid serialization  issues and prevent exposing sensitive info in the Airflow UI.
     """
     download_conf = get_download_config_at_index(source, download_index)
+    if download_conf.cookie_from_param:
+        set_cookie((params or {}).get("cookie") or "")
     downloader = S3Downloader(s3_prefix=prefix, version=version, download_conf=download_conf)
     downloader.direct_upload()
 
@@ -125,6 +129,9 @@ def _make_download_source_dag(source_id: str):
     params = version_param()
     if requires_download_url(source_id):
         params = {**params, **download_url_param()}
+    # TOPMed BRAVO's session cookie expires fast; it is supplied at trigger time, never persisted.
+    if requires_cookie_param(source_id):
+        params = {**params, **cookie_param()}
 
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-download-{source_id}",

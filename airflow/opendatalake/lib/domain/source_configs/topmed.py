@@ -2,20 +2,17 @@
 
 BRAVO serves the callset as one VCF per chromosome behind a short-lived *signed* link that must be
 resolved, per chromosome, from its link API and downloaded with a session cookie. The cookie expires
-quickly, so — like the SpliceAI access token — it is stored in Secrets Manager (ARN in
-``COOKIE_ARN_ENV_VAR``) and refreshed before a manual run, rather than passed as a DAG param.
+quickly, so it is supplied as the download DAG's ``cookie`` param at trigger time (see
+``download_source.py``) rather than through an env var or Secrets Manager.
 
 The source is ``UpdateMode.MANUAL``: it is never auto-discovered, and the operator supplies the
 ``version`` label when triggering the download/import DAGs (it becomes the raw ``.../topmed_bravo/<version>/``
 partition the Spark job reads).
 """
 
-import os
 from dataclasses import dataclass, field
-from functools import lru_cache
 
 from airflow.exceptions import AirflowException
-from airflow.providers.amazon.aws.hooks.secrets_manager import SecretsManagerHook
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, SourceConfig, UpdateMode
 from opendatalake.lib.utils.http import http_get
@@ -24,59 +21,28 @@ from opendatalake.lib.utils.http import http_get
 _LINK_API_ROOT = "https://api.bravo.sph.umich.edu/ui/link?chrom=chr"
 _COOKIE_HEADER = "Cookie"
 
-_AWS_CONN_ID = "aws_default"
-
-COOKIE_ENV_VAR = "OPENDATALAKE_TOPMED_BRAVO_COOKIE"
-
-COOKIE_ARN_ENV_VAR = "OPENDATALAKE_TOPMED_BRAVO_COOKIE_ARN"
-
 # chr1..chr22 + chrX. BRAVO publishes no Y / MT.
 _CHROMOSOMES: list[str] = [str(c) for c in range(1, 23)] + ["X"]
 
-
-def _fetch_cookie_from_secrets_manager(arn: str) -> str:
-    if not arn:
-        return ""
-    secret = SecretsManagerHook(aws_conn_id=_AWS_CONN_ID).get_secret(arn)
-    if isinstance(secret, bytes):
-        secret = secret.decode("utf-8")
-    return secret.strip()
+_cookie: str | None = None
 
 
-@dataclass(frozen=True)
-class TopMedBravoConfig:
-    cookie: str
-
-    @classmethod
-    @lru_cache(maxsize=1)
-    def from_env(cls) -> "TopMedBravoConfig":
-        cookie = os.getenv(COOKIE_ENV_VAR, "")
-        if not cookie:
-            cookie = _fetch_cookie_from_secrets_manager(os.getenv(COOKIE_ARN_ENV_VAR, ""))
-        return cls(cookie=cookie)
-
-    def missing(self) -> bool:
-        return not self.cookie
-
-    def auth_headers(self) -> dict:
-        if self.missing():
-            raise AirflowException(
-                "TOPMed BRAVO cookie is not configured; set the Secrets Manager ARN "
-                f"{COOKIE_ARN_ENV_VAR} (or the cookie value {COOKIE_ENV_VAR})."
-            )
-        return {_COOKIE_HEADER: self.cookie}
+def set_cookie(cookie: str) -> None:
+    global _cookie
+    _cookie = cookie
 
 
 def _auth_headers() -> dict:
-    return TopMedBravoConfig.from_env().auth_headers()
+    if not _cookie:
+        raise AirflowException(
+            "TOPMed BRAVO cookie is not set; trigger the download DAG with the 'cookie' param."
+        )
+    return {_COOKIE_HEADER: _cookie}
 
 
 def _resolve_download_url(chromosome: str) -> str:
     """Resolve the (short-lived) signed VCF URL for a chromosome from the BRAVO link API."""
     return http_get(f"{_LINK_API_ROOT}{chromosome}", _auth_headers()).json()["url"]
-
-
-_SECRET_ENV_VARS = ((COOKIE_ENV_VAR, COOKIE_ARN_ENV_VAR),)
 
 
 def _build_download_configs() -> list[DownloadConfig]:
@@ -90,7 +56,7 @@ def _build_download_configs() -> list[DownloadConfig]:
             use_stream_upload=True,
             md5_present=False,
             label=f"chr{chromosome}",
-            secret_env_vars=_SECRET_ENV_VARS,
+            cookie_from_param=True,
         )
         for chromosome in _CHROMOSOMES
     ]

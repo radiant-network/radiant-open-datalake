@@ -257,6 +257,14 @@ def get_download_configs(source: str) -> list[DownloadConfig]:
     return _get_source(source).value.download_configs
 
 
+def requires_download_url(source: str) -> bool:
+    return any(c.url_from_param for c in get_download_configs(source))
+
+
+def requires_cookie_param(source: str) -> bool:
+    return any(c.cookie_from_param for c in get_download_configs(source))
+
+
 def get_download_config_at_index(source: str, index: int) -> DownloadConfig:
     download_configs = get_download_configs(source)
     if not 0 <= index < len(download_configs):

@@ -38,6 +38,7 @@ class DownloadConfig:
     label: str | None = None  # Optional, use for display purposes in airflow UI
     secret_arn_env_vars: tuple[str, ...] = ()
     secret_env_vars: tuple[str, ...] = ()
+    cookie_from_param: bool = False  # headers are resolved from the DAG's `cookie` param, not env/secrets
 
     def __post_init__(self):
         if not self.url_from_param and not self.download_url:
