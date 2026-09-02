@@ -1,39 +1,46 @@
 package org.radiant.opendatalake.normalized.orphanet
 
 import bio.ferlab.datalake.commons.config.{Coalesce, DatasetConf, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
+import org.radiant.opendatalake.contracts.ContractETLP
+import org.radiant.opendatalake.normalized.io.RawInput
 
+import java.io.ByteArrayInputStream
 import java.time.LocalDateTime
 import scala.xml.{Elem, Node, XML}
 
-case class OrphanetGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc) {
-  override val mainDestination: DatasetConf = conf.getDataset("normalized_orphanet_gene_set")
-  val orphanet_gene_association: DatasetConf = conf.getDataset("raw_orphanet_gene_association")
-  val orphanet_disease_history: DatasetConf = conf.getDataset("raw_orphanet_disease_history")
+case class Orphanet_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_orphanet", tablePrefix, major = 1, database) {
 
-  override def extract(lastRunValue: LocalDateTime,
-                       currentRunValue: LocalDateTime): Map[String, DataFrame] = {
-    import spark.implicits._
+  import spark.implicits._
 
-    def loadXML: String => Elem = str =>
-      XML.loadString(spark.read.text(str).collect().map(_.getString(0)).mkString("\n"))
+  private val orphanet_gene_association: DatasetConf = conf.getDataset("raw_orphanet_gene_association")
+  private val orphanet_disease_history: DatasetConf = conf.getDataset("raw_orphanet_disease_history")
 
-    Map(
-      orphanet_gene_association.id -> parseProduct6XML(
-        loadXML(orphanet_gene_association.location)
-      ).toDF,
-      orphanet_disease_history.id -> parseProduct9XML(
-        loadXML(orphanet_disease_history.location)
-      ).toDF
+  private def loadXML(datasetId: String): Elem = {
+    val files: Array[Array[Byte]] = RawInput.readVersioned(datasetId, version, rawStorage)
+      .select("content")
+      .as[Array[Byte]]
+      .collect()
+
+    require(
+      files.length == 1,
+      s"Expected exactly one XML file for $datasetId at version '$version', found ${files.length}"
     )
 
+    XML.load(new ByteArrayInputStream(files.head))
   }
 
+  override def extract(lastRunValue: LocalDateTime = minValue,
+                       currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] =
+    Map(
+      orphanet_gene_association.id -> parseProduct6XML(loadXML(orphanet_gene_association.id)).toDF,
+      orphanet_disease_history.id -> parseProduct9XML(loadXML(orphanet_disease_history.id)).toDF
+    )
+
   override def transformSingle(data: Map[String, DataFrame],
-                               lastRunValue: LocalDateTime,
-                               currentRunValue: LocalDateTime): DataFrame = {
+                               lastRunValue: LocalDateTime = minValue,
+                               currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame =
     data(orphanet_gene_association.id)
       .join(
         data(orphanet_disease_history.id).select(
@@ -45,7 +52,6 @@ case class OrphanetGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc) {
         Seq("orpha_code"),
         "left"
       )
-  }
 
   private def getIdFromSourceName: (Node, String) => Option[String] =
     (genes, name) =>
@@ -147,13 +153,4 @@ case class OrphanetGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc) {
   }
 
   override val defaultRepartition: DataFrame => DataFrame = Coalesce()
-}
-
-object OrphanetGeneSet {
-  @main
-  def run(rc: RuntimeETLContext): Unit = {
-    OrphanetGeneSet(rc).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }

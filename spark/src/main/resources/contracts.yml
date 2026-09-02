@@ -24,11 +24,26 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/dbsnp/v1.md"
+  dbnsfp:
+    table_prefix: "dbnsfp"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/dbnsfp/v1.md"
+  ddd:
+    table_prefix: "ddd"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/ddd/v1.md"
   gnomad_cnv:
     table_prefix: "gnomad_cnv"
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/gnomad_cnv/v1.md"
+  gnomad_constraint:
+    table_prefix: "gnomad_constraint"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/gnomad_constraint/v1.md"
   gnomad_joint:
     table_prefix: "gnomad_joint"
     contracts:
@@ -54,6 +69,16 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/mondo/v1.md"
+  omim:
+    table_prefix: "omim"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/omim/v1.md"
+  orphanet:
+    table_prefix: "orphanet"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/orphanet/v1.md"
   spliceai:
     table_prefix: "spliceai"
     contracts:

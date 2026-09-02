@@ -7,8 +7,8 @@ import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class HpoGenes_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_hpo_genes", tablePrefix, major = 1) {
+case class HpoGenes_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_hpo_genes", tablePrefix, major = 1, database) {
 
   private val raw_hpo_genes: DatasetConf = conf.getDataset("raw_hpo_genes")
 

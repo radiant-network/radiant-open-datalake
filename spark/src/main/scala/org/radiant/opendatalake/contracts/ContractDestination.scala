@@ -8,7 +8,7 @@ object ContractDestination {
 
   def tableName(tablePrefix: String, major: Int): String = tablePrefix + suffix(major)
 
-  def forMajor(sourceDataset: DatasetConf, tablePrefix: String, major: Int): DatasetConf = {
+  def forMajor(sourceDataset: DatasetConf, tablePrefix: String, major: Int, database: Option[String] = None): DatasetConf = {
     val name = tableName(tablePrefix, major)
 
     val anchor: TableConf = sourceDataset.table.getOrElse(
@@ -18,7 +18,7 @@ object ContractDestination {
     sourceDataset.copy(
       id = sourceDataset.id + suffix(major),
       path = sourceDataset.path.take(sourceDataset.path.lastIndexOf('/') + 1) + name,
-      table = Some(anchor.copy(name = name))
+      table = Some(anchor.copy(name = name, database = database.getOrElse(anchor.database)))
     )
   }
 }

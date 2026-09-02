@@ -3,6 +3,7 @@ CHROMOSOMES = [str(c) for c in range(1, 23)] + ["X", "Y"]
 CNV_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/exome_cnv"
 JOINT_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/vcf/joint"
 SV_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/genome_sv"
+CONSTRAINT_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/2.1.1/constraint"
 
 
 def test_gnomad_joint_pins_its_version(gnomad_joint_source_config):
@@ -80,3 +81,24 @@ def test_gnomad_sv_streams_the_vcf_but_not_the_index(gnomad_sv_source_config):
 def test_gnomad_sv_declares_no_md5(gnomad_sv_source_config):
     # gnomAD publishes no .md5 next to the SV files.
     assert all(c.md5_present is False for c in gnomad_sv_source_config.download_configs)
+
+
+def test_gnomad_constraint_pins_its_version(gnomad_constraint_source_config):
+    # Pinned to v2.1.1's flat schema; v4.1.1 is gnomAD's current recommendation but needs a schema
+    # migration first (see the comment on GnomadConstraintSourceConfig).
+    assert gnomad_constraint_source_config.get_latest_version() == "2.1.1"
+
+
+def test_gnomad_constraint_declares_a_single_renamed_tsv(gnomad_constraint_source_config):
+    config = gnomad_constraint_source_config.download_configs
+    assert [c.label for c in config] == ["tsv"]
+
+    # Literal, checked against the gnomAD bucket listing.
+    assert config[0].get_url("2.1.1") == f"{CONSTRAINT_RELEASE_ROOT}/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz"
+
+    # bgzip is valid gzip, but Spark's CSV reader only auto-decompresses on a registered .gz suffix.
+    assert config[0].name == "gnomad.v2.1.1.lof_metrics.by_gene.txt.gz"
+
+    # The file is small enough for the ECS local copy. No .md5 exists next to it in the bucket.
+    assert config[0].use_stream_upload is False
+    assert config[0].md5_present is False

@@ -1,31 +1,28 @@
 package org.radiant.opendatalake.normalized
 
-
 import bio.ferlab.datalake.commons.config.{Coalesce, DatasetConf, RuntimeETLContext}
-import bio.ferlab.datalake.spark3.etl.v4.SimpleETLP
-import bio.ferlab.datalake.spark3.implicits.DatasetConfImplicits._
-import mainargs.{ParserForMethods, main}
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
+import org.radiant.opendatalake.contracts.ContractETLP
+import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class DDDGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc) {
-  private val ddd_gene_set = conf.getDataset("raw_ddd_gene_set")
-  override val mainDestination: DatasetConf = conf.getDataset("normalized_ddd_gene_set")
+case class DDD_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_ddd", tablePrefix, major = 1, database) {
+
+  import spark.implicits._
+
+  private val raw_ddd_gene_set: DatasetConf = conf.getDataset("raw_ddd_gene_set")
 
   override def extract(lastRunValue: LocalDateTime = minValue,
-                       currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] = {
-    Map(
-      ddd_gene_set.id -> ddd_gene_set.read
-    )
-  }
+                       currentRunValue: LocalDateTime = LocalDateTime.now()): Map[String, DataFrame] =
+    Map(raw_ddd_gene_set.id -> RawInput.readVersioned(raw_ddd_gene_set.id, version, rawStorage))
 
   override def transformSingle(data: Map[String, DataFrame],
                                lastRunValue: LocalDateTime = minValue,
-                               currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
-    import spark.implicits._
-    data(ddd_gene_set.id)
+                               currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame =
+    data(raw_ddd_gene_set.id)
       .select(
         $"gene symbol" as "symbol",
         $"gene mim" as "omim_gene_id",
@@ -38,16 +35,6 @@ case class DDDGeneSet(rc: RuntimeETLContext) extends SimpleETLP(rc) {
         $"panel",
         $"hgnc id" as "hgnc_id"
       )
-  }
 
   override val defaultRepartition: DataFrame => DataFrame = Coalesce()
-}
-
-object DDDGeneSet {
-  @main
-  def run(rc: RuntimeETLContext): Unit = {
-    DDDGeneSet(rc).run()
-  }
-
-  def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args)
 }

@@ -6,13 +6,18 @@ For simple S3 utility functions (e.g., basic upload, download, or helpers),
 prefer using `utils/s3.py`.
 """
 
+import fnmatch
 import logging
 
-import requests
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 
+from opendatalake.lib.utils.http import get_session
 from opendatalake.lib.utils.humanize import bytes_to_human_readable as human_readable
 from opendatalake.lib.utils.s3 import MultipartUpload
+
+# (connect, read) timeout in seconds. Read timeout is per-read (time between bytes), so it is
+# safe for large streamed downloads while still catching a stalled connection.
+_DEFAULT_TIMEOUT = (10, 60)
 
 
 def multipart_upload_with_resume(
@@ -45,8 +50,9 @@ def multipart_upload_with_resume(
             if multipart_upload.uploaded_bytes > 0:
                 headers["Range"] = f"bytes={multipart_upload.uploaded_bytes}-"
 
-            # Upload remaining bytes in chunks (parts)
-            with requests.get(url, stream=True, headers=headers) as r:
+            # Upload remaining bytes in chunks (parts). Shared session applies the MSS clamp
+            # so this large streamed download survives a PMTU-black-holed egress path.
+            with get_session().get(url, stream=True, headers=headers, timeout=_DEFAULT_TIMEOUT) as r:
                 # If resuming, ensure we get a partial content response (206)
                 if len(multipart_upload.uploaded_parts) > 0 and r.status_code != 206:
                     logging.info("File cannot be resumed, starting from the beginning")
@@ -67,6 +73,75 @@ def multipart_upload_with_resume(
     except Exception as e:
         logging.error(f"Error during multipart upload: {e}")
         raise e
+
+
+def stream_unzip_to_s3(
+    s3: S3Hook,
+    s3_bucket: str,
+    s3_prefix: str,
+    url: str,
+    headers: dict | None = None,
+    member_pattern: str | None = None,
+    part_size_mb: int = 200,
+    read_chunk_mb: int = 8,
+) -> list[str]:
+
+    url = (url or "").strip()
+    if not url.lower().startswith(("http://", "https://")):
+        raise ValueError(f"stream_unzip_to_s3 requires an http(s) URL; got: {url[:80]!r}")
+
+    # Lazy import because we don't want MWAA to import this module
+    from stream_unzip import stream_unzip
+
+    headers = headers or {}
+    part_size = round(part_size_mb * 1024 * 1024)
+    read_chunk = round(read_chunk_mb * 1024 * 1024)
+    s3_client = s3.get_conn()
+    uploaded: list[str] = []
+
+    with get_session().get(url, stream=True, headers=headers, timeout=_DEFAULT_TIMEOUT) as r:
+        r.raise_for_status()
+        logging.info(f"Start stream-unzip of '{url}' into s3://{s3_bucket}/{s3_prefix}/")
+        for member_name, _uncompressed_size, member_chunks in stream_unzip(r.iter_content(chunk_size=read_chunk)):
+            base = _member_basename(member_name)
+            if not base or (member_pattern and not fnmatch.fnmatch(base, member_pattern)):
+                _drain(member_chunks)
+                continue
+            s3_key = f"{s3_prefix}/{base}"
+            _multipart_upload_chunks(s3_client, s3_bucket, s3_key, member_chunks, part_size)
+            uploaded.append(base)
+            logging.info(f"Uploaded zip member '{base}' to s3://{s3_bucket}/{s3_key}")
+
+    if not uploaded:
+        raise ValueError(f"No zip members matched pattern {member_pattern!r} in {url}")
+    logging.info(f"Stream-unzip of '{url}' complete: {len(uploaded)} member(s) uploaded")
+    return uploaded
+
+
+def _member_basename(member_name) -> str:
+    name = member_name.decode("utf-8", errors="replace") if isinstance(member_name, bytes) else member_name
+    return name.replace("\\", "/").rstrip("/").rsplit("/", 1)[-1]
+
+
+def _drain(chunks) -> None:
+    # `stream_unzip` requires a member's bytes to be fully consumed before the next member is read.
+    for _ in chunks:
+        pass
+
+
+def _multipart_upload_chunks(s3_client, s3_bucket: str, s3_key: str, chunks, part_size: int) -> None:
+    """Multipart-upload an iterator of byte chunks to S3, batching into ``part_size`` parts."""
+    with MultipartUpload(s3_client, s3_bucket, s3_key) as mp:
+        mp.reset()  # zip members are streamed fresh; no mid-archive resume
+        buffer = bytearray()
+        for chunk in chunks:
+            buffer.extend(chunk)
+            while len(buffer) >= part_size:
+                mp.upload_part(bytes(buffer[:part_size]))
+                del buffer[:part_size]
+        # Flush the tail; guarantee at least one part so an empty member still completes.
+        if buffer or not mp.uploaded_parts:
+            mp.upload_part(bytes(buffer))
 
 
 def _log_progress(uploaded_bytes: int, file_size: int) -> None:

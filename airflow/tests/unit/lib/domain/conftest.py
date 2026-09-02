@@ -4,11 +4,14 @@ from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
+    DDDSourceConfig,
     GnomadCnvSourceConfig,
+    GnomadConstraintSourceConfig,
     GnomadJointSourceConfig,
     GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
+    OmimSourceConfig,
     SpliceAiSourceConfig,
     TopMedBravoSourceConfig,
 )
@@ -31,8 +34,18 @@ def gnomad_sv_source_config() -> GnomadSVSourceConfig:
 
 
 @pytest.fixture
+def gnomad_constraint_source_config() -> GnomadConstraintSourceConfig:
+    return GnomadConstraintSourceConfig()
+
+
+@pytest.fixture
 def spliceai_source_config() -> SpliceAiSourceConfig:
     return SpliceAiSourceConfig()
+
+
+@pytest.fixture
+def omim_source_config() -> OmimSourceConfig:
+    return OmimSourceConfig()
 
 
 @pytest.fixture
@@ -75,6 +88,45 @@ def dbsnp_source_conf() -> DBSNPSourceConfig:
         ],
         update_mode=UpdateMode.AUTO,
     )
+
+
+@pytest.fixture
+def ddd_source_config() -> DDDSourceConfig:
+    base_url = "https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads"
+    return DDDSourceConfig(
+        short_name="ddd",
+        display_name="Gene2Phenotype",
+        website="https://www.ebi.ac.uk/gene2phenotype/",
+        listing_url=f"{base_url}/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: f"{base_url}/{version}/DDG2P_{version.replace('_', '-')}.csv.gz",
+                name="DDG2P.csv.gz",
+                md5_present=True,
+                label="test",
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+
+
+@pytest.fixture
+def ddd_listing_html() -> str:
+    return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+ <head><title>Index of /pub/databases/gene2phenotype/G2P_data_downloads</title></head>
+ <body>
+  <table>
+   <tr><td><a href="/pub/databases/gene2phenotype/">Parent Directory</a></td></tr>
+   <tr><td><a href="2026_05_28/">2026_05_28/</a></td></tr>
+   <tr><td><a href="2026_06_28/">2026_06_28/</a></td></tr>
+   <tr><td><a href="2026_07_28/">2026_07_28/</a></td></tr>
+   <tr><td><a href="Data_download_format_202508-202510.txt">Data_download_format_202508-202510.txt</a></td></tr>
+   <tr><td><a href="G2PTermChanges202501.txt">G2PTermChanges202501.txt</a></td></tr>
+  </table>
+ </body>
+</html>
+"""
 
 
 @pytest.fixture

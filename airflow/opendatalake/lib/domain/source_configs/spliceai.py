@@ -78,7 +78,7 @@ def _auth_headers() -> dict:
     return SpliceAiConfig.from_env().auth_headers()
 
 
-_SECRET_ENV_VARS = ((ACCESS_TOKEN_ENV_VAR, ACCESS_TOKEN_ARN_ENV_VAR),)
+_SECRET_ARN_ENV_VARS = (ACCESS_TOKEN_ARN_ENV_VAR,)
 
 
 def _build_download_configs() -> list[DownloadConfig]:
@@ -93,7 +93,7 @@ def _build_download_configs() -> list[DownloadConfig]:
                 use_stream_upload=True,
                 md5_present=False,
                 label=f"{variant_type}_vcf",
-                secret_env_vars=_SECRET_ENV_VARS,
+                secret_arn_env_vars=_SECRET_ARN_ENV_VARS,
             )
         )
         configs.append(
@@ -103,7 +103,7 @@ def _build_download_configs() -> list[DownloadConfig]:
                 headers=_auth_headers,
                 md5_present=False,
                 label=f"{variant_type}_tbi",
-                secret_env_vars=_SECRET_ENV_VARS,
+                secret_arn_env_vars=_SECRET_ARN_ENV_VARS,
             )
         )
     return configs
@@ -120,7 +120,21 @@ class SpliceAiSourceConfig(SourceConfig):
         init=False,
         default=ImportConfig(
             spark_command="spliceai",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.enabled": "false",
+                "spark.executor.instances": "12",
+                "spark.executor.cores": "4",
+                "spark.executor.memory": "20g",
+                "spark.executor.memoryOverhead": "8g",  # exit 137 was off-heap overshoot, not heap
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "100G",
+                "spark.network.timeout": "600s",
+                "spark.executor.heartbeatInterval": "30s",
+                "spark.shuffle.io.maxRetries": "10",
+                "spark.shuffle.io.retryWait": "15s",
+                "spark.sql.adaptive.enabled": "true",
+                "spark.sql.adaptive.coalescePartitions.enabled": "true",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )

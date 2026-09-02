@@ -10,10 +10,103 @@ from opendatalake.lib.domain.model.sources import (
     get_display_name,
     get_download_config_at_index,
     get_download_configs,
+    get_import_config,
     get_latest_version,
     get_update_mode,
     is_auto_update,
+    requires_download_url,
 )
+
+
+def test_dbnsfp_is_manual_url_source():
+    assert get_update_mode("dbnsfp") == "manual"
+    assert is_auto_update("dbnsfp") is False
+    assert requires_download_url("dbnsfp") is True
+    # fixed-URL sources do not take a runtime URL
+    assert requires_download_url("clinvar") is False
+
+
+def test_dbnsfp_download_config_stream_unzips_variant_members():
+    (conf,) = get_download_configs("dbnsfp")
+    assert conf.url_from_param is True
+    assert conf.use_stream_unzip is True
+    assert conf.download_url is None
+    assert conf.member_pattern == "*_variant.chr*.gz"
+
+
+def test_dbnsfp_import_config():
+    import_config = get_import_config("dbnsfp")
+    assert import_config.spark_command == "dbnsfp"
+    assert import_config.waiter_max_attempts == 960
+    assert import_config.spark_conf == {
+        "spark.dynamicAllocation.maxExecutors": "16",
+        "spark.dynamicAllocation.initialExecutors": "5",
+        "spark.executor.cores": "4",
+        "spark.executor.memory": "16g",
+        "spark.executor.memoryOverhead": "2g",
+        "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+        "spark.emr-serverless.executor.disk": "100G",
+        "spark.sql.adaptive.enabled": "true",
+        "spark.sql.adaptive.coalescePartitions.enabled": "true",
+    }
+
+
+def test_orphanet_is_auto_source():
+    assert get_update_mode("orphanet") == "auto"
+    assert is_auto_update("orphanet") is True
+    assert requires_download_url("orphanet") is False
+    assert "orphanet" in get_auto_update_source_ids()
+
+
+def test_orphanet_download_configs_are_two_fixed_url_xml_files():
+    configs = get_download_configs("orphanet")
+    assert [c.name for c in configs] == ["en_product6.xml", "en_product9_ages.xml"]
+    assert all(c.url_from_param is False for c in configs)
+    assert configs[0].get_url("") == "https://www.orphadata.com/data/xml/en_product6.xml"
+    assert configs[1].get_url("") == "https://www.orphadata.com/data/xml/en_product9_ages.xml"
+
+
+def test_orphanet_import_config():
+    assert get_import_config("orphanet").spark_command == "orphanet"
+
+
+def test_ddd_is_auto_source():
+    assert get_update_mode("ddd") == "auto"
+    assert is_auto_update("ddd") is True
+    assert requires_download_url("ddd") is False
+    assert "ddd" in get_auto_update_source_ids()
+
+
+def test_ddd_download_config():
+    (conf,) = get_download_configs("ddd")
+    assert conf.md5_present is True
+    assert conf.name == "DDG2P.csv.gz"
+    assert conf.get_url("2026_07_28") == (
+        "https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/2026_07_28/DDG2P_2026-07-28.csv.gz"
+    )
+
+
+def test_ddd_import_config():
+    assert get_import_config("ddd").spark_command == "ddd"
+
+
+def test_omim_is_manual_source():
+    assert get_update_mode("omim") == "manual"
+    assert is_auto_update("omim") is False
+    assert requires_download_url("omim") is False
+
+
+def test_omim_download_config_declares_the_key_secret():
+    (conf,) = get_download_configs("omim")
+    assert conf.name == "genemap2.txt"
+    # the plaintext key env var is the secret to redact; the ARN env var only names its Secrets Manager
+    # ARN (not itself secret) and is forwarded to ECS so the container can self-resolve it
+    assert conf.secret_env_vars == ("OPENDATALAKE_OMIM_DOWNLOAD_KEY",)
+    assert conf.secret_arn_env_vars == ("OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN",)
+
+
+def test_omim_import_config():
+    assert get_import_config("omim").spark_command == "omim"
 
 
 def test_get_download_configs_with_string_lowercase():

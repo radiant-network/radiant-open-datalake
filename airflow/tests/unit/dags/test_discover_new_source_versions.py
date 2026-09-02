@@ -9,8 +9,10 @@ def test_dag_has_expected_tasks(dag_bag):
     expected_tasks = {
         "clinvar_check_for_update",
         "dbsnp_check_for_update",
+        "ddd_check_for_update",
         "mondo_check_for_update",
         "hpo_terms_check_for_update",
         "hpo_genes_check_for_update",
+        "orphanet_check_for_update",
     }
     assert set(dag.task_ids) == expected_tasks

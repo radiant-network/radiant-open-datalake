@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from airflow.models import DagBag
 
+from opendatalake.lib.domain.source_configs.omim import DOWNLOAD_KEY_ENV_VAR as _OMIM_KEY_ENV_VAR
 from opendatalake.lib.domain.source_configs.spliceai import ACCESS_TOKEN_ENV_VAR as _SPLICEAI_TOKEN_ENV_VAR
 from opendatalake.lib.domain.source_configs.topmed import COOKIE_ENV_VAR as _TOPMED_COOKIE_ENV_VAR
 from opendatalake.lib.operators.ecs import _REQUIRED_ENV_VARS as _ECS_REQUIRED_ENV_VARS
@@ -14,6 +15,7 @@ for _env_var in (
     *_ECS_REQUIRED_ENV_VARS.values(),
     *_EMR_REQUIRED_ENV_VARS.values(),
     _SPLICEAI_TOKEN_ENV_VAR,
+    _OMIM_KEY_ENV_VAR,
     _TOPMED_COOKIE_ENV_VAR,
 ):
     os.environ.setdefault(_env_var, f"test-{_env_var.lower()}")

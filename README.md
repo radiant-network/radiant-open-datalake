@@ -24,6 +24,8 @@ New versions are discovered and imported automatically.
 | [Mondo Disease Ontology](https://mondo.monarchinitiative.org/) | `mondo_v1` | [v1](spark/doc/release-notes/mondo/v1.md) |
 | [Human Phenotype Ontology (Terms)](https://hpo.jax.org/) | `hpo_terms_v1` | [v1](spark/doc/release-notes/hpo_terms/v1.md) |
 | [Human Phenotype Ontology (Genes)](https://hpo.jax.org/) | `hpo_genes_v1` | [v1](spark/doc/release-notes/hpo_genes/v1.md) |
+| [Gene2Phenotype (DDD)](https://www.ebi.ac.uk/gene2phenotype/) | `ddd_v1` | [v1](spark/doc/release-notes/ddd/v1.md) |
+| [Orphanet](https://www.orphadata.com/) | `orphanet_v1` | [v1](spark/doc/release-notes/orphanet/v1.md) |
 
 ### Manual
 
@@ -36,6 +38,63 @@ Imported on demand.
 | [gnomAD Exome CNV](https://gnomad.broadinstitute.org/) | `gnomad_cnv_v1` | [v1](spark/doc/release-notes/gnomad_cnv/v1.md) |
 | [gnomAD Structural Variants](https://gnomad.broadinstitute.org/data#v4-structural-variants) | `gnomad_sv_v1` | [v1](spark/doc/release-notes/gnomad_sv/v1.md) |
 | [SpliceAI](https://github.com/Illumina/SpliceAI) | `spliceai_v1` | [v1](spark/doc/release-notes/spliceai/v1.md) |
+| [dbNSFP](https://www.dbnsfp.org/) | `dbnsfp_v1` | [v1](spark/doc/release-notes/dbnsfp/v1.md) |
+| [OMIM](https://www.omim.org/) | `omim_v1` | [v1](spark/doc/release-notes/omim/v1.md) |
+
+#### Downloading dbNSFP
+
+Unlike the other sources, dbNSFP has no stable, predictable download URL: each release is distributed
+through the official site behind an access/registration process, and the link is not derivable from a
+version. So the exact archive URL is supplied **by hand** at trigger time.
+
+To ingest a dbNSFP release:
+
+1. **Get the download URL** from the official site ([dbnsfp.org](https://www.dbnsfp.org/)): complete
+   their registration/access process and copy the download link they give you. The link may or may
+   not end in `.zip` (it can be a signed or redirect link) — that's fine, as long as it resolves to
+   the release's zip archive. Paste it **exactly as provided**, don't rewrite it.
+2. **Trigger the _Download dbNSFP_ DAG** with two params:
+   - `version` — the release, e.g. `4.9a` (names the landing folder `raw/landing/dbnsfp/<version>/`
+     and the published branch of `dbnsfp_v1`).
+   - `download_url` — the link from step 1, pasted verbatim (paste only the URL).
+3. The download **stream-unzips** the archive directly to the landing zone (no local disk; it keeps
+   only the per-chromosome `*_variant.chr*.gz` members). When it finishes, the **Import dbNSFP** DAG
+   builds `dbnsfp_v1` automatically.
+
+> A failed download restarts from the beginning — a zip stream cannot be resumed mid-archive.
+
+See [airflow/README.md](airflow/README.md#manual-url-based-sources-dbnsfp) for the param mechanics and
+[the release notes](spark/doc/release-notes/dbnsfp/v1.md) for the published schema.
+
+Example for version `4.3` with link extracted from: https://sites.google.com/site/jpopgen/dbNSFP:
+
+![dbnsfp_configuration](./doc/images/dbnsfp_configuration.png)
+
+#### Downloading OMIM
+
+OMIM has no public listing and gates downloads behind a per-account **download key** — a rotating secret
+that is part of the download URL (`https://data.omim.org/downloads/<key>/genemap2.txt`). The key is never
+handled by Airflow, and follows the same **deploy-time secret** pattern as SpliceAI: it is configured
+once via environment variables (`OPENDATALAKE_OMIM_DOWNLOAD_KEY` / `OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN`),
+not entered at trigger time.
+
+- **Production (ECS):** set `OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN` (at deploy time, e.g. Terraform) to the
+  AWS Secrets Manager ARN holding the key. The ECS operator injects the key into the download task **at
+  launch** (`secrets`/`valueFrom`); the ARN is not sensitive and the key never appears in task args,
+  rendered templates, or logs.
+- **Local (K8s sandbox):** there is no Secrets Manager — set the key value directly in the worker env var
+  `OPENDATALAKE_OMIM_DOWNLOAD_KEY` (see `airflow/sandbox/values/airflow-values.yaml`).
+
+The key is long-lived but expires; renew it from [omim.org/api](https://omim.org/api/) and update the
+secret (or env var) in place when OMIM rotates it.
+
+To ingest an OMIM release, **trigger the _Download OMIM_ DAG** with a single param:
+
+- `version` — the release label, e.g. `2026_08_13` (names the landing folder `raw/landing/omim/<version>/`
+  and the published branch of `omim_v1`). OMIM exposes no version, so you choose the label.
+
+The download fetches `genemap2.txt` into the landing zone; the URL is built inside the task from the
+injected key. When it finishes, the **Import OMIM** DAG builds `omim_v1` automatically.
 
 ## Architecture diagram
 

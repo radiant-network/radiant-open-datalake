@@ -4,11 +4,15 @@ from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, S
 from opendatalake.lib.domain.source_configs import (
     ClinvarSourceConfig,
     DBSNPSourceConfig,
+    DDDSourceConfig,
     GnomadCnvSourceConfig,
+    GnomadConstraintSourceConfig,
     GnomadJointSourceConfig,
     GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
+    OmimSourceConfig,
+    OrphanetSourceConfig,
     SpliceAiSourceConfig,
     TopMedBravoSourceConfig,
 )
@@ -17,6 +21,11 @@ _VCF_LABEL = "vcf"
 _TBI_LABEL = "tbi"
 _OBO_LABEL = "obo"
 _TSV_LABEL = "tsv"
+_CSV_LABEL = "csv"
+_XML_LABEL = "xml"
+_VARIANT_LABEL = "variant"
+
+_DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -81,7 +90,11 @@ class _Source(Enum):
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(
             spark_command="dbsnp",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "16",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "60G",
+            },
             waiter_max_attempts=960,  # ~16h
         ),
     )
@@ -91,6 +104,8 @@ class _Source(Enum):
     GNOMAD_CNV = GnomadCnvSourceConfig()
 
     GNOMAD_SV = GnomadSVSourceConfig()
+
+    GNOMAD_CONSTRAINT = GnomadConstraintSourceConfig()
 
     MONDO = MondoSourceConfig(
         short_name="mondo",
@@ -144,9 +159,81 @@ class _Source(Enum):
         import_config=ImportConfig(spark_command="hpo_genes"),
     )
 
+    DDD = DDDSourceConfig(
+        short_name="ddd",
+        display_name="Gene2Phenotype",
+        website="https://www.ebi.ac.uk/gene2phenotype/",
+        listing_url="https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://ftp.ebi.ac.uk/pub/databases/gene2phenotype/G2P_data_downloads/"
+                    f"{version}/DDG2P_{version.replace('_', '-')}.csv.gz"
+                ),
+                name="DDG2P.csv.gz",
+                md5_present=True,
+                label=_CSV_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="ddd"),
+    )
+
     SPLICEAI = SpliceAiSourceConfig()
 
     TOPMED_BRAVO = TopMedBravoSourceConfig()
+
+    DBNSFP = SourceConfig(
+        short_name="dbnsfp",
+        display_name="dbNSFP",
+        website="https://www.dbnsfp.org/",
+        download_configs=[
+            DownloadConfig(
+                url_from_param=True,
+                use_stream_unzip=True,
+                member_pattern=_DBNSFP_MEMBER_PATTERN,
+                label=_VARIANT_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.MANUAL,
+        import_config=ImportConfig(
+            spark_command="dbnsfp",
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "16",
+                "spark.dynamicAllocation.initialExecutors": "5",
+                "spark.executor.cores": "4",
+                "spark.executor.memory": "16g",
+                "spark.executor.memoryOverhead": "2g",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "100G",
+                "spark.sql.adaptive.enabled": "true",
+                "spark.sql.adaptive.coalescePartitions.enabled": "true",
+            },
+            waiter_max_attempts=960,  # ~16h
+        ),
+    )
+
+    OMIM = OmimSourceConfig()
+
+    ORPHANET = OrphanetSourceConfig(
+        short_name="orphanet",
+        display_name="Orphanet",
+        website="https://www.orphadata.com/",
+        download_configs=[
+            DownloadConfig(
+                download_url="https://www.orphadata.com/data/xml/en_product6.xml",  # gene-disorder associations
+                name="en_product6.xml",
+                label=_XML_LABEL,
+            ),
+            DownloadConfig(
+                download_url="https://www.orphadata.com/data/xml/en_product9_ages.xml",  # disorder ages/inheritance
+                name="en_product9_ages.xml",
+                label=_XML_LABEL,
+            ),
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(spark_command="orphanet"),
+    )
 
 
 ###########################################################
