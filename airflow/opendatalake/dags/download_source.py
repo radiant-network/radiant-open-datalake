@@ -17,7 +17,7 @@ from opendatalake.lib.domain.model.sources import (
     get_update_mode,
     is_auto_update,
 )
-from opendatalake.lib.operators.ecs import PythonScriptOperator
+from opendatalake.lib.operators.k8s import PythonScriptOperator
 from opendatalake.lib.tasks import get_version, version_param
 
 

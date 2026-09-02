@@ -60,6 +60,7 @@ class PythonScriptOperator(ecs.EcsRunTaskOperator):
         script_args: dict,
         container_name: str | None = None,
         ecs_config: EcsConfig | None = None,
+        secret_env_vars: tuple[tuple[str, str], ...] | None = None,
         **kwargs,
     ):
         ecs_config = ecs_config or EcsConfig.from_env()

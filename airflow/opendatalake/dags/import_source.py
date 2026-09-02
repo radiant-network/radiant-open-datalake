@@ -8,7 +8,7 @@ from opendatalake.lib.domain.model.sources import (
     get_import_config,
     get_update_mode,
 )
-from opendatalake.lib.operators.emr import EmrServerlessJobOperator
+from opendatalake.lib.operators.spark_k8s import EmrServerlessJobOperator
 from opendatalake.lib.tasks import get_version, version_param
 
 
