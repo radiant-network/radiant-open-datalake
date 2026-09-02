@@ -37,6 +37,7 @@ class DownloadConfig:
     md5_present: bool = False
     label: str | None = None  # Optional, use for display purposes in airflow UI
     secret_arn_env_vars: tuple[str, ...] = ()
+    secret_env_vars: tuple[str, ...] = ()
 
     def __post_init__(self):
         if not self.url_from_param and not self.download_url:

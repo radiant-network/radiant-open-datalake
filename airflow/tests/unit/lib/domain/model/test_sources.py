@@ -99,8 +99,10 @@ def test_omim_is_manual_source():
 def test_omim_download_config_declares_the_key_secret():
     (conf,) = get_download_configs("omim")
     assert conf.name == "genemap2.txt"
-    # the container reads the injected key from this env var; the ARN env var names its Secrets Manager ARN
-    assert conf.secret_env_vars == (("OPENDATALAKE_OMIM_DOWNLOAD_KEY", "OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN"),)
+    # the plaintext key env var is the secret to redact; the ARN env var only names its Secrets Manager
+    # ARN (not itself secret) and is forwarded to ECS so the container can self-resolve it
+    assert conf.secret_env_vars == ("OPENDATALAKE_OMIM_DOWNLOAD_KEY",)
+    assert conf.secret_arn_env_vars == ("OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN",)
 
 
 def test_omim_import_config():

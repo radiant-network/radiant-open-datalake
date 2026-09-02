@@ -11,7 +11,8 @@ _AWS_CONN_ID = "aws_default"
 DOWNLOAD_KEY_ENV_VAR = "OPENDATALAKE_OMIM_DOWNLOAD_KEY"
 DOWNLOAD_KEY_ARN_ENV_VAR = "OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN"
 
-_SECRET_ENV_VARS = ((DOWNLOAD_KEY_ENV_VAR, DOWNLOAD_KEY_ARN_ENV_VAR),)
+_SECRET_ENV_VARS = (DOWNLOAD_KEY_ENV_VAR,)
+_SECRET_ARN_ENV_VARS = (DOWNLOAD_KEY_ARN_ENV_VAR,)
 
 _DOWNLOADS_ROOT = "https://data.omim.org/downloads"
 _FILE_NAME = "genemap2.txt"
@@ -36,6 +37,8 @@ class OmimConfig:
         key = os.getenv(DOWNLOAD_KEY_ENV_VAR, "")
         if not key:
             key = _fetch_key_from_secrets_manager(os.getenv(DOWNLOAD_KEY_ARN_ENV_VAR, ""))
+            if key:
+                os.environ[DOWNLOAD_KEY_ENV_VAR] = key
         return cls(download_key=key)
 
     def missing(self) -> bool:
@@ -61,6 +64,7 @@ def _build_download_configs() -> list[DownloadConfig]:
             name=_FILE_NAME,
             label=_TSV_LABEL,
             secret_env_vars=_SECRET_ENV_VARS,
+            secret_arn_env_vars=_SECRET_ARN_ENV_VARS,
         )
     ]
 

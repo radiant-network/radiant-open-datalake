@@ -129,7 +129,7 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "hpo_genes"),
       buildNormalizedDatasetConf(database, "hpo_terms"),
       buildNormalizedDatasetConf(database, "mondo"),
-	  buildNormalizedDatasetConf("omim", repartition = Some(Coalesce())),
+      buildNormalizedDatasetConf(database, "omim", repartition = Some(Coalesce())),
       DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
       buildNormalizedDatasetConf(database, "orphanet", repartition = Some(Coalesce())),
       // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the

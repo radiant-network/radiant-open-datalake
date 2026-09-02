@@ -166,7 +166,7 @@ def test_upload_via_local_copy_redacts_url_and_key_on_request_error(s3_hook, mon
     download_config = DownloadConfig(
         download_url="https://data.omim.org/downloads/secret-key/genemap2.txt",
         name="genemap2.txt",
-        secret_env_vars=(("OMIM_KEY", "OMIM_KEY_ARN"),),
+        secret_env_vars=("OMIM_KEY",),
     )
     err = requests.HTTPError(
         "401 Client Error: Unauthorized for url: https://data.omim.org/downloads/secret-key/genemap2.txt"

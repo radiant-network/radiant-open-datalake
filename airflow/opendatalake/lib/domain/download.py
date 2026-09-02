@@ -28,7 +28,7 @@ class S3Downloader:
 
     def _redact(self, message: str, url: str) -> str:
         redacted = message.replace(url, "<redacted-url>")
-        for env_var, _arn_env_var in self.download_conf.secret_env_vars:
+        for env_var in self.download_conf.secret_env_vars:
             secret = os.getenv(env_var)
             if secret:
                 redacted = redacted.replace(secret, "***")

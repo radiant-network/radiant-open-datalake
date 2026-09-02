@@ -55,8 +55,8 @@ def test_manual_secret_backed_source_download_dag(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-download-omim")
     assert dag is not None
     assert not dag_bag.import_errors
-    # Manual source: no schedule, triggered by hand with a version. The download key is a deploy-time
-    # secret injected by the operator (secret_env_vars), so there is no key/ARN param on the DAG.
+    # Manual source: no schedule, triggered by hand with a version. The download key's ARN is forwarded
+    # to the container by the operator (secret_arn_env_vars), so there is no key/ARN param on the DAG.
     assert isinstance(dag.timetable, NullTimetable)
     assert "version" in dag.params
     assert "download_url" not in dag.params
@@ -67,7 +67,7 @@ def test_manual_secret_backed_source_download_dag(dag_bag):
 def test_secret_backed_local_copy_does_not_pass_the_key_as_a_script_arg():
     from opendatalake.dags.download_source import upload_via_local_copy
 
-    secret_env_vars = (("OPENDATALAKE_OMIM_DOWNLOAD_KEY", "OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN"),)
+    secret_arn_env_vars = ("OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN",)
     operator = upload_via_local_copy(
         task_id="test_task",
         source="omim",
@@ -75,7 +75,7 @@ def test_secret_backed_local_copy_does_not_pass_the_key_as_a_script_arg():
         version="2026_08_12",
         download_index=0,
         label="tsv",
-        secret_env_vars=secret_env_vars,
+        secret_arn_env_vars=secret_arn_env_vars,
     )
     assert set(operator.script_args) == {"source", "prefix", "version", "download_index"}
 

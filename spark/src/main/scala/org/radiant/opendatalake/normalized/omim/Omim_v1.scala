@@ -9,8 +9,8 @@ import org.radiant.opendatalake.normalized.omim.OmimPhenotype.parse_pheno
 
 import java.time.LocalDateTime
 
-case class Omim_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_omim", tablePrefix, major = 1) {
+case class Omim_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_omim", tablePrefix, major = 1, database) {
 
   private val raw_omim_gene_set: DatasetConf = conf.getDataset("raw_omim_gene_set")
 

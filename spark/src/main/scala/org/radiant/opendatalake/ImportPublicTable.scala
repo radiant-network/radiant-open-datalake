@@ -68,8 +68,8 @@ object ImportPublicTable {
     ContractRunner.run("mondo", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def omim(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("omim", rc, version.value, rawStorage.value)
+  def omim(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("omim", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main(name = "1000genomes")
   def one_thousand_genomes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =

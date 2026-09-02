@@ -28,7 +28,7 @@ object ContractRegistry {
     ("hpo_genes", 1) -> (args => HpoGenes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("hpo_terms", 1) -> (args => HpoTerms_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("mondo", 1) -> (args => Mondo_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
-	("omim", 1) -> (args => Omim_v1(args.rc, args.version, args.rawStorage, args.tablePrefix)),
+	("omim", 1) -> (args => Omim_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("orphanet", 1) -> (args => Orphanet_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse))
   )

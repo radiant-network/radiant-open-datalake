@@ -23,7 +23,8 @@ def test_omim_declares_a_single_genemap2_tsv(omim_source_config):
 
 def test_omim_declares_the_download_key_secret(omim_source_config):
     (config,) = omim_source_config.download_configs
-    assert config.secret_env_vars == ((DOWNLOAD_KEY_ENV_VAR, DOWNLOAD_KEY_ARN_ENV_VAR),)
+    assert config.secret_env_vars == (DOWNLOAD_KEY_ENV_VAR,)
+    assert config.secret_arn_env_vars == (DOWNLOAD_KEY_ARN_ENV_VAR,)
 
 
 def test_omim_builds_the_url_from_the_env_key(omim_source_config):
@@ -71,6 +72,8 @@ def test_config_from_env_fetches_from_secrets_manager_when_no_plaintext_key():
     ):
         assert OmimConfig.from_env().download_key == "sm-key"
         fetch.assert_called_once_with("arn:aws:secretsmanager:...:secret:omim")
+        # Cached under the plaintext var so error-message redaction can find it too.
+        assert os.environ[DOWNLOAD_KEY_ENV_VAR] == "sm-key"
 
 
 def test_fetch_key_from_secrets_manager_returns_stripped_secret_string():
