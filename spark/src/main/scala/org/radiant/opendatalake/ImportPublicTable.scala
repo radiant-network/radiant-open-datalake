@@ -5,7 +5,6 @@ import org.radiant.opendatalake.contracts.ContractRunner
 import org.radiant.opendatalake.enriched.Genes
 import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
-import org.radiant.opendatalake.normalized.omim.OmimGeneSet
 import org.radiant.opendatalake.normalized.refseq.{RefSeqAnnotation, RefSeqHumanGenes}
 import org.radiant.opendatalake.mainutils.{Database, RawStorage, Version, Warehouse}
 import mainargs.{ParserForMethods, main}
@@ -69,7 +68,8 @@ object ImportPublicTable {
     ContractRunner.run("mondo", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def omim(rc: RuntimeETLContext): Unit = OmimGeneSet.run(rc)
+  def omim(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("omim", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main(name = "1000genomes")
   def one_thousand_genomes(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =

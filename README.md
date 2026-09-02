@@ -39,6 +39,7 @@ Imported on demand.
 | [gnomAD Structural Variants](https://gnomad.broadinstitute.org/data#v4-structural-variants) | `gnomad_sv_v1` | [v1](spark/doc/release-notes/gnomad_sv/v1.md) |
 | [SpliceAI](https://github.com/Illumina/SpliceAI) | `spliceai_v1` | [v1](spark/doc/release-notes/spliceai/v1.md) |
 | [dbNSFP](https://www.dbnsfp.org/) | `dbnsfp_v1` | [v1](spark/doc/release-notes/dbnsfp/v1.md) |
+| [OMIM](https://www.omim.org/) | `omim_v1` | [v1](spark/doc/release-notes/omim/v1.md) |
 
 #### Downloading dbNSFP
 
@@ -68,6 +69,32 @@ See [airflow/README.md](airflow/README.md#manual-url-based-sources-dbnsfp) for t
 Example for version `4.3` with link extracted from: https://sites.google.com/site/jpopgen/dbNSFP:
 
 ![dbnsfp_configuration](./doc/images/dbnsfp_configuration.png)
+
+#### Downloading OMIM
+
+OMIM has no public listing and gates downloads behind a per-account **download key** — a rotating secret
+that is part of the download URL (`https://data.omim.org/downloads/<key>/genemap2.txt`). The key is never
+handled by Airflow, and follows the same **deploy-time secret** pattern as SpliceAI: it is configured
+once via environment variables (`OPENDATALAKE_OMIM_DOWNLOAD_KEY` / `OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN`),
+not entered at trigger time.
+
+- **Production (ECS):** set `OPENDATALAKE_OMIM_DOWNLOAD_KEY_ARN` (at deploy time, e.g. Terraform) to the
+  AWS Secrets Manager ARN holding the key. The ECS operator injects the key into the download task **at
+  launch** (`secrets`/`valueFrom`); the ARN is not sensitive and the key never appears in task args,
+  rendered templates, or logs.
+- **Local (K8s sandbox):** there is no Secrets Manager — set the key value directly in the worker env var
+  `OPENDATALAKE_OMIM_DOWNLOAD_KEY` (see `airflow/sandbox/values/airflow-values.yaml`).
+
+The key is long-lived but expires; renew it from [omim.org/api](https://omim.org/api/) and update the
+secret (or env var) in place when OMIM rotates it.
+
+To ingest an OMIM release, **trigger the _Download OMIM_ DAG** with a single param:
+
+- `version` — the release label, e.g. `2026_08_13` (names the landing folder `raw/landing/omim/<version>/`
+  and the published branch of `omim_v1`). OMIM exposes no version, so you choose the label.
+
+The download fetches `genemap2.txt` into the landing zone; the URL is built inside the task from the
+injected key. When it finishes, the **Import OMIM** DAG builds `omim_v1` automatically.
 
 ## Architecture diagram
 

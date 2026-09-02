@@ -85,7 +85,7 @@ object EtlConfiguration extends App {
       DatasetConf("raw_1000_genomes", raw_storage_id, "/1000_genomes/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true", "split_multiallelics" -> "true")),
       DatasetConf("raw_dbnsfp", raw_storage_id, "/dbnsfp/{{VERSION}}/*_variant.chr*.gz", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
       DatasetConf("raw_dbnsfp_annovar", raw_storage_id, "/annovar/dbNSFP/hg38_dbnsfp41a.txt", CSV, OverWrite, readoptions = Map("sep" -> "\t", "header" -> "true", "nullValue" -> ".")),
-      DatasetConf("raw_omim_gene_set", raw_storage_id, "/omim/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
+	  DatasetConf("raw_omim_gene_set", raw_storage_id, "/omim/{{VERSION}}/genemap2.txt", CSV, OverWrite, readoptions = Map("inferSchema" -> "true", "comment" -> "#", "header" -> "false", "sep" -> "\t")),
       DatasetConf("raw_orphanet_gene_association", raw_storage_id, "/orphanet/{{VERSION}}/en_product6.xml", BINARY, OverWrite),
       DatasetConf("raw_orphanet_disease_history", raw_storage_id, "/orphanet/{{VERSION}}/en_product9_ages.xml", BINARY, OverWrite),
       DatasetConf("raw_cosmic_gene_set", raw_storage_id, "/cosmic/Cosmic_CancerGeneCensus_GRCh38.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
@@ -129,6 +129,7 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "hpo_genes"),
       buildNormalizedDatasetConf(database, "hpo_terms"),
       buildNormalizedDatasetConf(database, "mondo"),
+      buildNormalizedDatasetConf(database, "omim", repartition = Some(Coalesce())),
       DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
       buildNormalizedDatasetConf(database, "orphanet", repartition = Some(Coalesce())),
       // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the

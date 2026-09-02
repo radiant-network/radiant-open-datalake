@@ -1,5 +1,8 @@
 from unittest.mock import ANY, MagicMock, call, patch
 
+import pytest
+import requests
+
 from opendatalake.lib.config import raw_datalake_bucket
 from opendatalake.lib.domain.download import S3Downloader
 from opendatalake.lib.domain.model.config import DownloadConfig
@@ -156,6 +159,38 @@ def test_upload_via_local_copy(s3_hook):
             md5_hash=None,
         )
         tarfile_mock.open.assert_not_called()
+
+
+def test_upload_via_local_copy_redacts_url_and_key_on_request_error(s3_hook, monkeypatch):
+    monkeypatch.setenv("OMIM_KEY", "secret-key")
+    download_config = DownloadConfig(
+        download_url="https://data.omim.org/downloads/secret-key/genemap2.txt",
+        name="genemap2.txt",
+        secret_env_vars=("OMIM_KEY",),
+    )
+    err = requests.HTTPError(
+        "401 Client Error: Unauthorized for url: https://data.omim.org/downloads/secret-key/genemap2.txt"
+    )
+    with patch("opendatalake.lib.domain.download.stream_download_file", side_effect=err):
+        downloader = S3Downloader(s3=s3_hook, s3_prefix="prefix", version="v", download_conf=download_config)
+        with pytest.raises(RuntimeError) as exc:
+            downloader.upload_via_local_copy()
+
+    message = str(exc.value)
+    assert "secret-key" not in message
+    assert "downloads/secret-key" not in message
+    assert "<redacted-url>" in message
+    assert exc.value.__cause__ is None  # original URL-bearing exception suppressed (`from None`)
+
+
+def test_upload_via_local_copy_does_not_wrap_non_secret_request_errors(s3_hook):
+    # Non-secret sources keep their original error (URL is harmless and useful for debugging).
+    download_config = DownloadConfig(download_url="http://example.com/f.txt")
+    err = requests.HTTPError("404 Client Error: Not Found for url: http://example.com/f.txt")
+    with patch("opendatalake.lib.domain.download.stream_download_file", side_effect=err):
+        downloader = S3Downloader(s3=s3_hook, s3_prefix="prefix", version="v", download_conf=download_config)
+        with pytest.raises(requests.HTTPError, match="http://example.com/f.txt"):
+            downloader.upload_via_local_copy()
 
 
 def test_upload_via_local_copy_with_md5(s3_hook):

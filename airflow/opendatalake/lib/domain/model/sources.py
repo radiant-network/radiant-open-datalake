@@ -11,6 +11,7 @@ from opendatalake.lib.domain.source_configs import (
     GnomadSVSourceConfig,
     HpoSourceConfig,
     MondoSourceConfig,
+    OmimSourceConfig,
     OrphanetSourceConfig,
     SpliceAiSourceConfig,
 )
@@ -24,7 +25,6 @@ _XML_LABEL = "xml"
 _VARIANT_LABEL = "variant"
 
 _DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
-_ORPHANET_BASE_URL = "https://www.orphadata.com/data/xml"
 
 
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
@@ -210,18 +210,20 @@ class _Source(Enum):
         ),
     )
 
+    OMIM = OmimSourceConfig()
+
     ORPHANET = OrphanetSourceConfig(
         short_name="orphanet",
         display_name="Orphanet",
         website="https://www.orphadata.com/",
         download_configs=[
             DownloadConfig(
-                download_url=f"{_ORPHANET_BASE_URL}/en_product6.xml",  # gene-disorder associations
+                download_url="https://www.orphadata.com/data/xml/en_product6.xml",  # gene-disorder associations
                 name="en_product6.xml",
                 label=_XML_LABEL,
             ),
             DownloadConfig(
-                download_url=f"{_ORPHANET_BASE_URL}/en_product9_ages.xml",  # disorder ages/inheritance
+                download_url="https://www.orphadata.com/data/xml/en_product9_ages.xml",  # disorder ages/inheritance
                 name="en_product9_ages.xml",
                 label=_XML_LABEL,
             ),
