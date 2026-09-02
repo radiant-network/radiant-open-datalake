@@ -30,8 +30,8 @@ object ContractRegistry {
     ("mondo", 1) -> (args => Mondo_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
 	("omim", 1) -> (args => Omim_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("orphanet", 1) -> (args => Orphanet_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
-    ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse))
-    ("topmed_bravo", 1) -> (args => TopMed_v1(args.rc, args.version, args.rawStorage, args.tablePrefix))
+    ("spliceai", 1) -> (args => SpliceAi_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("topmed_bravo", 1) -> (args => TopMed_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse))
   )
 
   def factory(source: String, contract: Contract): Option[NormalizerArgs => NormalizerETL] =

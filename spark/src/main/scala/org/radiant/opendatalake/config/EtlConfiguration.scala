@@ -135,7 +135,7 @@ object EtlConfiguration extends App {
       // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
       // contract table normalized_orphanet (orphanet_v1); Orphanet ingestion itself is now the WAP contract Orphanet_v1.
       DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
-      buildNormalizedDatasetConf("topmed_bravo", partitionby = List("chromosome")),
+      buildNormalizedDatasetConf(database, "topmed_bravo", partitionby = List("chromosome")),
       DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
       buildNormalizedDatasetConf(database, "spliceai", partitionby = List("chromosome")),
 

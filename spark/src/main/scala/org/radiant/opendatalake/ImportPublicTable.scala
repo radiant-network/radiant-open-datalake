@@ -90,8 +90,8 @@ object ImportPublicTable {
     ContractRunner.run("spliceai", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
-  def topmed_bravo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage): Unit =
-    ContractRunner.run("topmed_bravo", rc, version.value, rawStorage.value)
+  def topmed_bravo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("topmed_bravo", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   def main(args: Array[String]): Unit = ParserForMethods(this).runOrThrow(args, allowPositional = true)
 

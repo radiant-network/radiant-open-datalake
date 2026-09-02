@@ -10,8 +10,8 @@ import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
 
-case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String)
-  extends ContractETLP(rc, sourceDatasetId = "normalized_topmed_bravo", tablePrefix, major = 1) {
+case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String, tablePrefix: String, database: Option[String] = None, override val warehouse: Option[String] = None)
+  extends ContractETLP(rc, sourceDatasetId = "normalized_topmed_bravo", tablePrefix, major = 1, database) {
 
   val raw_topmed: DatasetConf = conf.getDataset("raw_topmed_bravo")
 
