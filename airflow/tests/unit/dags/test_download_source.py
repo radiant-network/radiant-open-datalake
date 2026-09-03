@@ -75,14 +75,10 @@ def test_direct_upload_applies_headers_from_param_when_required():
     fake_download_conf = MagicMock()
     fake_downloader = MagicMock()
     with (
-        patch(
-            "opendatalake.dags.download_source.get_download_config_at_index", return_value=fake_download_conf
-        ),
+        patch("opendatalake.dags.download_source.get_download_config_at_index", return_value=fake_download_conf),
         patch("opendatalake.dags.download_source.S3Downloader", return_value=fake_downloader),
     ):
-        direct_upload.function(
-            source, prefix, version, download_index, params={"headers": "Cookie=session-cookie"}
-        )
+        direct_upload.function(source, prefix, version, download_index, params={"headers": "Cookie=session-cookie"})
 
         fake_download_conf.set_headers.assert_called_once_with({"Cookie": "session-cookie"})
         fake_downloader.direct_upload.assert_called_once()

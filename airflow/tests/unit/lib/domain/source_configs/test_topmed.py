@@ -38,9 +38,7 @@ def test_topmed_resolves_the_signed_url_per_chromosome(topmed_source_config):
         chrom = url.rsplit("chrom=", 1)[-1]
         return Mock(**{"json.return_value": {"url": f"https://signed/{chrom}.vcf.gz"}})
 
-    with patch(
-        "opendatalake.lib.domain.source_configs.topmed.http_get", side_effect=fake_http_get
-    ) as mock_http_get:
+    with patch("opendatalake.lib.domain.source_configs.topmed.http_get", side_effect=fake_http_get) as mock_http_get:
         # The version argument is ignored; the URL comes from the link API per chromosome.
         urls = {c.label: c.get_url("ignored") for c in topmed_source_config.download_configs}
 
