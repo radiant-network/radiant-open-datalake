@@ -13,6 +13,7 @@ from opendatalake.lib.domain.source_configs import (
     MondoSourceConfig,
     OmimSourceConfig,
     SpliceAiSourceConfig,
+    TopMedBravoSourceConfig,
 )
 
 
@@ -45,6 +46,11 @@ def spliceai_source_config() -> SpliceAiSourceConfig:
 @pytest.fixture
 def omim_source_config() -> OmimSourceConfig:
     return OmimSourceConfig()
+
+
+@pytest.fixture
+def topmed_source_config() -> TopMedBravoSourceConfig:
+    return TopMedBravoSourceConfig()
 
 
 @pytest.fixture

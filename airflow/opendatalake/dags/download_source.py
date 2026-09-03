@@ -2,6 +2,7 @@ import re
 from datetime import timedelta
 from pathlib import Path
 
+from airflow.exceptions import AirflowException
 from airflow.providers.amazon.aws.hooks.s3 import S3Hook
 from airflow.sdk import Metadata, dag, task, task_group
 
@@ -17,19 +18,36 @@ from opendatalake.lib.domain.model.sources import (
     get_update_mode,
     is_auto_update,
     requires_download_url,
+    requires_headers_param,
 )
 from opendatalake.lib.operators.ecs import PythonScriptOperator
-from opendatalake.lib.tasks import download_url_param, get_version, version_param
+from opendatalake.lib.tasks import download_url_param, get_version, headers_param, version_param
+
+
+def _parse_headers_param(raw: str | None) -> dict:
+    """Parse the `headers` DAG param: one 'Name=value' header per line."""
+    headers = {}
+    for line in (raw or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        name, sep, value = line.partition("=")
+        if not sep:
+            raise AirflowException(f"Invalid 'headers' param line (expected 'Name=value'): {line!r}")
+        headers[name.strip()] = value.strip()
+    return headers
 
 
 @task(pool=config.DIRECT_UPLOAD_TASKS_POOL)
-def direct_upload(source: str, prefix: str, version: str, download_index: int):
+def direct_upload(source: str, prefix: str, version: str, download_index: int, params: dict | None = None):
     """
     Runs a direct upload for a given source and download config.
     Note: We pass only source and download config index (not the DownloadConfig object)
     to avoid serialization  issues and prevent exposing sensitive info in the Airflow UI.
     """
     download_conf = get_download_config_at_index(source, download_index)
+    if download_conf.set_headers:
+        download_conf.set_headers(_parse_headers_param((params or {}).get("headers")))
     downloader = S3Downloader(s3_prefix=prefix, version=version, download_conf=download_conf)
     downloader.direct_upload()
 
@@ -125,6 +143,10 @@ def _make_download_source_dag(source_id: str):
     params = version_param()
     if requires_download_url(source_id):
         params = {**params, **download_url_param()}
+
+    # Never persisted, only at trigger time
+    if requires_headers_param(source_id):
+        params = {**params, **headers_param()}
 
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-download-{source_id}",

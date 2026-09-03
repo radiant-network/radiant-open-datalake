@@ -23,27 +23,21 @@ def _get_k8s_context(extra_env_vars=None):
 
 
 class PythonScriptOperator(KubernetesPodOperator):
-    template_fields = (*KubernetesPodOperator.template_fields, "script_args", "script_name")
-
-    def __init__(self, script_name, script_args, secret_arn_env_vars=(), **kwargs):
+    def __init__(self, script_name, script_args, **kwargs):
         assert "cmds" not in kwargs, "Don't pass cmds: generated dynamically."
 
-        # `secret_arn_env_vars` is accepted for parity with the ECS operator, whose callers (e.g.
-        # spliceai) pass it. Each entry names a worker env var holding a Secrets Manager ARN. The ECS
-        # container self-resolves that ARN via its task role, but the sandbox has no Secrets Manager: it
-        # seeds the plaintext token directly under the non-ARN var name (see airflow-values.yaml), which
-        # the container's `from_env` reads first. Strip the `_ARN` suffix to forward that plaintext var;
-        # forward the ARN too when present (harmless).
-        extra_env_vars = {}
-        for arn_env_var in secret_arn_env_vars or ():
-            for var in (arn_env_var.removesuffix("_ARN"), arn_env_var):
-                value = os.getenv(var)
-                if value:
-                    extra_env_vars[var] = value
+        # ECS-only kwargs (secrets forwarded via Secrets Manager ARN -> ECS task def env). The sandbox
+        # pod gets its secrets from cluster-wide env vars (airflow-values.yaml extraEnv), so drop them
+        # here rather than forwarding to KubernetesPodOperator.
+        for ecs_only in ("secret_env_vars", "secret_arn_env_vars"):
+            kwargs.pop(ecs_only, None)
 
-        super().__init__(**_get_k8s_context(extra_env_vars), **kwargs)
+        super().__init__(**_get_k8s_context(), **kwargs)
+        self.template_fields = self.template_fields + ("script_args", "script_name")
+
         self.script_name = script_name
         self.script_args = script_args
+
 
     def execute(self, context, **kwargs):
         self.cmds = ["python", self.script_name]
@@ -51,3 +45,4 @@ class PythonScriptOperator(KubernetesPodOperator):
             self.cmds.append(f"--{k}")
             self.cmds.append(str(v))
         return super().execute(context, **kwargs)
+

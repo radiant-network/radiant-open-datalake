@@ -33,6 +33,20 @@ def download_url_param() -> dict:
     }
 
 
+def headers_param() -> dict:
+    return {
+        "headers": Param(
+            None,
+            type=["null", "string"],
+            title="HTTP headers",
+            description=(
+                "One 'Name=value' header per line (e.g. Cookie=session=...), supplied at trigger time. "
+                "Required only when triggering this DAG manually; never stored as an env var or secret."
+            ),
+        )
+    }
+
+
 def _version_from_param(params) -> str | None:
     """The `version` DAG param, or None when it was not supplied."""
     return (params or {}).get("version")

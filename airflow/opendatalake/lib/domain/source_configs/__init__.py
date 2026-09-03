@@ -12,6 +12,7 @@ from .mondo import MondoSourceConfig
 from .omim import OmimSourceConfig
 from .orphanet import OrphanetSourceConfig
 from .spliceai import SpliceAiSourceConfig
+from .topmed import TopMedBravoSourceConfig
 
 __all__ = [
     "ClinvarSourceConfig",
@@ -26,4 +27,5 @@ __all__ = [
     "OmimSourceConfig",
     "OrphanetSourceConfig",
     "SpliceAiSourceConfig",
+    "TopMedBravoSourceConfig",
 ]

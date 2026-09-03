@@ -12,6 +12,8 @@ and ignored. Do NOT commit the swap: this operator has no place in the AWS deplo
 from airflow.providers.cncf.kubernetes.operators.pod import KubernetesPodOperator
 from kubernetes.client import models as k8s
 
+from opendatalake.lib.operators.emr import job_name_timestamp  # noqa: F401
+
 DEFAULT_ENTRY_CLASS = "org.radiant.opendatalake.ImportPublicTable"
 SPARK_IMAGE = "ghcr.io/radiant-network/opendatalake-spark:latest"
 JAR_PATH = "/opt/app/radiant-open-datalake-spark.jar"

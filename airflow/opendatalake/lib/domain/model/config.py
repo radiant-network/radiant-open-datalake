@@ -38,6 +38,9 @@ class DownloadConfig:
     label: str | None = None  # Optional, use for display purposes in airflow UI
     secret_arn_env_vars: tuple[str, ...] = ()
     secret_env_vars: tuple[str, ...] = ()
+    # Runtime hook: when set, the DAG's `headers` param (parsed to a dict) is passed to this callable
+    # instead of being read from an env var or secret store. See download_source.py's direct_upload task.
+    set_headers: Callable[[dict], None] | None = None
 
     def __post_init__(self):
         if not self.url_from_param and not self.download_url:
