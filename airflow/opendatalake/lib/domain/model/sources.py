@@ -261,8 +261,8 @@ def requires_download_url(source: str) -> bool:
     return any(c.url_from_param for c in get_download_configs(source))
 
 
-def requires_cookie_param(source: str) -> bool:
-    return any(c.cookie_from_param for c in get_download_configs(source))
+def requires_headers_param(source: str) -> bool:
+    return any(c.set_headers is not None for c in get_download_configs(source))
 
 
 def get_download_config_at_index(source: str, index: int) -> DownloadConfig:

@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock, patch
 
+import pytest
+from airflow.exceptions import AirflowException
 from airflow.timetables.simple import AssetTriggeredTimetable, NullTimetable
 
-from opendatalake.dags.download_source import direct_upload, stream_unzip_download
+from opendatalake.dags.download_source import _parse_headers_param, direct_upload, stream_unzip_download
 
 
 def test_dag_loads_without_errors(dag_bag):
@@ -51,39 +53,51 @@ def test_fixed_url_source_download_dag_has_no_download_url_param(dag_bag):
     assert "download_url" not in dag.params
 
 
-def test_topmed_bravo_download_dag_has_cookie_param(dag_bag):
+def test_topmed_bravo_download_dag_has_headers_param(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-download-topmed_bravo")
     assert dag is not None
     assert not dag_bag.import_errors
     assert isinstance(dag.timetable, NullTimetable)
-    assert "cookie" in dag.params
+    assert "headers" in dag.params
 
 
-def test_fixed_url_source_download_dag_has_no_cookie_param(dag_bag):
+def test_fixed_url_source_download_dag_has_no_headers_param(dag_bag):
     dag = dag_bag.get_dag(dag_id="opendatalake-download-clinvar")
-    assert "cookie" not in dag.params
+    assert "headers" not in dag.params
 
 
-def test_direct_upload_sets_cookie_when_required():
+def test_direct_upload_applies_headers_from_param_when_required():
     source = "topmed_bravo"
     prefix = "raw/topmed_bravo/freeze8"
     version = "freeze8"
     download_index = 0
 
     fake_download_conf = MagicMock()
-    fake_download_conf.cookie_from_param = True
     fake_downloader = MagicMock()
     with (
         patch(
             "opendatalake.dags.download_source.get_download_config_at_index", return_value=fake_download_conf
         ),
         patch("opendatalake.dags.download_source.S3Downloader", return_value=fake_downloader),
-        patch("opendatalake.dags.download_source.set_cookie") as mock_set_cookie,
     ):
-        direct_upload.function(source, prefix, version, download_index, params={"cookie": "session-cookie"})
+        direct_upload.function(
+            source, prefix, version, download_index, params={"headers": "Cookie=session-cookie"}
+        )
 
-        mock_set_cookie.assert_called_once_with("session-cookie")
+        fake_download_conf.set_headers.assert_called_once_with({"Cookie": "session-cookie"})
         fake_downloader.direct_upload.assert_called_once()
+
+
+def test_parse_headers_param_splits_name_value_lines():
+    assert _parse_headers_param(None) == {}
+    assert _parse_headers_param("") == {}
+    assert _parse_headers_param("Cookie=session=abc123") == {"Cookie": "session=abc123"}
+    assert _parse_headers_param("Cookie=ck\nX-Api-Key=xyz\n") == {"Cookie": "ck", "X-Api-Key": "xyz"}
+
+
+def test_parse_headers_param_rejects_line_without_equals():
+    with pytest.raises(AirflowException, match="Invalid 'headers' param line"):
+        _parse_headers_param("not-a-header-line")
 
 
 def test_manual_secret_backed_source_download_dag(dag_bag):

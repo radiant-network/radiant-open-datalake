@@ -14,8 +14,8 @@ from opendatalake.lib.domain.model.sources import (
     get_latest_version,
     get_update_mode,
     is_auto_update,
-    requires_cookie_param,
     requires_download_url,
+    requires_headers_param,
 )
 
 
@@ -91,9 +91,9 @@ def test_ddd_import_config():
     assert get_import_config("ddd").spark_command == "ddd"
 
 
-def test_topmed_bravo_requires_cookie_param():
-    assert requires_cookie_param("topmed_bravo") is True
-    assert requires_cookie_param("clinvar") is False
+def test_topmed_bravo_requires_headers_param():
+    assert requires_headers_param("topmed_bravo") is True
+    assert requires_headers_param("clinvar") is False
 
 
 def test_omim_is_manual_source():

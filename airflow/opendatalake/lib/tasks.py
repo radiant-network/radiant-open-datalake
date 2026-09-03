@@ -33,14 +33,14 @@ def download_url_param() -> dict:
     }
 
 
-def cookie_param() -> dict:
+def headers_param() -> dict:
     return {
-        "cookie": Param(
+        "headers": Param(
             None,
             type=["null", "string"],
-            title="Session cookie",
+            title="HTTP headers",
             description=(
-                "Cookie header value for an authenticated session, supplied at trigger time. "
+                "One 'Name=value' header per line (e.g. Cookie=session=...), supplied at trigger time. "
                 "Required only when triggering this DAG manually; never stored as an env var or secret."
             ),
         )

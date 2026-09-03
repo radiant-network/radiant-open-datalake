@@ -5,17 +5,17 @@ from airflow.exceptions import AirflowException
 
 from opendatalake.lib.domain.model.config import UpdateMode
 from opendatalake.lib.domain.source_configs import topmed
-from opendatalake.lib.domain.source_configs.topmed import set_cookie
+from opendatalake.lib.domain.source_configs.topmed import set_headers
 
 CHROMOSOMES = [str(c) for c in range(1, 23)] + ["X"]
 LINK_API_ROOT = "https://api.bravo.sph.umich.edu/ui/link?chrom=chr"
 
 
 @pytest.fixture(autouse=True)
-def _reset_cookie():
-    set_cookie("")
+def _reset_headers():
+    set_headers({})
     yield
-    set_cookie("")
+    set_headers({})
 
 
 def test_topmed_declares_one_config_per_chromosome(topmed_source_config):
@@ -32,7 +32,7 @@ def test_topmed_names_match_the_spark_raw_glob(topmed_source_config):
 
 
 def test_topmed_resolves_the_signed_url_per_chromosome(topmed_source_config):
-    set_cookie("ck")
+    set_headers({"Cookie": "ck"})
 
     def fake_http_get(url, headers=None):
         chrom = url.rsplit("chrom=", 1)[-1]
@@ -59,13 +59,13 @@ def test_topmed_streams_every_file_and_declares_no_md5(topmed_source_config):
         assert config.md5_present is False
 
 
-def test_topmed_declares_cookie_from_param(topmed_source_config):
+def test_topmed_declares_set_headers_hook(topmed_source_config):
     for config in topmed_source_config.download_configs:
-        assert config.cookie_from_param is True
+        assert config.set_headers is topmed.set_headers
 
 
 def test_topmed_attaches_the_cookie_header(topmed_source_config):
-    set_cookie("ck")
+    set_headers({"Cookie": "ck"})
     for config in topmed_source_config.download_configs:
         assert config.get_headers() == {"Cookie": "ck"}
 
@@ -75,16 +75,16 @@ def test_topmed_is_manually_updated_and_imports_via_the_topmed_command(topmed_so
     assert topmed_source_config.import_config.spark_command == "topmed_bravo"
 
 
-def test_set_cookie_updates_module_state():
-    set_cookie("a-cookie")
-    assert topmed._cookie == "a-cookie"
+def test_set_headers_updates_module_state():
+    set_headers({"Cookie": "a-cookie"})
+    assert topmed._headers == {"Cookie": "a-cookie"}
 
 
-def test_auth_headers_uses_the_set_cookie():
-    set_cookie("ck")
+def test_auth_headers_uses_the_set_headers():
+    set_headers({"Cookie": "ck"})
     assert topmed._auth_headers() == {"Cookie": "ck"}
 
 
-def test_auth_headers_raises_when_cookie_not_set():
-    with pytest.raises(AirflowException, match="cookie"):
+def test_auth_headers_raises_when_headers_not_set():
+    with pytest.raises(AirflowException, match="headers"):
         topmed._auth_headers()

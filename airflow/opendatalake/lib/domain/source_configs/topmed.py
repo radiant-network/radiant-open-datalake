@@ -2,8 +2,8 @@
 
 BRAVO serves the callset as one VCF per chromosome behind a short-lived *signed* link that must be
 resolved, per chromosome, from its link API and downloaded with a session cookie. The cookie expires
-quickly, so it is supplied as the download DAG's ``cookie`` param at trigger time (see
-``download_source.py``) rather than through an env var or Secrets Manager.
+quickly, so it is supplied as the download DAG's ``headers`` param at trigger time
+(``Cookie=session=...``, see ``download_source.py``) rather than through an env var or Secrets Manager.
 
 The source is ``UpdateMode.MANUAL``: it is never auto-discovered, and the operator supplies the
 ``version`` label when triggering the download/import DAGs (it becomes the raw ``.../topmed_bravo/<version>/``
@@ -19,25 +19,27 @@ from opendatalake.lib.utils.http import http_get
 
 # The link API returns {"url": "<signed vcf url>"} for chrom=chr<N>.
 _LINK_API_ROOT = "https://api.bravo.sph.umich.edu/ui/link?chrom=chr"
-_COOKIE_HEADER = "Cookie"
 
 # chr1..chr22 + chrX. BRAVO publishes no Y / MT.
 _CHROMOSOMES: list[str] = [str(c) for c in range(1, 23)] + ["X"]
 
-_cookie: str | None = None
+# Set once per task run from the DAG's `headers` param (see download_source.py's direct_upload task),
+# never persisted to an env var or secret store.
+_headers: dict = {}
 
 
-def set_cookie(cookie: str) -> None:
-    global _cookie
-    _cookie = cookie
+def set_headers(headers: dict) -> None:
+    global _headers
+    _headers = headers
 
 
 def _auth_headers() -> dict:
-    if not _cookie:
+    if not _headers:
         raise AirflowException(
-            "TOPMed BRAVO cookie is not set; trigger the download DAG with the 'cookie' param."
+            "TOPMed BRAVO headers are not set; trigger the download DAG with the 'headers' param "
+            "(e.g. Cookie=session=...)."
         )
-    return {_COOKIE_HEADER: _cookie}
+    return dict(_headers)
 
 
 def _resolve_download_url(chromosome: str) -> str:
@@ -56,7 +58,7 @@ def _build_download_configs() -> list[DownloadConfig]:
             use_stream_upload=True,
             md5_present=False,
             label=f"chr{chromosome}",
-            cookie_from_param=True,
+            set_headers=set_headers,
         )
         for chromosome in _CHROMOSOMES
     ]
