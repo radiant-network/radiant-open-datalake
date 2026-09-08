@@ -31,4 +31,8 @@ class IcebergTableSpec extends AnyFlatSpec with Matchers {
   it should "expose main as the branch every version is cut from" in {
     IcebergTable.MainBranch shouldBe "main"
   }
+
+  it should "expose the tag name consumers use to find the latest published version" in {
+    IcebergTable.LatestTag shouldBe "latest"
+  }
 }

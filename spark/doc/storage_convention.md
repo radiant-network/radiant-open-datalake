@@ -41,6 +41,23 @@ for ClinVar (`20260715`), a RefSeq accession containing a dot for dbSNP (`GCF_00
 valid bare SQL identifier. `VERSION AS OF '20260715'` does **not** work: Spark reads an all-digit version as a
 snapshot id and fails with `Cannot find snapshot with ID 20260715`.
 
+### Finding the latest version
+
+Each publish also moves a `latest` **tag** to the version it just published, per table (i.e. per MAJOR) — so a
+consumer that only wants the newest data need not track `dataset_version`s at all:
+
+```sql
+SELECT * FROM opendatalake.reference.clinvar_v1 VERSION AS OF 'latest';
+```
+
+or, in Spark specifically:
+```sql
+SELECT * FROM opendatalake.reference.clinvar_v1.`latest`;
+```
+
+Unlike a `dataset_version` branch, `latest` is not itself a `dataset_version`, it moves to point at whichever
+one was published most recently, and never accumulates rows across versions.
+
 
 ## S3 Layout
 

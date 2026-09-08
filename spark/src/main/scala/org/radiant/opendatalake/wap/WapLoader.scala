@@ -75,6 +75,7 @@ object WapLoader {
     log.info(s"WAP ${table.fullName}: publishing '$version' from '$auditBranch'@$auditSnapshotId, dropping it")
 
     table.createOrReplaceBranch(version, auditSnapshotId)
+    table.createOrReplaceTag(IcebergTable.LatestTag, auditSnapshotId)
     table.dropBranch(auditBranch)
 
     table.readBranch(version)
