@@ -9,6 +9,9 @@ object IcebergTable {
 
   val MainBranch: String = "main"
 
+  // Per table
+  val LatestTag: String = "latest"
+
   // Necessary to perform schema merge on writes: https://iceberg.apache.org/docs/latest/spark-writes/#schema-merge
   private[iceberg] val AcceptAnySchemaProperty: String = "write.spark.accept-any-schema"
   private[iceberg] val MergeSchemaOption: String = "merge-schema"
@@ -51,6 +54,9 @@ case class IcebergTable(database: String, name: String) {
 
   def createOrReplaceBranch(branch: String, atSnapshotId: Long)(implicit spark: SparkSession): Unit =
     spark.sql(s"ALTER TABLE $fullName CREATE OR REPLACE BRANCH ${quoted(branch)} AS OF VERSION $atSnapshotId")
+
+  def createOrReplaceTag(tag: String, atSnapshotId: Long)(implicit spark: SparkSession): Unit =
+    spark.sql(s"ALTER TABLE $fullName CREATE OR REPLACE TAG ${quoted(tag)} AS OF VERSION $atSnapshotId")
 
   def dropBranch(branch: String)(implicit spark: SparkSession): Unit =
     spark.sql(s"ALTER TABLE $fullName DROP BRANCH ${quoted(branch)}")

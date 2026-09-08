@@ -5,6 +5,7 @@ import bio.ferlab.datalake.commons.config.LoadType.OverWrite
 import bio.ferlab.datalake.commons.config.{DatasetConf, TableConf}
 import org.apache.spark.sql.functions.col
 import org.radiant.opendatalake.testutils.{CreateDatabasesBeforeAll, SparkSpec}
+import org.radiant.opendatalake.wap.iceberg.IcebergTable
 
 case class WapRow(id: String, chromosome: String = "1", value: String = "first")
 
@@ -45,6 +46,16 @@ class WapLoaderSpec extends SparkSpec with CreateDatabasesBeforeAll {
 
   private def refNames(ds: DatasetConf): Set[String] =
     spark.sql(s"SELECT name FROM ${tableNameOf(ds)}.refs").collect().map(_.getString(0)).toSet
+
+  private def snapshotIdOfRef(ds: DatasetConf, ref: String): Long =
+    spark
+      .sql(s"SELECT snapshot_id FROM ${tableNameOf(ds)}.refs WHERE name = '$ref'")
+      .collect()
+      .head
+      .getLong(0)
+
+  private def onTag(ds: DatasetConf, tag: String): Seq[WapRow] =
+    spark.read.option("tag", tag).table(tableNameOf(ds)).as[WapRow].collect().toSeq
 
   private def onBranch(ds: DatasetConf, branch: String): Seq[WapRow] =
     spark.read.option("branch", branch).table(tableNameOf(ds)).as[WapRow].collect().toSeq
@@ -95,6 +106,33 @@ class WapLoaderSpec extends SparkSpec with CreateDatabasesBeforeAll {
     // SJRA-1546 §3.4: "Tables are idempotent. The same version re-runs will overwrite the data."
     onBranch(ds, "20260715") should contain theSameElementsAs second
     onMain(ds) shouldBe empty
+  }
+
+  it should "tag the published version as 'latest'" in {
+    val ds = icebergDataset("wap_latest_tag")
+    val rows = Seq(WapRow("1"))
+
+    WapLoader.publish(ds, rows.toDF(), "20260715")
+
+    refNames(ds) should contain(IcebergTable.LatestTag)
+    onTag(ds, IcebergTable.LatestTag) should contain theSameElementsAs rows
+  }
+
+  it should "move the 'latest' tag to each newly published version" in {
+    val ds = icebergDataset("wap_latest_tag_moves")
+    val older = Seq(WapRow("1", value = "older"))
+    val newer = Seq(WapRow("2", value = "newer"))
+
+    WapLoader.publish(ds, older.toDF(), "20260708")
+    onTag(ds, IcebergTable.LatestTag) should contain theSameElementsAs older
+
+    WapLoader.publish(ds, newer.toDF(), "20260715")
+
+    onTag(ds, IcebergTable.LatestTag) should contain theSameElementsAs newer
+    withClue("'latest' must track the newest publish, not accumulate every version's snapshot: ") {
+      snapshotIdOfRef(ds, IcebergTable.LatestTag) shouldBe snapshotIdOfRef(ds, "20260715")
+    }
+    onBranch(ds, "20260708") should contain theSameElementsAs older
   }
 
   it should "keep each dataset_version on its own independent branch" in {
