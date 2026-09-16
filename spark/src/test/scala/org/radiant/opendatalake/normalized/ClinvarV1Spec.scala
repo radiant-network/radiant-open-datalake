@@ -30,6 +30,20 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
     resultDF.as[NormalizedClinvar].collect() should contain allElementsOf expectedResults
   }
 
+  it should "publish both locus and locus_hash (SJRA-1811 -- Radiant's StarRocks clinvar target stores both)" in {
+    val inputData = Map(source.id -> Seq(RawClinvar("2")).toDF())
+
+    val row = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar")
+      .transformSingle(inputData)
+      .select("locus", "locus_hash")
+      .head()
+
+    // RawClinvar carries Glow's 0-based start 69359260, so the published POS is 69359261.
+    row.getString(0) shouldBe "2-69359261-T-A"
+    // sha256("2-69359261-T-A")
+    row.getString(1) shouldBe "f2773c750417c2d1ccd6d0ab10a935575d4060c52e78d3e33bf7d68b74264379"
+  }
+
   /*
     Since SJRA-1546 §2.1, loadSingle publishes through WapLoader: the rows land on a branch named after the
     dataset_version and `main` is left permanently empty, so `destination.read` (which resolves to the

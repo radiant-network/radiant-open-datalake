@@ -4,6 +4,7 @@ import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, Runt
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import org.apache.spark.sql.DataFrame
 import org.radiant.opendatalake.contracts.ContractETLP
+import org.radiant.opendatalake.normalized.Locus
 import org.radiant.opendatalake.normalized.io.RawInput
 
 import java.time.LocalDateTime
@@ -41,7 +42,7 @@ case class GnomadJoint_v1(rc: RuntimeETLContext, version: String, rawStorage: St
         flattenInfo(df): _*
       )
 
-    intermediate.select(
+    Locus.withLocusHash(intermediate.select(
       $"chromosome",
       $"start",
       $"end",
@@ -59,7 +60,7 @@ case class GnomadJoint_v1(rc: RuntimeETLContext, version: String, rawStorage: St
       $"af_exomes",
       $"an_exomes".cast("long"),
       $"nhomalt_exomes".cast("long") as "hom_exomes",
-    )
+    ))
   }
 
   override val defaultRepartition: DataFrame => DataFrame = RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1000))

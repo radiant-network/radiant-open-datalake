@@ -24,22 +24,24 @@ case class DBSNP_v1(rc: RuntimeETLContext, version: String, rawStorage: String, 
                                lastRunValue: LocalDateTime = minValue,
                                currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
     import spark.implicits._
-    data(raw_dbsnp.id)
-      .where($"contigName" like "NC_%")
-      .withColumn("alternate", explode($"alternateAlleles"))
-      .withColumn("chromosome", regexp_extract($"contigName", "NC_(\\d+).(\\d+)", 1).cast("int"))
-      .select(
-        when($"chromosome" === 23, "X")
-          .when($"chromosome" === 24, "Y")
-          .when($"chromosome" === 12920, "M")
-          .otherwise($"chromosome".cast("string")) as "chromosome",
-        start,
-        end,
-        name,
-        reference,
-        $"alternate",
-        $"contigName" as "original_contig_name"
-      )
+    Locus.withLocusHash(
+      data(raw_dbsnp.id)
+        .where($"contigName" like "NC_%")
+        .withColumn("alternate", explode($"alternateAlleles"))
+        .withColumn("chromosome", regexp_extract($"contigName", "NC_(\\d+).(\\d+)", 1).cast("int"))
+        .select(
+          when($"chromosome" === 23, "X")
+            .when($"chromosome" === 24, "Y")
+            .when($"chromosome" === 12920, "M")
+            .otherwise($"chromosome".cast("string")) as "chromosome",
+          start,
+          end,
+          name,
+          reference,
+          $"alternate",
+          $"contigName" as "original_contig_name"
+        )
+    )
   }
 
   override val defaultRepartition: DataFrame => DataFrame = RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1000))
