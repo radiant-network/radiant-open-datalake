@@ -48,6 +48,17 @@ class SpliceAiV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanU
     perGene shouldBe Set(("GENE1", 0.10, 0.20), ("GENE2", 0.50, 0.00))
   }
 
+  it should "publish the locus_hash join key and drop the intermediate locus (SJRA-1811)" in {
+    val result = job.transformSingle(Map(source.id -> Seq(RawSpliceAi()).toDF()))
+
+    result.columns should not contain "locus"
+
+    // Glow's 0-based start 210862941 is published as the 1-based POS 210862942, so the locus is
+    // "1-210862942-GGCA-G". sha256 of that string:
+    result.select("locus_hash").as[String].head() shouldBe
+      "b1d4a60d53627d5c87f4b0412cba4006ac88aaf9565861169ec187f4dc3d4754"
+  }
+
   /*
     Since SJRA-1546 §2.1, loadSingle publishes through WapLoader: the rows land on a branch named after the
     dataset_version and `main` is left permanently empty, so `destination.read` (which resolves to the

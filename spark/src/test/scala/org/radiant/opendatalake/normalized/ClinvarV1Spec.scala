@@ -30,6 +30,37 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
     resultDF.as[NormalizedClinvar].collect() should contain allElementsOf expectedResults
   }
 
+  it should "publish both locus and locus_hash (SJRA-1811 -- Radiant's StarRocks clinvar target stores both)" in {
+    val inputData = Map(source.id -> Seq(RawClinvar("2")).toDF())
+
+    val row = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar")
+      .transformSingle(inputData)
+      .select("locus", "locus_hash")
+      .head()
+
+    // RawClinvar carries Glow's 0-based start 69359260, so the published POS is 69359261.
+    row.getString(0) shouldBe "2-69359261-T-A"
+    // sha256("2-69359261-T-A")
+    row.getString(1) shouldBe "f2773c750417c2d1ccd6d0ab10a935575d4060c52e78d3e33bf7d68b74264379"
+  }
+
+  it should "publish the mitochondrion as M, the way every other source spells it" in {
+    // ClinVar ships bare contigs, so its mitochondrial rows arrive as "MT" while gnomAD, TopMed and dbSNP
+    // all reach "M". Without canonicalisation the two hash apart and `variant_lookup` misses the ClinVar
+    // side entirely -- the join does not error, `locus_id` just comes back NULL.
+    val inputData = Map(source.id -> Seq(RawClinvar(contigName = "MT")).toDF())
+
+    val row = new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar")
+      .transformSingle(inputData)
+      .select("chromosome", "locus", "locus_hash")
+      .head()
+
+    row.getString(0) shouldBe "M"
+    row.getString(1) shouldBe "M-69359261-T-A"
+    // sha256("M-69359261-T-A")
+    row.getString(2) shouldBe "e0fdf0f60bc42deed6bba2c6a89c52def2dd85bc74e209a328b94f90326bb71b"
+  }
+
   /*
     Since SJRA-1546 §2.1, loadSingle publishes through WapLoader: the rows land on a branch named after the
     dataset_version and `main` is left permanently empty, so `destination.read` (which resolves to the

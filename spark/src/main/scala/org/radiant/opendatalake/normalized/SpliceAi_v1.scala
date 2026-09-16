@@ -22,7 +22,7 @@ case class SpliceAi_v1(rc: RuntimeETLContext, version: String, rawStorage: Strin
   override def transformSingle(data: Map[String, DataFrame],
                                lastRunValue: LocalDateTime,
                                currentRunValue: LocalDateTime): DataFrame =
-    EnrichedSpliceAi.addMaxScore(normalize(data(raw_spliceai.id)))
+    Locus.withLocusHash(EnrichedSpliceAi.addMaxScore(normalize(data(raw_spliceai.id))))
 
   override def defaultRepartition: DataFrame => DataFrame =
     RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1000))

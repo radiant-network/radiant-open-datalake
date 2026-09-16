@@ -64,4 +64,19 @@ class GnomadJointV1Spec extends SparkSpec {
     bothCallsets.getAs[Long]("hom_genomes") shouldBe 0L
     bothCallsets.getAs[Long]("hom_exomes") shouldBe 0L
   }
+
+  it should "publish the locus_hash join key and drop the intermediate locus (SJRA-1811)" in {
+    val fixture = getClass.getResource("/input_vcf/gnomadV4Joint.vcf").getPath
+    val raw = spark.read.format("vcf").option("flattenInfoFields", "true").load(fixture)
+
+    val result = job.transformSingle(Map(source.id -> raw)).orderBy("start")
+    result.columns should not contain "locus"
+
+    // The two fixture records are chr22:10510033 T>C and chr22:10736031 G>A, i.e. 1-based VCF POS with
+    // the "chr" prefix stripped -- so "22-10510033-T-C" and "22-10736031-G-A". sha256 of each:
+    result.select("locus_hash").collect().map(_.getString(0)) shouldBe Array(
+      "66c9587e56dbdbbcb274fab046c46e7386882cada1856e8c35af33e7a958adb5",
+      "46e20473e896337c714146733646828d8e1544dc4c014038f656e51f0d358a03"
+    )
+  }
 }

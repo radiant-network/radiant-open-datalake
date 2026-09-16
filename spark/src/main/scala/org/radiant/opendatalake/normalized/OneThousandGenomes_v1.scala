@@ -20,24 +20,26 @@ case class OneThousandGenomes_v1(rc: RuntimeETLContext, version: String, rawStor
   override def transformSingle(data: Map[String, DataFrame],
                                lastRunValue: LocalDateTime = minValue,
                                currentRunValue: LocalDateTime = LocalDateTime.now()): DataFrame = {
-    data(raw_1000_genomes.id)
-      .select(
-        chromosome,
-        start,
-        end,
-        name,
-        reference,
-        alternate,
-        ac,
-        af,
-        an,
-        afr_af,
-        eur_af,
-        sas_af,
-        amr_af,
-        eas_af,
-        dp
-      )
+    Locus.withLocusHash(
+      data(raw_1000_genomes.id)
+        .select(
+          chromosome,
+          start,
+          end,
+          name,
+          reference,
+          alternate,
+          ac,
+          af,
+          an,
+          afr_af,
+          eur_af,
+          sas_af,
+          amr_af,
+          eas_af,
+          dp
+        )
+    )
   }
 
   override val defaultRepartition: DataFrame => DataFrame =

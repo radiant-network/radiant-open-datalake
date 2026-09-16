@@ -47,6 +47,17 @@ class OneThousandGenomesV1Spec extends SparkSpec with CreateDatabasesBeforeAll w
     result should contain theSameElementsAs Seq(NormalizedOneKGenomes())
   }
 
+  it should "publish the locus_hash join key and drop the intermediate locus (SJRA-1811)" in {
+    val result = job.transformSingle(Map(source.id -> Seq(RawOneKGenomesInput()).toDF()))
+
+    result.columns should not contain "locus"
+
+    // "chr1" loses its prefix and Glow's 0-based start 69896 is published as the 1-based POS 69897,
+    // so the locus is "1-69897-T-C". sha256 of that string:
+    result.select("locus_hash").as[String].head() shouldBe
+      "8831c051e6fbe21fd5575cdaa4de13228a897023073a31739dd7d1ee331a9e22"
+  }
+
   private val tableName: String = destination.table.map(_.fullName).get
   private def onBranch(branch: String) = spark.read.option("branch", branch).table(tableName).as[NormalizedOneKGenomes]
 

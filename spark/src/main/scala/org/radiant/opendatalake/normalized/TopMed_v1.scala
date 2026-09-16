@@ -29,7 +29,8 @@ case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
     val topmedDataFrameWithAnColumn: DataFrame = if (topmedDataFrame.columns.contains("INFO_AN")) topmedDataFrame
                                                  else topmedDataFrame.withColumn("INFO_AN", lit(round(ac / af)).cast(IntegerType))
 
-    topmedDataFrameWithAnColumn.select(
+    Locus.withLocusHash(
+      topmedDataFrameWithAnColumn.select(
         chromosome,
         start,
         end,
@@ -46,6 +47,7 @@ case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
           .when(array_contains($"filters", "PASS"), "PASS+FAIL")
           .otherwise("FAIL") as "qual_filter"
       )
+    )
   }
 
   override def defaultRepartition: DataFrame => DataFrame =

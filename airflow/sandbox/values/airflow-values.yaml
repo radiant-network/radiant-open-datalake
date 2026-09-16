@@ -89,3 +89,5 @@ extraEnv: |
     value: admin
   - name: AWS_SECRET_ACCESS_KEY
     value: password
+  - name: AWS_ENDPOINT_URL
+    value: http://opendatalake-minio:9000

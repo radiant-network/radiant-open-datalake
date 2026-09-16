@@ -2,7 +2,6 @@ package org.radiant.opendatalake.normalized
 
 import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByRange, RuntimeETLContext}
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.sql.functions.{col, concat_ws, sha2}
 import org.radiant.opendatalake.contracts.ContractETLP
 import org.radiant.opendatalake.enriched.dbnsfp
 import org.radiant.opendatalake.normalized.io.RawInput
@@ -14,9 +13,7 @@ case class DBNSFP_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
 
   private val raw_dbnsfp: DatasetConf = conf.getDataset("raw_dbnsfp")
 
-  private[normalized] def withLocus(df: DataFrame): DataFrame =
-    df.withColumn("locus", concat_ws("-", col("chromosome"), col("start"), col("reference"), col("alternate")))
-      .withColumn("locus_hash", sha2(col("locus"), 256))
+  private[normalized] def withLocus(df: DataFrame): DataFrame = Locus.withLocus(df)
 
 
   private[normalized] def toPlatformColumns(df: DataFrame): DataFrame = {

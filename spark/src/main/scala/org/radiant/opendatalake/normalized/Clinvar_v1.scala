@@ -59,7 +59,7 @@ case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String
           )
         )
 
-    intermediateDf.withInterpretations
+    val normalized = intermediateDf.withInterpretations
       .withColumn("clndisdb", split(concat_ws("|", col("clndisdb")), "\\|"))
       .withColumn("clndn", split(concat_ws("", col("clndn")), "\\|"))
       .withColumn(
@@ -72,6 +72,7 @@ case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String
       .withColumn("inheritance", inheritance_udf(col("origin")))
       .drop("clin_sig_original", "clndn")
 
+    Locus.withLocus(normalized)
   }
 
   override val defaultRepartition: DataFrame => DataFrame = Coalesce()
