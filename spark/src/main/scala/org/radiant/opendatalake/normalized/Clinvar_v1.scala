@@ -23,6 +23,12 @@ case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String
     Map(clinvar_vcf.id -> RawInput.readVersioned(clinvar_vcf.id, version, rawStorage))
   }
 
+  private def splitEscapedInfo(joined: Column): Column =
+    functions.transform(
+      split(regexp_replace(joined, "/", "|"), "\\|"),
+      c => regexp_replace(c, "^_+|_+$", "")
+    )
+
   override def transformSingle(data: Map[String, DataFrame],
                                lastRunValue: LocalDateTime,
                                currentRunValue: LocalDateTime): DataFrame = {
@@ -43,20 +49,12 @@ case class Clinvar_v1(rc: RuntimeETLContext, version: String, rawStorage: String
             (col("INFO_CLNSIGCONF") as "clin_sig_conflict") +:
             escapeInfoAndLowercase(df, "INFO_CLNSIG", "INFO_CLNSIGCONF"): _*
         )
-        .withColumn(
-          "clin_sig",
-          split(regexp_replace(concat_ws("|", col("clin_sig")), "^_|\\|_|/", "|"), "\\|")
-        )
-        .withColumn(
-          "clnrevstat",
-          split(regexp_replace(concat_ws("|", col("clnrevstat")), "^_|\\|_|/", "|"), "\\|")
-        )
+        .withColumn("clin_sig", splitEscapedInfo(concat_ws("|", col("clin_sig"))))
+        .withColumn("clnrevstat", splitEscapedInfo(concat_ws("|", col("clnrevstat"))))
         .withColumn(
           "clin_sig_conflict",
-          split(
-            regexp_replace(concat_ws("|", col("clin_sig_conflict")), "\\(\\d{1,2}\\)", ""),
-            "\\|"
-          )
+          // Strip the submitter count first: `(100)` hides the escaped space in front of it.
+          splitEscapedInfo(regexp_replace(concat_ws("|", col("clin_sig_conflict")), "\\(\\d+\\)", ""))
         )
 
     val normalized = intermediateDf.withInterpretations
