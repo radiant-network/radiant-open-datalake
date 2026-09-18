@@ -61,6 +61,48 @@ class ClinvarV1Spec extends SparkSpec with CreateDatabasesBeforeAll with CleanUp
     row.getString(2) shouldBe "e0fdf0f60bc42deed6bba2c6a89c52def2dd85bc74e209a328b94f90326bb71b"
   }
 
+  private def interpretationsOf(clnsig: List[String], clnsigconf: Option[List[String]]): Seq[String] =
+    new Clinvar_v1(TestETLContext(), version = "test", rawStorage = "", tablePrefix = "clinvar")
+      .transformSingle(
+        Map(source.id -> Seq(RawClinvar(INFO_CLNSIG = clnsig, INFO_CLNSIGCONF = clnsigconf)).toDF())
+      )
+      .select("interpretations")
+      .collect()
+      .head
+      .getSeq[String](0)
+
+  it should "strip the submitter count however many digits it has" in {
+    // `\d{1,2}` left `(123)` attached, and `withInterpretations` unions clin_sig_conflict into
+    // `interpretations` -- so the suffix reached the portal, which has no i18n key for it.
+    interpretationsOf(
+      List("Conflicting_classifications_of_pathogenicity"),
+      Some(List("Uncertain_significance(100)", "Benign(7)"))
+    ) should contain allOf ("Uncertain_significance", "Benign")
+  }
+
+  it should "not leave the CLNSIGCONF separator underscore on the value" in {
+    // CLNSIGCONF separates values with `,_`; the reader splits on the comma and the underscore stayed
+    // glued to every value after the first, giving `_Likely_benign`.
+    val interpretations = interpretationsOf(
+      List("Conflicting_classifications_of_pathogenicity"),
+      Some(List("Benign(1)", "_Likely_benign(3)"))
+    )
+    interpretations should contain("Likely_benign")
+    interpretations.filter(_.startsWith("_")) shouldBe empty
+  }
+
+  it should "not leave the escaped space that precedes the submitter count" in {
+    // ClinVar's text is `Uncertain significance (100)`; VCF escaping turns the space before `(`
+    // into `_`, so stripping the count left `Uncertain_significance_` -- a trailing underscore the
+    // old `^_|\|_|/` pattern had no branch for (it matched `_` only at the start or after a `|`).
+    val interpretations = interpretationsOf(
+      List("Conflicting_classifications_of_pathogenicity"),
+      Some(List("Uncertain_significance_(100)", "_Benign_(7)"))
+    )
+    interpretations should contain allOf ("Uncertain_significance", "Benign")
+    interpretations.filter(i => i.startsWith("_") || i.endsWith("_")) shouldBe empty
+  }
+
   /*
     Since SJRA-1546 §2.1, loadSingle publishes through WapLoader: the rows land on a branch named after the
     dataset_version and `main` is left permanently empty, so `destination.read` (which resolves to the
