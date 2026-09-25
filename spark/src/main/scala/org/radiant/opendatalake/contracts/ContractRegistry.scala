@@ -4,6 +4,7 @@ import bio.ferlab.datalake.commons.config.SimpleConfiguration
 import bio.ferlab.datalake.spark3.etl.v4.ETL
 import org.radiant.opendatalake.config.Contract
 import org.radiant.opendatalake.normalized.{Clinvar_v1, DBNSFP_v1, DBSNP_v1, DDD_v1, HpoGenes_v1, HpoTerms_v1, Mondo_v1, OneThousandGenomes_v1, SpliceAi_v1, TopMed_v1}
+import org.radiant.opendatalake.normalized.ensembl.{EnsemblExonByGene_v1, EnsemblExon_v1, EnsemblGene_v1, EnsemblTranscript_v1}
 import org.radiant.opendatalake.normalized.gnomad.{GnomadCNV_v1, GnomadConstraint_v1, GnomadJoint_v1, GnomadSV_v1}
 import org.radiant.opendatalake.normalized.omim.Omim_v1
 import org.radiant.opendatalake.normalized.orphanet.Orphanet_v1
@@ -21,6 +22,10 @@ object ContractRegistry {
     ("dbnsfp", 1) -> (args => DBNSFP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("dbsnp", 1) -> (args => DBSNP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("ddd", 1) -> (args => DDD_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("ensembl_exon", 1) -> (args => EnsemblExon_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("ensembl_exon_by_gene", 1) -> (args => EnsemblExonByGene_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("ensembl_gene", 1) -> (args => EnsemblGene_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("ensembl_transcript", 1) -> (args => EnsemblTranscript_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("gnomad_cnv", 1) -> (args => GnomadCNV_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("gnomad_constraint", 1) -> (args => GnomadConstraint_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("gnomad_joint", 1) -> (args => GnomadJoint_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),

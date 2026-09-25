@@ -102,6 +102,7 @@ object EtlConfiguration extends App {
       DatasetConf("raw_ensembl_uniprot", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.uniprot.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
       DatasetConf("raw_ensembl_ena", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.ena.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
       DatasetConf("raw_ensembl_gff", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.gff.gz", GFF, OverWrite),
+      DatasetConf("raw_ensembl_gff3", raw_storage_id, "/ensembl/{{VERSION}}/Homo_sapiens.GRCh38.*.gff3.gz", GFF, OverWrite),
       DatasetConf("raw_spliceai", raw_storage_id, "/spliceai/{{VERSION}}/spliceai_scores.raw.*.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
 
       //normalized
@@ -115,6 +116,10 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "dbsnp", partitionby = List("chromosome")),
       buildNormalizedDatasetConf(database, "ddd", repartition = Some(Coalesce())),
       DatasetConf("normalized_ddd_gene_set", iceberg_storage_id, "/normalized/ddd_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("ddd_gene_set")),
+      buildNormalizedDatasetConf(database, "ensembl_exon", repartition = Some(Coalesce())),
+      buildNormalizedDatasetConf(database, "ensembl_exon_by_gene", repartition = Some(Coalesce())),
+      buildNormalizedDatasetConf(database, "ensembl_gene", repartition = Some(Coalesce())),
+      buildNormalizedDatasetConf(database, "ensembl_transcript", repartition = Some(Coalesce())),
       DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
       // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
       // contract table normalized_gnomad_constraint (gnomad_constraint_v1); gnomAD constraint ingestion

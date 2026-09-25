@@ -30,6 +30,15 @@ object ImportPublicTable {
   def ddd(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
     ContractRunner.run("ddd", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
+  /** One Ensembl GFF3 release feeds four contract tables; each is its own contract source in contracts.yml. */
+  private val EnsemblSources = Seq("ensembl_gene", "ensembl_transcript", "ensembl_exon", "ensembl_exon_by_gene")
+
+  @main
+  def ensembl(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    EnsemblSources.foreach(source =>
+      ContractRunner.run(source, rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
+    )
+
   @main
   def ensembl_mapping(rc: RuntimeETLContext): Unit = EnsemblMapping.run(rc)
 

@@ -40,6 +40,10 @@ Imported on demand.
 | [SpliceAI](https://github.com/Illumina/SpliceAI) | `spliceai_v1` | [v1](spark/doc/release-notes/spliceai/v1.md) |
 | [dbNSFP](https://www.dbnsfp.org/) | `dbnsfp_v1` | [v1](spark/doc/release-notes/dbnsfp/v1.md) |
 | [OMIM](https://www.omim.org/) | `omim_v1` | [v1](spark/doc/release-notes/omim/v1.md) |
+| [Ensembl](https://www.ensembl.org/) (genes) | `ensembl_gene_v1` | [v1](spark/doc/release-notes/ensembl_gene/v1.md) |
+| [Ensembl](https://www.ensembl.org/) (transcripts) | `ensembl_transcript_v1` | [v1](spark/doc/release-notes/ensembl_transcript/v1.md) |
+| [Ensembl](https://www.ensembl.org/) (exons) | `ensembl_exon_v1` | [v1](spark/doc/release-notes/ensembl_exon/v1.md) |
+| [Ensembl](https://www.ensembl.org/) (exons by gene) | `ensembl_exon_by_gene_v1` | [v1](spark/doc/release-notes/ensembl_exon_by_gene/v1.md) |
 
 #### Downloading dbNSFP
 
@@ -95,6 +99,21 @@ To ingest an OMIM release, **trigger the _Download OMIM_ DAG** with a single par
 
 The download fetches `genemap2.txt` into the landing zone; the URL is built inside the task from the
 injected key. When it finishes, the **Import OMIM** DAG builds `omim_v1` automatically.
+
+#### Downloading Ensembl
+
+The four Ensembl tables are built from one file, the GRCh38 GFF3 annotation of an Ensembl release. To
+ingest a release, **trigger the _Download Ensembl_ DAG** with a single param:
+
+- `version` — the Ensembl release number, e.g. `114`. The DAG fetches
+  `https://ftp.ensembl.org/pub/release-<version>/gff3/homo_sapiens/Homo_sapiens.GRCh38.<version>.gff3.gz`
+  into `raw/landing/ensembl/<version>/`.
+
+When it finishes, the **Import Ensembl** DAG builds `ensembl_gene_v1`, `ensembl_transcript_v1`,
+`ensembl_exon_v1` and `ensembl_exon_by_gene_v1`, each on a branch named after the release. Several
+releases can coexist, one branch each. The release number is all digits, so read a branch with the
+backtick-quoted identifier, e.g. ``SELECT * FROM reference.ensembl_gene_v1.`branch_114` ``;
+`VERSION AS OF '114'` fails because Spark reads it as a snapshot id.
 
 ## Architecture diagram
 
