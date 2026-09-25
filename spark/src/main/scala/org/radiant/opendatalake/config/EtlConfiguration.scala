@@ -76,6 +76,10 @@ object EtlConfiguration extends App {
     List(
       //raw
       DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
+      // The glob keeps the `.xml` open so the same rule serves the gzipped release that lands in S3 and the
+      // plain-text sample the spec reads. `ClinvarRcv_v1` supplies the schema; these options only pin the
+      // record boundary and the two naming conventions the schema's field names assume.
+      DatasetConf("raw_clinvar_rcv", raw_storage_id, "/clinvar_rcv/{{VERSION}}/ClinVarRCVRelease_*.xml*", XML, OverWrite, readoptions = Map("rowTag" -> "ClinVarSet", "attributePrefix" -> "_", "valueTag" -> "_VALUE")),
       DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/{{VERSION}}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
       DatasetConf("raw_gnomad_joint", raw_storage_id, "/gnomad_joint/{{VERSION}}/*.vcf.bgz",  VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
       DatasetConf("raw_gnomad_cnv", raw_storage_id, "/gnomad_cnv/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
@@ -109,6 +113,12 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "1000_genomes", partitionby = List("chromosome")),
       DatasetConf("normalized_cancer_hotspots", iceberg_storage_id, "/normalized/cancer_hotspots", ICEBERG, OverWrite, partitionby = List(), table = table("cancer_hotspots")),
       buildNormalizedDatasetConf(database, "clinvar", repartition = Some(Coalesce())),
+      // The RCV release is one non-splittable gzip member (~6 GB, ~87 GB and ~8M records inflated), so
+      // extract and transform run in a single task whatever this says -- `XmlInputFormat` refuses any
+      // split past byte 0 of a gzip stream. The repartition is what spreads those rows over the writers.
+      // Landing the release exactly as NCBI publishes it is the deliberate choice, so the job is slow
+      // by construction rather than by oversight.
+      buildNormalizedDatasetConf(database, "clinvar_rcv", repartition = Some(FixedRepartition(32))),
       DatasetConf("normalized_cosmic_gene_set", iceberg_storage_id, "/normalized/cosmic_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
       DatasetConf("normalized_cosmic_mutation_set", iceberg_storage_id, "/normalized/cosmic_mutation_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_mutation_set")),
       buildNormalizedDatasetConf(database, "dbnsfp", partitionby = List("chromosome")),

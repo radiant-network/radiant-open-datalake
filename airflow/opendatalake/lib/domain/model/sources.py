@@ -2,6 +2,7 @@ from enum import Enum
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, SourceConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import (
+    ClinvarRcvSourceConfig,
     ClinvarSourceConfig,
     DBSNPSourceConfig,
     DDDSourceConfig,
@@ -69,6 +70,39 @@ class _Source(Enum):
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="clinvar"),
+    )
+    CLINVAR_RCV = ClinvarRcvSourceConfig(
+        short_name="clinvar_rcv",
+        display_name="NCBI ClinVar RCV",
+        website="https://www.ncbi.nlm.nih.gov/clinvar/",
+        listing_url="https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/"
+                    f"ClinVarRCVRelease_{version}.xml.gz"
+                ),
+                md5_present=True,
+                label=_XML_LABEL,
+                # ~6 GB: streamed straight to S3 rather than staged on an ECS task's local disk.
+                use_stream_upload=True,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(
+            spark_command="clinvar_rcv",
+            # The release is one gzip member, so it is not splittable: extract and transform run as a
+            # single task on a single executor core whatever the executor count, and only the write
+            # fans out. Adding executors does not speed the parse up; the job is long by construction,
+            # hence the waiter below. What that one task does need is shuffle room -- it writes the
+            # whole dataset's shuffle output on its own before the 32 writers pick it up.
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "8",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "60G",
+            },
+            waiter_max_attempts=960,  # ~16h
+        ),
     )
     DBSNP = DBSNPSourceConfig(
         short_name="dbsnp",

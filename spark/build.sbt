@@ -20,6 +20,7 @@ val datalakeSpark3Version = "14.14.4"
 val scalatestVersion = "3.2.17"
 val icebergVersion = "1.10.1"
 val jacksonVersion = "2.15.2"
+val sparkXmlVersion = "0.18.0"
 
 resolvers ++= Seq(
   "Sonatype OSS Snapshots" at "https://s01.oss.sonatype.org/content/repositories/snapshots",
@@ -37,6 +38,11 @@ libraryDependencies += "org.apache.iceberg" % "iceberg-spark-runtime-3.5_2.12" %
 libraryDependencies += "org.apache.iceberg" % "iceberg-aws-bundle" % icebergVersion
 
 libraryDependencies += "io.projectglow" %% "glow-spark3" % glowVersion exclude("org.apache.hadoop", "hadoop-client")
+
+// XML data source, for the streaming record-at-a-time read of the ClinVar RCV release (Format.XML ->
+// sparkFormat "xml"). NOT Provided: Spark only ships a built-in "xml" source from 4.0, where spark-xml was
+// donated; on the Spark 3.5 / EMR runtime the source exists only if this jar is assembled in.
+libraryDependencies += "com.databricks" %% "spark-xml" % sparkXmlVersion
 
 // YAML parsing for contracts.yml
 libraryDependencies += "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
@@ -61,6 +67,9 @@ assembly / assemblyShadeRules := Seq(
 assembly / assemblyMergeStrategy := {
   case "META-INF/io.netty.versions.properties" => MergeStrategy.last
   case "META-INF/versions/9/module-info.class" => MergeStrategy.discard
+  // spark-xml pulls in glassfish txw2, whose root module-info.class collides with Jackson's. JPMS
+  // descriptors are only read on the module path, and EMR runs Spark off the classpath, so drop them.
+  case "module-info.class" => MergeStrategy.discard
   case "META-INF/native-image/io.netty/netty-buffer/native-image.properties" => MergeStrategy.discard
   case "META-INF/native-image/io.netty/netty-common/native-image.properties" => MergeStrategy.discard
   case "META-INF/native-image/io.netty/netty-codec/generated/handlers/reflect-config.json" => MergeStrategy.discard

@@ -3,7 +3,7 @@ package org.radiant.opendatalake.contracts
 import bio.ferlab.datalake.commons.config.SimpleConfiguration
 import bio.ferlab.datalake.spark3.etl.v4.ETL
 import org.radiant.opendatalake.config.Contract
-import org.radiant.opendatalake.normalized.{Clinvar_v1, DBNSFP_v1, DBSNP_v1, DDD_v1, HpoGenes_v1, HpoTerms_v1, Mondo_v1, OneThousandGenomes_v1, SpliceAi_v1, TopMed_v1}
+import org.radiant.opendatalake.normalized.{ClinvarRcv_v1, Clinvar_v1, DBNSFP_v1, DBSNP_v1, DDD_v1, HpoGenes_v1, HpoTerms_v1, Mondo_v1, OneThousandGenomes_v1, SpliceAi_v1, TopMed_v1}
 import org.radiant.opendatalake.normalized.ensembl.{EnsemblExonByGene_v1, EnsemblExon_v1, EnsemblGene_v1, EnsemblTranscript_v1}
 import org.radiant.opendatalake.normalized.gnomad.{GnomadCNV_v1, GnomadConstraint_v1, GnomadJoint_v1, GnomadSV_v1}
 import org.radiant.opendatalake.normalized.omim.Omim_v1
@@ -19,6 +19,7 @@ object ContractRegistry {
   private val factories: Map[(String, Int), NormalizerArgs => NormalizerETL] = Map(
     ("1000_genomes", 1) -> (args => OneThousandGenomes_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("clinvar", 1) -> (args => Clinvar_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
+    ("clinvar_rcv", 1) -> (args => ClinvarRcv_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("dbnsfp", 1) -> (args => DBNSFP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("dbsnp", 1) -> (args => DBSNP_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),
     ("ddd", 1) -> (args => DDD_v1(args.rc, args.version, args.rawStorage, args.tablePrefix, args.database, args.warehouse)),

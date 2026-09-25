@@ -2,6 +2,7 @@ import pytest
 
 from opendatalake.lib.domain.model.config import DownloadConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import (
+    ClinvarRcvSourceConfig,
     ClinvarSourceConfig,
     DBSNPSourceConfig,
     DDDSourceConfig,
@@ -61,6 +62,53 @@ def clinvar_source_config() -> ClinvarSourceConfig:
         website="https://www.ncbi.nlm.nih.gov/clinvar/",
         download_configs=[DownloadConfig(download_url="https://example.com/clinvar")],
     )
+
+
+_CLINVAR_RCV_LISTING_URL = "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/"
+
+
+@pytest.fixture
+def clinvar_rcv_source_config() -> ClinvarRcvSourceConfig:
+    return ClinvarRcvSourceConfig(
+        short_name="clinvar_rcv",
+        display_name="NCBI ClinVar RCV",
+        website="https://www.ncbi.nlm.nih.gov/clinvar/",
+        listing_url=_CLINVAR_RCV_LISTING_URL,
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"{_CLINVAR_RCV_LISTING_URL}ClinVarRCVRelease_{version}.xml.gz"
+                ),
+                md5_present=True,
+                label="test",
+                use_stream_upload=True,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+    )
+
+
+@pytest.fixture
+def clinvar_rcv_listing_html() -> str:
+    return """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+ <head><title>Index of /pub/clinvar/xml/RCV_release</title></head>
+ <body>
+<pre><a href="/pub/clinvar/xml/">Parent Directory</a>
+<a href="archive/">archive/</a>
+<a href="weekly_release/">weekly_release/</a>
+<a href="ClinVarRCVRelease_00-latest.xml.gz">ClinVarRCVRelease_00-latest.xml.gz</a>       2026-09-03  6.0G
+<a href="ClinVarRCVRelease_00-latest.xml.gz.md5">ClinVarRCVRelease_00-latest.xml.gz.md5</a>   2026-09-03   69
+<a href="ClinVarRCVRelease_2026-07.xml.gz">ClinVarRCVRelease_2026-07.xml.gz</a>         2026-07-02  5.9G
+<a href="ClinVarRCVRelease_2026-07.xml.gz.md5">ClinVarRCVRelease_2026-07.xml.gz.md5</a>     2026-07-02   67
+<a href="ClinVarRCVRelease_2026-08.xml.gz">ClinVarRCVRelease_2026-08.xml.gz</a>         2026-08-06  6.0G
+<a href="ClinVarRCVRelease_2026-08.xml.gz.md5">ClinVarRCVRelease_2026-08.xml.gz.md5</a>     2026-08-06   67
+<a href="ClinVarRCVRelease_2026-09.xml.gz">ClinVarRCVRelease_2026-09.xml.gz</a>         2026-09-03  6.0G
+<a href="ClinVarRCVRelease_2026-09.xml.gz.md5">ClinVarRCVRelease_2026-09.xml.gz.md5</a>     2026-09-03   67
+</pre>
+ </body>
+</html>
+"""
 
 
 @pytest.fixture

@@ -19,6 +19,10 @@ object ImportPublicTable {
     ContractRunner.run("clinvar", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
+  def clinvar_rcv(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("clinvar_rcv", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
+
+  @main
   def dbnsfp(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
     ContractRunner.run("dbnsfp", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
