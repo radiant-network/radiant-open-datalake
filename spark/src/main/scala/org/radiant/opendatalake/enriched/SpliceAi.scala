@@ -1,37 +1,33 @@
 package org.radiant.opendatalake.enriched
 
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{Column, DataFrame, functions}
+import org.apache.spark.sql.{Column, DataFrame}
 
 object SpliceAi {
 
+  // Delta-score column -> event type, in the order ties are reported.
+  private val scores: Seq[(String, String)] = Seq(
+    "ds_ag" -> "AG", // acceptor gain
+    "ds_al" -> "AL", // acceptor loss
+    "ds_dg" -> "DG", // donor gain
+    "ds_dl" -> "DL"  // donor loss
+  )
+
+  /** Appends `max_score {ds, type}`: the strongest of the four delta scores and every event tied at it.
+    *
+    * Expression size is linear in the number of scores. Keep it that way — a filter on `max_score.ds`
+    * is pushed down with the expression inlined, so its size is paid per row. The previous
+    * `reduce(when/concat)` form grew 4x per score and made that filter cost ~3x the job's runtime. */
   def addMaxScore(df: DataFrame): DataFrame = {
-    val originalColumns = df.columns.map(col)
+    // Illumina: delta score = max(DS_AG, DS_AL, DS_DG, DS_DL). `greatest` skips nulls.
+    val ds: Column = greatest(scores.map { case (c, _) => col(c) }: _*)
+    // Non-null struct elements, so `type` stays array<string not null> after filter/transform.
+    val events: Column = array(scores.map { case (c, t) => struct(col(c) as "ds", lit(t) as "type") }: _*)
+    val tied: Column = transform(filter(events, e => e.getField("ds") === ds), e => e.getField("type"))
 
-    val getDs: Column => Column = _.getItem(0).getField("ds") // Get delta score
-    val scoreColumnNames = Array("AG", "AL", "DG", "DL")
-    val scoreColumns = scoreColumnNames.map(c => array(struct(col(c) as "ds", lit(c) as "type")))
-    val maxScore: Column = scoreColumns.reduce {
-      (c1, c2) =>
-        when(getDs(c1) > getDs(c2), c1)
-          .when(getDs(c1) === getDs(c2), concat(c1, c2))
-          .otherwise(c2)
-    }
-
-    df
-      .select(
-        originalColumns :+
-          col("ds_ag").as("AG") :+ // acceptor gain
-          col("ds_al").as("AL") :+ // acceptor loss
-          col("ds_dg").as("DG") :+ // donor gain
-          col("ds_dl").as("DL"): _* // donor loss
-      )
-      .withColumn("max_score_temp", maxScore)
-      .withColumn("max_score", struct(
-        getDs(col("max_score_temp")) as "ds",
-        functions.transform(col("max_score_temp"), c => c.getField("type")) as "type")
-      )
-      .withColumn("max_score", col("max_score").withField("type", when(col("max_score.ds") === 0, null).otherwise(col("max_score.type"))))
-      .select(originalColumns :+ col("max_score"): _*)
+    df.withColumn("max_score", struct(
+      ds as "ds",
+      when(ds === 0, lit(null)).otherwise(tied) as "type"
+    ))
   }
 }
