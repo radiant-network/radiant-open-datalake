@@ -402,6 +402,12 @@ shared tmp warehouse make parallel runs unsafe.
   that no local test can reproduce, since sbt puts `Provided` on the test classpath. `jacksonVersion`
   must still track Spark's Jackson (3.5.5 → 2.15.2) so the bundled YAML module matches the provided
   databind.
+- `com.databricks:spark-xml` backs `Format.XML` (`sparkFormat = "xml"`) and is likewise *not* Provided:
+  Spark only ships a built-in `xml` source from 4.0, where spark-xml was donated and its own line ended
+  at 0.18.0. It is what `raw_clinvar_rcv` is read with. **Its parser drops data for an attributes-only
+  struct that has child elements** — declare at least one child-element field on any such struct, or the
+  element's real children leak into the enclosing parse loop and end it early; see the `MeasureSet`
+  comment in `normalized/ClinvarRcvXml.scala`.
 - `javaOptions` pin `user.language=en` / `user.country=US`: a French locale makes Glow float parsing
   (`3,00`) throw `NumberFormatException`.
 - `shapeless` is shaded (`shadeshapless.@1`); `commons-logging` is globally excluded; several

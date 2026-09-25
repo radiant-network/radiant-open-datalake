@@ -2,6 +2,7 @@ from enum import Enum
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, SourceConfig, UpdateMode
 from opendatalake.lib.domain.source_configs import (
+    ClinvarRcvSourceConfig,
     ClinvarSourceConfig,
     DBSNPSourceConfig,
     DDDSourceConfig,
@@ -69,6 +70,33 @@ class _Source(Enum):
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(spark_command="clinvar"),
+    )
+    CLINVAR_RCV = ClinvarRcvSourceConfig(
+        short_name="clinvar_rcv",
+        display_name="NCBI ClinVar RCV",
+        website="https://www.ncbi.nlm.nih.gov/clinvar/",
+        listing_url="https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/"
+                    f"ClinVarRCVRelease_{version}.xml.gz"
+                ),
+                md5_present=True,
+                label=_XML_LABEL,
+                use_stream_upload=True,
+            )
+        ],
+        update_mode=UpdateMode.AUTO,
+        import_config=ImportConfig(
+            spark_command="clinvar_rcv",
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "8",
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "60G",
+            },
+            waiter_max_attempts=960,  # ~16h
+        ),
     )
     DBSNP = DBSNPSourceConfig(
         short_name="dbsnp",

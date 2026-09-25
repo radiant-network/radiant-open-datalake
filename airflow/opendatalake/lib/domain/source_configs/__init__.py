@@ -1,4 +1,4 @@
-from .clinvar import ClinvarSourceConfig
+from .clinvar import ClinvarRcvSourceConfig, ClinvarSourceConfig
 from .dbsnp import DBSNPSourceConfig
 from .ddd import DDDSourceConfig
 from .gnomad import (
@@ -15,6 +15,7 @@ from .spliceai import SpliceAiSourceConfig
 from .topmed import TopMedBravoSourceConfig
 
 __all__ = [
+    "ClinvarRcvSourceConfig",
     "ClinvarSourceConfig",
     "DBSNPSourceConfig",
     "DDDSourceConfig",

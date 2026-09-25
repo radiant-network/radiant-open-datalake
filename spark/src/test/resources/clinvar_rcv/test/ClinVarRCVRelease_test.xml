@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!--
+  Hand-trimmed extract of ClinVarRCVRelease_YYYY-MM.xml, kept uncompressed so it stays reviewable.
+  Only the elements ClinvarRcvXml.schema declares are kept; the real records also carry Measure,
+  SequenceLocation, ObservedData free text, AttributeSet, Citation and XRef subtrees.
+
+  The four records cover, in order:
+    1. RCV000000010 - single classification, one submission, no assertion criteria (0 stars).
+    2. RCV000000469 - "/"-joined aggregate, four submissions (one classifying outside the aggregate),
+                      repeated and duplicate origins, an Alternate trait name to be filtered out.
+    3. RCV000000471 - GenotypeSet (compound heterozygote) instead of a MeasureSet.
+    4. RCV000000472 - no germline classification and no ObservedIn.
+-->
+<ReleaseSet Dated="2026-08-29" Type="full">
+
+<ClinVarSet ID="92147971">
+  <RecordStatus>current</RecordStatus>
+  <Title>NM_002036.4(ACKR1):c.286_299del AND DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE</Title>
+  <ReferenceClinVarAssertion ID="57513" DateLastUpdated="2022-04-23" DateCreated="2013-04-04">
+    <ClinVarAccession Acc="RCV000000010" DateUpdated="2022-04-23" Version="3" Type="RCV"/>
+    <RecordStatus>current</RecordStatus>
+    <Classifications>
+      <GermlineClassification>
+        <ReviewStatus>no assertion criteria provided</ReviewStatus>
+        <Description DateLastEvaluated="2000-04-01" SubmissionCount="1">Pathogenic</Description>
+      </GermlineClassification>
+    </Classifications>
+    <Assertion Type="variation to disease"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species TaxonomyId="9606">human</Species>
+        <AffectedStatus>not provided</AffectedStatus>
+      </Sample>
+    </ObservedIn>
+    <MeasureSet Type="Variant" ID="18397" Acc="VCV000018397" Version="1">
+      <Name>
+        <ElementValue Type="Preferred">NM_002036.4(ACKR1):c.286_299del (p.Trp96fs)</ElementValue>
+      </Name>
+    </MeasureSet>
+    <TraitSet Type="Disease" ID="6212">
+      <Trait ID="15692" Type="BloodGroup">
+        <Name>
+          <ElementValue Type="Preferred">DUFFY BLOOD GROUP SYSTEM, FY(a-b-) PHENOTYPE</ElementValue>
+        </Name>
+        <Name>
+          <ElementValue Type="Alternate">DUFFY NULL; Fy(a-b-)</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ReferenceClinVarAssertion>
+  <ClinVarAssertion ID="20153">
+    <ClinVarSubmissionID localKey="613665.0004_DUFFY" submitter="OMIM" submitterDate="2015-08-10"/>
+    <ClinVarAccession Acc="SCV000020153" DateCreated="2013-04-04" Version="2" Type="SCV" OrgID="3"/>
+    <RecordStatus>current</RecordStatus>
+    <Classification DateLastEvaluated="2000-04-01">
+      <ReviewStatus>no assertion criteria provided</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+  </ClinVarAssertion>
+</ClinVarSet>
+
+<ClinVarSet ID="92148430">
+  <RecordStatus>current</RecordStatus>
+  <Title>NM_000410.4(HFE):c.845G&gt;A AND Hereditary hemochromatosis</Title>
+  <ReferenceClinVarAssertion ID="57972" DateLastUpdated="2026-01-15" DateCreated="2013-04-04">
+    <ClinVarAccession Acc="RCV000000469" DateUpdated="2026-01-15" Version="7" Type="RCV"/>
+    <RecordStatus>current</RecordStatus>
+    <Classifications>
+      <GermlineClassification>
+        <ReviewStatus>criteria provided, multiple submitters, no conflicts</ReviewStatus>
+        <Description DateLastEvaluated="2025-11-02" SubmissionCount="4">Pathogenic/Likely pathogenic</Description>
+      </GermlineClassification>
+    </Classifications>
+    <Assertion Type="variation to disease"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species TaxonomyId="9606">human</Species>
+      </Sample>
+    </ObservedIn>
+    <ObservedIn>
+      <Sample>
+        <Origin>germline</Origin>
+        <Species TaxonomyId="9606">human</Species>
+      </Sample>
+    </ObservedIn>
+    <ObservedIn>
+      <Sample>
+        <Origin>de novo</Origin>
+        <Species TaxonomyId="9606">human</Species>
+      </Sample>
+    </ObservedIn>
+    <MeasureSet Type="Variant" ID="9" Acc="VCV000000009" Version="4">
+      <Name>
+        <ElementValue Type="Preferred">NM_000410.4(HFE):c.845G&gt;A (p.Cys282Tyr)</ElementValue>
+      </Name>
+    </MeasureSet>
+    <TraitSet Type="Disease" ID="6216">
+      <Trait ID="15700" Type="Disease">
+        <Name>
+          <ElementValue Type="Alternate">Bronze diabetes</ElementValue>
+        </Name>
+        <Name>
+          <ElementValue Type="Preferred">Hereditary hemochromatosis</ElementValue>
+        </Name>
+      </Trait>
+      <Trait ID="15701" Type="Disease">
+        <Name>
+          <ElementValue Type="Preferred">Hemochromatosis type 1</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ReferenceClinVarAssertion>
+  <ClinVarAssertion ID="20612">
+    <ClinVarSubmissionID localKey="235200.0001_HFE" submitter="OMIM"/>
+    <ClinVarAccession Acc="SCV000020612" Version="3" Type="SCV" OrgID="3"/>
+    <Classification DateLastEvaluated="2010-06-01">
+      <ReviewStatus>no assertion criteria provided</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+  </ClinVarAssertion>
+  <ClinVarAssertion ID="20613">
+    <ClinVarSubmissionID localKey="HFE_c845" submitter="Invitae"/>
+    <ClinVarAccession Acc="SCV000221234" Version="1" Type="SCV" OrgID="500031"/>
+    <Classification DateLastEvaluated="2025-11-02">
+      <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+  </ClinVarAssertion>
+  <ClinVarAssertion ID="20614">
+    <ClinVarSubmissionID localKey="HFE_C282Y" submitter="Laboratory for Molecular Medicine"/>
+    <ClinVarAccession Acc="SCV000330011" Version="2" Type="SCV" OrgID="21766"/>
+    <Classification DateLastEvaluated="2024-03-19">
+      <ReviewStatus>reviewed by expert panel</ReviewStatus>
+      <GermlineClassification>Likely pathogenic</GermlineClassification>
+    </Classification>
+  </ClinVarAssertion>
+  <ClinVarAssertion ID="20615">
+    <ClinVarSubmissionID localKey="HFE_282" submitter="GeneDx"/>
+    <ClinVarAccession Acc="SCV000440099" Version="1" Type="SCV" OrgID="26957"/>
+    <Classification DateLastEvaluated="2019-07-01">
+      <ReviewStatus>criteria provided, single submitter</ReviewStatus>
+      <GermlineClassification>Uncertain significance</GermlineClassification>
+    </Classification>
+  </ClinVarAssertion>
+</ClinVarSet>
+
+<ClinVarSet ID="92148432">
+  <RecordStatus>current</RecordStatus>
+  <Title>NM_000410.4(HFE):c.845G&gt;A and c.187C&gt;G AND Hereditary hemochromatosis</Title>
+  <ReferenceClinVarAssertion ID="57974" DateLastUpdated="2026-01-15" DateCreated="2013-04-04">
+    <ClinVarAccession Acc="RCV000000471" DateUpdated="2026-01-15" Version="2" Type="RCV"/>
+    <RecordStatus>current</RecordStatus>
+    <Classifications>
+      <GermlineClassification>
+        <ReviewStatus>practice guideline</ReviewStatus>
+        <Description DateLastEvaluated="2023-05-10" SubmissionCount="1">Pathogenic</Description>
+      </GermlineClassification>
+    </Classifications>
+    <Assertion Type="variation to disease"/>
+    <ObservedIn>
+      <Sample>
+        <Origin>biparental</Origin>
+        <Species TaxonomyId="9606">human</Species>
+      </Sample>
+    </ObservedIn>
+    <GenotypeSet Type="CompoundHeterozygote" ID="424711" Acc="VCV000424711" Version="1">
+      <MeasureSet Type="Variant" ID="9" Acc="VCV000000009" Version="4">
+        <Name>
+          <ElementValue Type="Preferred">NM_000410.4(HFE):c.845G&gt;A (p.Cys282Tyr)</ElementValue>
+        </Name>
+      </MeasureSet>
+      <MeasureSet Type="Variant" ID="10" Acc="VCV000000010" Version="3">
+        <Name>
+          <ElementValue Type="Preferred">NM_000410.4(HFE):c.187C&gt;G (p.His63Asp)</ElementValue>
+        </Name>
+      </MeasureSet>
+    </GenotypeSet>
+    <TraitSet Type="Disease" ID="6216">
+      <Trait ID="15700" Type="Disease">
+        <Name>
+          <ElementValue Type="Preferred">Hereditary hemochromatosis</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ReferenceClinVarAssertion>
+  <ClinVarAssertion ID="20617">
+    <ClinVarSubmissionID localKey="HFE_compound" submitter="ClinGen"/>
+    <ClinVarAccession Acc="SCV000556677" Version="1" Type="SCV" OrgID="500061"/>
+    <Classification DateLastEvaluated="2023-05-10">
+      <ReviewStatus>practice guideline</ReviewStatus>
+      <GermlineClassification>Pathogenic</GermlineClassification>
+    </Classification>
+  </ClinVarAssertion>
+</ClinVarSet>
+
+<ClinVarSet ID="92148433">
+  <RecordStatus>current</RecordStatus>
+  <Title>NM_000410.4(HFE):c.187C&gt;G AND not provided</Title>
+  <ReferenceClinVarAssertion ID="57975" DateLastUpdated="2026-01-15" DateCreated="2013-04-04">
+    <ClinVarAccession Acc="RCV000000472" DateUpdated="2026-01-15" Version="1" Type="RCV"/>
+    <RecordStatus>current</RecordStatus>
+    <Classifications/>
+    <Assertion Type="variation to disease"/>
+    <MeasureSet Type="Variant" ID="10" Acc="VCV000000010" Version="3">
+      <Name>
+        <ElementValue Type="Preferred">NM_000410.4(HFE):c.187C&gt;G (p.His63Asp)</ElementValue>
+      </Name>
+    </MeasureSet>
+    <TraitSet Type="Disease" ID="9460">
+      <Trait ID="9460" Type="Disease">
+        <Name>
+          <ElementValue Type="Preferred">not provided</ElementValue>
+        </Name>
+      </Trait>
+    </TraitSet>
+  </ReferenceClinVarAssertion>
+  <ClinVarAssertion ID="20618">
+    <ClinVarSubmissionID localKey="HFE_H63D" submitter="GeneReviews"/>
+    <ClinVarAccession Acc="SCV000778899" Version="1" Type="SCV" OrgID="500062"/>
+    <Classification>
+      <ReviewStatus>no classification provided</ReviewStatus>
+    </Classification>
+  </ClinVarAssertion>
+</ClinVarSet>
+
+</ReleaseSet>

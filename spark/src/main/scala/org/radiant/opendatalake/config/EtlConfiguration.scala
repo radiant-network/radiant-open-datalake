@@ -76,6 +76,7 @@ object EtlConfiguration extends App {
     List(
       //raw
       DatasetConf("raw_clinvar", raw_storage_id, "/clinvar/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
+      DatasetConf("raw_clinvar_rcv", raw_storage_id, "/clinvar_rcv/{{VERSION}}/ClinVarRCVRelease_*.xml*", XML, OverWrite, readoptions = Map("rowTag" -> "ClinVarSet", "attributePrefix" -> "_", "valueTag" -> "_VALUE")),
       DatasetConf("raw_dbsnp", raw_storage_id, "/dbsnp/{{VERSION}}/*.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
       DatasetConf("raw_gnomad_joint", raw_storage_id, "/gnomad_joint/{{VERSION}}/*.vcf.bgz",  VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
       DatasetConf("raw_gnomad_cnv", raw_storage_id, "/gnomad_cnv/{{VERSION}}/*.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
@@ -109,6 +110,11 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "1000_genomes", partitionby = List("chromosome")),
       DatasetConf("normalized_cancer_hotspots", iceberg_storage_id, "/normalized/cancer_hotspots", ICEBERG, OverWrite, partitionby = List(), table = table("cancer_hotspots")),
       buildNormalizedDatasetConf(database, "clinvar", repartition = Some(Coalesce())),
+      buildNormalizedDatasetConf(
+        database,
+        "clinvar_rcv",
+        repartition = Some(RepartitionByColumns(Seq("clinvar_id"), Some(32), sortColumns = Seq("clinvar_id")))
+      ),
       DatasetConf("normalized_cosmic_gene_set", iceberg_storage_id, "/normalized/cosmic_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_gene_set")),
       DatasetConf("normalized_cosmic_mutation_set", iceberg_storage_id, "/normalized/cosmic_mutation_set", ICEBERG, OverWrite, partitionby = List(), table = table("cosmic_mutation_set")),
       buildNormalizedDatasetConf(database, "dbnsfp", partitionby = List("chromosome")),

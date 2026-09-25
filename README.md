@@ -20,6 +20,7 @@ New versions are discovered and imported automatically.
 | Source | Table | Release notes |
 |--------|-------|---------------|
 | [NCBI ClinVar](https://www.ncbi.nlm.nih.gov/clinvar/) | `clinvar_v1` | [v1](spark/doc/release-notes/clinvar/v1.md) |
+| [NCBI ClinVar RCV](https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/) | `clinvar_rcv_v1` | [v1](spark/doc/release-notes/clinvar_rcv/v1.md) |
 | [NCBI dbSNP](https://www.ncbi.nlm.nih.gov/snp/) | `dbsnp_v1` | [v1](spark/doc/release-notes/dbsnp/v1.md) |
 | [Mondo Disease Ontology](https://mondo.monarchinitiative.org/) | `mondo_v1` | [v1](spark/doc/release-notes/mondo/v1.md) |
 | [Human Phenotype Ontology (Terms)](https://hpo.jax.org/) | `hpo_terms_v1` | [v1](spark/doc/release-notes/hpo_terms/v1.md) |

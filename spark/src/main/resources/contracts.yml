@@ -19,6 +19,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/clinvar/v1.md"
+  clinvar_rcv:
+    table_prefix: "clinvar_rcv"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/clinvar_rcv/v1.md"
   dbsnp:
     table_prefix: "dbsnp"
     contracts:
