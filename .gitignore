@@ -3,3 +3,6 @@
 # sbt scaffolding, if sbt is ever invoked from the repo root instead of spark/
 target/
 project/target/
+
+# macOS Finder metadata
+.DS_Store
