@@ -82,7 +82,7 @@ sources:
   spliceai:
     table_prefix: "spliceai"
     contracts:
-      - lineage: "1.0"
+      - lineage: "1.1"
         release_notes: "doc/release-notes/spliceai/v1.md"
   topmed_bravo:
     table_prefix: "topmed_bravo"
