@@ -15,14 +15,19 @@ case class SpliceAi_v1(rc: RuntimeETLContext, version: String, rawStorage: Strin
 
   val raw_spliceai: DatasetConf = conf.getDataset("raw_spliceai")
 
+  private val MinDeltaScore: Double = 0.2
+
   override def extract(lastRunValue: LocalDateTime,
                        currentRunValue: LocalDateTime): Map[String, DataFrame] =
     Map(raw_spliceai.id -> RawInput.readVersioned(raw_spliceai.id, version, rawStorage))
 
   override def transformSingle(data: Map[String, DataFrame],
                                lastRunValue: LocalDateTime,
-                               currentRunValue: LocalDateTime): DataFrame =
-    Locus.withLocusHash(EnrichedSpliceAi.addMaxScore(normalize(data(raw_spliceai.id))))
+                               currentRunValue: LocalDateTime): DataFrame = {
+    val scored = EnrichedSpliceAi.addMaxScore(normalize(data(raw_spliceai.id)))
+
+    Locus.withLocusHash(scored.filter(col("max_score.ds") >= MinDeltaScore))
+  }
 
   override def defaultRepartition: DataFrame => DataFrame =
     RepartitionByRange(columnNames = Seq("chromosome", "start"), n = Some(1000))
