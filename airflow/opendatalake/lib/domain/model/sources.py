@@ -84,18 +84,12 @@ class _Source(Enum):
                 ),
                 md5_present=True,
                 label=_XML_LABEL,
-                # ~6 GB: streamed straight to S3 rather than staged on an ECS task's local disk.
                 use_stream_upload=True,
             )
         ],
         update_mode=UpdateMode.AUTO,
         import_config=ImportConfig(
             spark_command="clinvar_rcv",
-            # The release is one gzip member, so it is not splittable: extract and transform run as a
-            # single task on a single executor core whatever the executor count, and only the write
-            # fans out. Adding executors does not speed the parse up; the job is long by construction,
-            # hence the waiter below. What that one task does need is shuffle room -- it writes the
-            # whole dataset's shuffle output on its own before the 32 writers pick it up.
             spark_conf={
                 "spark.dynamicAllocation.maxExecutors": "8",
                 "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
