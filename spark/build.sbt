@@ -38,10 +38,6 @@ libraryDependencies += "org.apache.iceberg" % "iceberg-spark-runtime-3.5_2.12" %
 libraryDependencies += "org.apache.iceberg" % "iceberg-aws-bundle" % icebergVersion
 
 libraryDependencies += "io.projectglow" %% "glow-spark3" % glowVersion exclude("org.apache.hadoop", "hadoop-client")
-
-// XML data source, for the streaming record-at-a-time read of the ClinVar RCV release (Format.XML ->
-// sparkFormat "xml"). NOT Provided: Spark only ships a built-in "xml" source from 4.0, where spark-xml was
-// donated; on the Spark 3.5 / EMR runtime the source exists only if this jar is assembled in.
 libraryDependencies += "com.databricks" %% "spark-xml" % sparkXmlVersion
 
 // YAML parsing for contracts.yml
