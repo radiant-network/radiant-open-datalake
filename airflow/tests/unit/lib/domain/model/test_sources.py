@@ -115,6 +115,26 @@ def test_omim_import_config():
     assert get_import_config("omim").spark_command == "omim"
 
 
+def test_ensembl_is_manual_source():
+    assert get_update_mode("ensembl") == "manual"
+    assert is_auto_update("ensembl") is False
+    assert requires_download_url("ensembl") is False
+    assert requires_headers_param("ensembl") is False
+
+
+def test_ensembl_download_url_is_built_from_the_release():
+    (conf,) = get_download_configs("ensembl")
+    assert (
+        conf.get_url("114")
+        == "https://ftp.ensembl.org/pub/release-114/gff3/homo_sapiens/Homo_sapiens.GRCh38.114.gff3.gz"
+    )
+    assert conf.md5_present is False
+
+
+def test_ensembl_import_config():
+    assert get_import_config("ensembl").spark_command == "ensembl"
+
+
 def test_get_download_configs_with_string_lowercase():
     configs = get_download_configs("clinvar")
     assert isinstance(configs, list)

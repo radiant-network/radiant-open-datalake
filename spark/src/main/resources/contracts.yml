@@ -34,6 +34,26 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/ddd/v1.md"
+  ensembl_exon:
+    table_prefix: "ensembl_exon"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/ensembl_exon/v1.md"
+  ensembl_exon_by_gene:
+    table_prefix: "ensembl_exon_by_gene"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/ensembl_exon_by_gene/v1.md"
+  ensembl_gene:
+    table_prefix: "ensembl_gene"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/ensembl_gene/v1.md"
+  ensembl_transcript:
+    table_prefix: "ensembl_transcript"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/ensembl_transcript/v1.md"
   gnomad_cnv:
     table_prefix: "gnomad_cnv"
     contracts:

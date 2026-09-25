@@ -24,6 +24,7 @@ _TSV_LABEL = "tsv"
 _CSV_LABEL = "csv"
 _XML_LABEL = "xml"
 _VARIANT_LABEL = "variant"
+_GFF3_LABEL = "gff3"
 
 _DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
 
@@ -211,6 +212,25 @@ class _Source(Enum):
             },
             waiter_max_attempts=960,  # ~16h
         ),
+    )
+
+    # The `version` param is the Ensembl release number (e.g. `114`): it selects the FTP release and becomes
+    # the published branch of the four ensembl_* tables, which the single `ensembl` Spark command builds.
+    ENSEMBL = SourceConfig(
+        short_name="ensembl",
+        display_name="Ensembl",
+        website="https://www.ensembl.org/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://ftp.ensembl.org/pub/release-{version}/gff3/homo_sapiens/Homo_sapiens.GRCh38.{version}.gff3.gz"
+                ),
+                md5_present=False,
+                label=_GFF3_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.MANUAL,
+        import_config=ImportConfig(spark_command="ensembl"),
     )
 
     OMIM = OmimSourceConfig()
