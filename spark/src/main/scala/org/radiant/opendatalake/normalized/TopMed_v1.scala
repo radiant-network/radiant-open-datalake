@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.normalized
 
-import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, RuntimeETLContext}
+import bio.ferlab.datalake.commons.config.{DatasetConf, IdentityRepartition, RuntimeETLContext}
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
@@ -50,6 +50,18 @@ case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
     )
   }
 
-  override def defaultRepartition: DataFrame => DataFrame =
-    RepartitionByColumns(columnNames = Seq("chromosome"), sortColumns = Seq("start"))
+  /**
+    * No repartition on purpose, though this is also the inherited default -- stated so it is not
+    * "fixed" back. The table is partitioned by `chromosome`, so Iceberg (>= 1.2.0) defaults
+    * `write.distribution-mode` to `hash` and Spark inserts that exchange LAST: anything we distribute
+    * upstream is re-hashed onto one task per chromosome anyway. The previous
+    * `RepartitionByColumns("chromosome", sortColumns = "start")` was therefore a second full shuffle of
+    * the callset, whose lost map output cascaded into repeated `FetchFailedException`s, and its `start`
+    * ordering did not survive that exchange either.
+    *
+    * To split a large chromosome across tasks and order files by `start`, set it on the table --
+    * `ALTER TABLE <db>.topmed_bravo_v1 WRITE ORDERED BY chromosome, start` -- which moves Iceberg's one
+    * exchange to `range`.
+    */
+  override def defaultRepartition: DataFrame => DataFrame = IdentityRepartition
 }
