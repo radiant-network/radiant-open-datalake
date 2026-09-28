@@ -75,7 +75,14 @@ class TopMedBravoSourceConfig(SourceConfig):
         init=False,
         default=ImportConfig(
             spark_command="topmed_bravo",
-            spark_conf={"spark.dynamicAllocation.maxExecutors": "16"},
+            spark_conf={
+                "spark.dynamicAllocation.maxExecutors": "16",
+                # 23 contigs: the operator default of 16 gave some tasks two chromosomes. Caps at 23.
+                "spark.sql.shuffle.partitions": "128",
+                # A task holds a whole chromosome; the 20 GB default disk overran on chr1's spill.
+                "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
+                "spark.emr-serverless.executor.disk": "100G",
+            },
             waiter_max_attempts=960,  # ~16h — whole-genome per-chromosome VCFs are large
         ),
     )

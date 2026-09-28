@@ -1,6 +1,6 @@
 package org.radiant.opendatalake.normalized
 
-import bio.ferlab.datalake.commons.config.{DatasetConf, RepartitionByColumns, RuntimeETLContext}
+import bio.ferlab.datalake.commons.config.{DatasetConf, IdentityRepartition, RuntimeETLContext}
 import bio.ferlab.datalake.spark3.implicits.GenomicImplicits.columns._
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
@@ -50,6 +50,7 @@ case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
     )
   }
 
-  override def defaultRepartition: DataFrame => DataFrame =
-    RepartitionByColumns(columnNames = Seq("chromosome"), sortColumns = Seq("start"))
+  // None on purpose: Iceberg's required hash exchange on the `chromosome` partition runs last and redoes
+  // any distribution we add first. Split chr1 via `ALTER TABLE ... WRITE ORDERED BY chromosome, start`.
+  override def defaultRepartition: DataFrame => DataFrame = IdentityRepartition
 }
