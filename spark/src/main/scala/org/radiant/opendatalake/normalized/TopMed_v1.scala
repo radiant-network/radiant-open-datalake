@@ -50,18 +50,7 @@ case class TopMed_v1(rc: RuntimeETLContext, version: String, rawStorage: String,
     )
   }
 
-  /**
-    * No repartition on purpose, though this is also the inherited default -- stated so it is not
-    * "fixed" back. The table is partitioned by `chromosome`, so Iceberg (>= 1.2.0) defaults
-    * `write.distribution-mode` to `hash` and Spark inserts that exchange LAST: anything we distribute
-    * upstream is re-hashed onto one task per chromosome anyway. The previous
-    * `RepartitionByColumns("chromosome", sortColumns = "start")` was therefore a second full shuffle of
-    * the callset, whose lost map output cascaded into repeated `FetchFailedException`s, and its `start`
-    * ordering did not survive that exchange either.
-    *
-    * To split a large chromosome across tasks and order files by `start`, set it on the table --
-    * `ALTER TABLE <db>.topmed_bravo_v1 WRITE ORDERED BY chromosome, start` -- which moves Iceberg's one
-    * exchange to `range`.
-    */
+  // None on purpose: Iceberg's required hash exchange on the `chromosome` partition runs last and redoes
+  // any distribution we add first. Split chr1 via `ALTER TABLE ... WRITE ORDERED BY chromosome, start`.
   override def defaultRepartition: DataFrame => DataFrame = IdentityRepartition
 }

@@ -77,17 +77,9 @@ class TopMedBravoSourceConfig(SourceConfig):
             spark_command="topmed_bravo",
             spark_conf={
                 "spark.dynamicAllocation.maxExecutors": "16",
-                # `TopMed_v1.defaultRepartition` is RepartitionByColumns("chromosome") with no explicit
-                # `n`, so it inherits this. The operator's base default is 16 (see `_base_spark_conf`),
-                # which is fewer buckets than the 23 contigs BRAVO ships: several tasks were each given
-                # two whole chromosomes to hold and sort by `start`, which is what drove the spill and
-                # the 10-minute tasks. 128 buckets leaves ~2 expected collisions (C(23,2)/128), and the
-                # pair that collides is far more likely to be two small contigs than chr1 with chr2.
-                #
-                # This does NOT push below one chromosome per task: hashing 23 distinct values can never
-                # fill more than 23 buckets however high this goes, so chr1 stays a single task. Going
-                # finer means partitioning on a range of (chromosome, start) instead of hashing.
+                # 23 contigs: the operator default of 16 gave some tasks two chromosomes. Caps at 23.
                 "spark.sql.shuffle.partitions": "128",
+                # A task holds a whole chromosome; the 20 GB default disk overran on chr1's spill.
                 "spark.emr-serverless.executor.disk.type": "shuffle_optimized",
                 "spark.emr-serverless.executor.disk": "100G",
             },
