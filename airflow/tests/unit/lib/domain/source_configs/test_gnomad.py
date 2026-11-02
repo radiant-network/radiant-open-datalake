@@ -1,9 +1,11 @@
+import pytest
+
 CHROMOSOMES = [str(c) for c in range(1, 23)] + ["X", "Y"]
 
 CNV_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/exome_cnv"
 JOINT_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/vcf/joint"
 SV_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1/genome_sv"
-CONSTRAINT_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/2.1.1/constraint"
+CONSTRAINT_RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release/4.1.2/constraint"
 
 
 def test_gnomad_joint_pins_its_version(gnomad_joint_source_config):
@@ -84,9 +86,8 @@ def test_gnomad_sv_declares_no_md5(gnomad_sv_source_config):
 
 
 def test_gnomad_constraint_pins_its_version(gnomad_constraint_source_config):
-    # Pinned to v2.1.1's flat schema; v4.1.1 is gnomAD's current recommendation but needs a schema
-    # migration first (see the comment on GnomadConstraintSourceConfig).
-    assert gnomad_constraint_source_config.get_latest_version() == "2.1.1"
+    # The v4 schema parsed by the Spark contract MAJOR 1 (see the comment on GnomadConstraintSourceConfig).
+    assert gnomad_constraint_source_config.get_latest_version() == "4.1.2"
 
 
 def test_gnomad_constraint_declares_a_single_renamed_tsv(gnomad_constraint_source_config):
@@ -94,11 +95,29 @@ def test_gnomad_constraint_declares_a_single_renamed_tsv(gnomad_constraint_sourc
     assert [c.label for c in config] == ["tsv"]
 
     # Literal, checked against the gnomAD bucket listing.
-    assert config[0].get_url("2.1.1") == f"{CONSTRAINT_RELEASE_ROOT}/gnomad.v2.1.1.lof_metrics.by_gene.txt.bgz"
+    assert config[0].get_url("4.1.2") == f"{CONSTRAINT_RELEASE_ROOT}/gnomad.v4.1.2.constraint_metrics.tsv.bgz"
 
     # bgzip is valid gzip, but Spark's CSV reader only auto-decompresses on a registered .gz suffix.
-    assert config[0].name == "gnomad.v2.1.1.lof_metrics.by_gene.txt.gz"
+    # The name must match the raw_gnomad_constraint path in spark EtlConfiguration.
+    assert config[0].get_name("4.1.2") == "gnomad.v4.1.2.constraint_metrics.tsv.gz"
 
-    # The file is small enough for the ECS local copy. No .md5 exists next to it in the bucket.
+    # The ECS local copy takes the file (575 MB). No .md5 exists next to it in the bucket.
     assert config[0].use_stream_upload is False
     assert config[0].md5_present is False
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    [
+        "gnomad_joint_source_config",
+        "gnomad_cnv_source_config",
+        "gnomad_sv_source_config",
+        "gnomad_constraint_source_config",
+    ],
+)
+def test_gnomad_urls_follow_the_requested_version(fixture, request):
+    # The version picked at trigger time must be the release downloaded, or the branch is mislabelled.
+    for config in request.getfixturevalue(fixture).download_configs:
+        url = config.get_url("9.9")
+        assert "/release/9.9/" in url
+        assert "v9.9." in url

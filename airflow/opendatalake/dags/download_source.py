@@ -15,12 +15,13 @@ from opendatalake.lib.domain.model.sources import (
     get_display_name,
     get_download_config_at_index,
     get_download_configs,
+    get_supported_versions,
     get_update_mode,
     is_auto_update,
     requires_download_url,
     requires_headers_param,
 )
-from opendatalake.lib.operators.ecs import PythonScriptOperator
+from opendatalake.lib.operators.k8s import PythonScriptOperator
 from opendatalake.lib.tasks import download_url_param, get_version, headers_param, version_param
 
 
@@ -113,9 +114,9 @@ def _generate_download_task_id(download_conf: DownloadConfig, rank: int) -> str:
     description = ""
     if download_conf.label:
         description = download_conf.label
-    elif download_conf.name:
+    elif isinstance(download_conf.name, str):
         description = download_conf.name
-    elif download_conf.download_url:
+    elif isinstance(download_conf.download_url, str):
         description = Path(download_conf.download_url).name
 
     max_length = 50
@@ -140,7 +141,8 @@ def _make_download_source_dag(source_id: str):
     schedule = input_asset if is_auto_update(source_id) else None
 
     # Manual URL-based sources (e.g. dbNSFP) take the archive URL at trigger time.
-    params = version_param()
+    supported_versions = get_supported_versions(source_id)
+    params = version_param(supported_versions)
     if requires_download_url(source_id):
         params = {**params, **download_url_param()}
 
@@ -207,7 +209,9 @@ def _make_download_source_dag(source_id: str):
             s3_client.delete_object(Bucket=config.raw_datalake_bucket, Key=f"{prefix}/.in_progress")
             yield Metadata(asset=output_asset, extra={"version": version})
 
-        version = get_version(input_asset, asset_active=is_auto_update(source_id))
+        version = get_version(
+            input_asset, asset_active=is_auto_update(source_id), supported_versions=supported_versions
+        )
         prefix = get_prefix(version)
         download_tasks = download_files(prefix, version)
         finalize_download_task = finalize_download(version, prefix)

@@ -51,7 +51,7 @@ class S3Downloader:
         for each memberif the download config has md5_present=True.
         """
         url = self.download_conf.get_url(self.version)
-        dest_file_name = self.download_conf.name or Path(url).name
+        dest_file_name = self.download_conf.get_name(self.version) or Path(url).name
         headers = self.download_conf.get_headers()
 
         logging.info(f"Start upload of {dest_file_name}")  # url may embed a secret credential; do not log it
@@ -80,7 +80,7 @@ class S3Downloader:
         Streams a file directly to S3 using multipart upload. Optionally uploads MD5 hash.
         """
         url = self.download_conf.get_url(self.version)
-        dest_file_name = self.download_conf.name or Path(url).name
+        dest_file_name = self.download_conf.get_name(self.version) or Path(url).name
         s3_key = f"{self.s3_prefix}/{dest_file_name}"
         md5_hash = _get_md5_hash(url) if self.download_conf.md5_present else None
         headers = self.download_conf.get_headers()

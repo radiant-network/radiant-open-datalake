@@ -30,32 +30,38 @@ _GFF3_LABEL = "gff3"
 _DBNSFP_MEMBER_PATTERN = "*_variant.chr*.gz"
 
 
+def _one_thousand_genomes_vcf_url(version: str) -> str:
+    return (
+        f"https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/{version}/"
+        f"ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.{version}.sites.vcf.gz"
+    )
+
+
 # As indicated by the underscore prefix, this enum is intended for internal use within this module only.
 # In the future, we may switch to a configuration-based mechanism instead of using an enum.
 class _Source(Enum):
+    # The version is the 1000 Genomes FTP release directory. Only the phase 3 release (20130502) is supported:
+    # the file name is that release's own, so another release would need its own URL, not just a version.
     OneThousandGenomes = SourceConfig(
         short_name="1000_Genomes",
         display_name="1000 Genomes Project",
         website="https://www.internationalgenome.org/home",
         download_configs=[
             DownloadConfig(
-                download_url=lambda version: (
-                    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.20130502.sites.vcf.gz"
-                ),
+                download_url=_one_thousand_genomes_vcf_url,
                 md5_present=False,
                 label=_VCF_LABEL,
                 use_stream_upload=True,
             ),
             DownloadConfig(
-                download_url=lambda version: (
-                    "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.20130502.sites.vcf.gz.tbi"
-                ),
+                download_url=lambda version: f"{_one_thousand_genomes_vcf_url(version)}.tbi",
                 md5_present=False,
                 label=_TBI_LABEL,
             ),
         ],
         update_mode=UpdateMode.MANUAL,
         import_config=ImportConfig(spark_command="1000genomes"),
+        supported_versions=("20130502",),
     )
     CLINVAR = ClinvarSourceConfig(
         short_name="clinvar",
@@ -79,8 +85,7 @@ class _Source(Enum):
         download_configs=[
             DownloadConfig(
                 download_url=lambda version: (
-                    "https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/"
-                    f"ClinVarRCVRelease_{version}.xml.gz"
+                    f"https://ftp.ncbi.nlm.nih.gov/pub/clinvar/xml/RCV_release/ClinVarRCVRelease_{version}.xml.gz"
                 ),
                 md5_present=True,
                 label=_XML_LABEL,
@@ -352,3 +357,8 @@ def get_update_mode(source: str) -> str:
 
 def get_latest_version(source: str) -> str:
     return _get_source(source).value.get_latest_version()
+
+
+def get_supported_versions(source: str) -> tuple[str, ...] | None:
+    """The only versions the source can be processed at, oldest first; None when any version is accepted."""
+    return _get_source(source).value.supported_versions

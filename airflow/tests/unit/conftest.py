@@ -33,4 +33,5 @@ def s3_client(s3_hook):
 
 @pytest.fixture
 def dag_bag():
-    return DagBag(dag_folder=pathlib.Path("opendatalake/dags"), include_examples=False)
+    # Airflow 3.3 removed `include_examples`: DagBag no longer loads the example DAGs.
+    return DagBag(dag_folder=pathlib.Path("opendatalake/dags"))

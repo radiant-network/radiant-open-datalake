@@ -2,7 +2,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from airflow.exceptions import AirflowException
-from airflow.timetables.simple import AssetTriggeredTimetable, NullTimetable
+
+# Airflow 3.3 DAGs hold the Task SDK timetables, not the airflow.timetables (core) classes.
+from airflow.sdk.definitions.timetables.assets import AssetTriggeredTimetable
+from airflow.sdk.definitions.timetables.simple import NullTimetable
 
 from opendatalake.dags.download_source import _parse_headers_param, direct_upload, stream_unzip_download
 
@@ -222,3 +225,14 @@ def test_upload_via_local_copy_task_build_python_script_operator():
         "download_index": 0,
     }
     assert "test_label" in operator.task_display_name
+
+
+def test_pinned_source_download_dag_offers_only_supported_versions(dag_bag):
+    param = dag_bag.get_dag(dag_id="opendatalake-download-gnomad_constraint").params.get_param("version")
+    assert param.schema["enum"] == ["4.1.2"]
+    assert param.value == "4.1.2"
+
+
+def test_open_source_download_dag_keeps_a_free_text_version(dag_bag):
+    param = dag_bag.get_dag(dag_id="opendatalake-download-ensembl").params.get_param("version")
+    assert "enum" not in param.schema

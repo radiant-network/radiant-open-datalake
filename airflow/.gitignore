@@ -7,4 +7,6 @@ config/
 logs/
 plugins/
 
-dags/lib/operators/k8s.py
+# Sandbox-only operator forks (see their docstrings); never commit them.
+opendatalake/lib/operators/k8s.py
+opendatalake/lib/operators/spark_k8s.py

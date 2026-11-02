@@ -144,3 +144,8 @@ def test_import_orphanet_dag_exists(dag_bag):
 
 def test_orphanet_import_config_uses_orphanet_command():
     assert get_import_config("orphanet").spark_command == "orphanet"
+
+
+def test_pinned_source_import_dag_offers_only_supported_versions(dag_bag):
+    param = dag_bag.get_dag(dag_id="opendatalake-import-1000_genomes").params.get_param("version")
+    assert param.schema["enum"] == ["20130502"]
