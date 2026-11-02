@@ -9,7 +9,7 @@ from opendatalake.lib.domain.model.sources import (
     get_supported_versions,
     get_update_mode,
 )
-from opendatalake.lib.operators.spark_k8s import EmrServerlessJobOperator, job_name_timestamp
+from opendatalake.lib.operators.emr import EmrServerlessJobOperator, job_name_timestamp
 from opendatalake.lib.tasks import get_version, version_param
 
 
