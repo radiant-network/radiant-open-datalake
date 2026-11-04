@@ -4,7 +4,25 @@ from airflow.sdk import Asset, task
 from airflow.sdk.definitions.param import Param
 
 
-def version_param() -> dict:
+def version_param(supported_versions: tuple[str, ...] | None = None) -> dict:
+    """The `version` DAG param: free text, or a drop-down when the source declares its supported versions.
+
+    With `supported_versions`, the param is an `enum` (Airflow renders it as a select list) that defaults to the
+    latest one. The default does not affect asset-triggered runs: they read the version from the event first.
+    """
+    if supported_versions:
+        return {
+            "version": Param(
+                supported_versions[-1],
+                type="string",
+                enum=list(supported_versions),
+                title="Source version",
+                description=(
+                    "Only the versions this code supports. Asset-triggered runs read the version from the "
+                    "upstream event, which must also be one of these."
+                ),
+            )
+        }
     # To ensure one different version param per DAG
     return {
         "version": Param(
@@ -78,17 +96,26 @@ def _resolve_version_from_param(params) -> str:
     raise ValueError("No 'version' param supplied; provide a version when triggering this DAG manually.")
 
 
-def get_version(asset: Asset, asset_active: bool = True, **kwargs):
+def _check_supported(version: str, supported_versions: tuple[str, ...] | None) -> str:
+    """Reject a version the source does not support. The param's enum only guards the trigger form and API;
+    an asset event, or a run created before the list changed, carries its version past it."""
+    if supported_versions is not None and version not in supported_versions:
+        raise ValueError(f"Version '{version}' is not supported; supported versions: {', '.join(supported_versions)}")
+    return version
+
+
+def get_version(asset: Asset, asset_active: bool = True, supported_versions: tuple[str, ...] | None = None, **kwargs):
     if asset_active:
 
         @task(task_id="get_version", task_display_name="[PyOp] Get Version", inlets=[asset])
         def _get_version(triggering_asset_events, params=None):
-            return _resolve_version_from_events(asset, triggering_asset_events, params)
+            version = _resolve_version_from_events(asset, triggering_asset_events, params)
+            return _check_supported(version, supported_versions)
 
     else:
 
         @task(task_id="get_version", task_display_name="[PyOp] Get Version")
         def _get_version(params=None):
-            return _resolve_version_from_param(params)
+            return _check_supported(_resolve_version_from_param(params), supported_versions)
 
     return _get_version(**kwargs)

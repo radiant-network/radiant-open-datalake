@@ -27,7 +27,8 @@ class DownloadConfig:
     """
 
     download_url: str | Callable[[str], str] | None = None
-    name: str | None = None
+    # Destination file name; like `download_url`, a callable receives the version. None keeps the URL's name.
+    name: str | Callable[[str], str] | None = None
     headers: dict | Callable[[], dict] | None = None
     extract_members: list[str] | None = None
     use_stream_upload: bool = False
@@ -60,6 +61,9 @@ class DownloadConfig:
             raise ValueError("download_url is not set on this config; the URL is supplied at runtime")
         return self.download_url if isinstance(self.download_url, str) else self.download_url(version)
 
+    def get_name(self, version: str) -> str | None:
+        return self.name(version) if callable(self.name) else self.name
+
     def get_headers(self) -> dict:
         if self.headers is None:
             return {}
@@ -86,11 +90,22 @@ class SourceConfig:
     download_configs: list[DownloadConfig]
     update_mode: UpdateMode = UpdateMode.MANUAL
     import_config: ImportConfig | None = None
+    # The only versions this code can download and import, oldest first. When set, the DAGs offer exactly
+    # these in a drop-down and reject any other version at run time. None means any version is accepted.
+    supported_versions: tuple[str, ...] | None = None
+
+    def __post_init__(self):
+        if self.supported_versions is not None and not self.supported_versions:
+            raise ValueError(f"{self.short_name}: supported_versions must be None or non-empty")
 
     def get_latest_version(self) -> str:
         """Override this method to specify how to retrieve the latest version for a source.
 
+        A source with `supported_versions` returns the last of them by default.
+
         Returns:
             str: The latest detected version as a string
         """
+        if self.supported_versions:
+            return self.supported_versions[-1]
         raise NotImplementedError()

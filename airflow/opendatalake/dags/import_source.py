@@ -6,6 +6,7 @@ from opendatalake.lib.domain.model.sources import (
     get_all_source_ids,
     get_display_name,
     get_import_config,
+    get_supported_versions,
     get_update_mode,
 )
 from opendatalake.lib.operators.emr import EmrServerlessJobOperator, job_name_timestamp
@@ -53,12 +54,13 @@ def _make_import_source_dag(source_id: str):
     input_asset = downloaded_source_asset(source_id)
     output_asset = imported_source_asset(source_id)
     display_name = get_display_name(source_id)
+    supported_versions = get_supported_versions(source_id)
 
     @dag(
         dag_id=f"{config.DAG_ID_PREFIX}-import-{source_id}",
         dag_display_name=f"{config.DAG_DISPLAY_NAME_PREFIX} - Import {display_name}",
         schedule=input_asset,
-        params=version_param(),
+        params=version_param(supported_versions),
         tags=config.DAG_DEFAULT_TAGS
         + [f"{config.DAG_ID_PREFIX}_{t}" for t in [source_id, "import", get_update_mode(source_id)]],
         catchup=False,
@@ -68,7 +70,7 @@ def _make_import_source_dag(source_id: str):
         def finalize_import(version):
             yield Metadata(asset=output_asset, extra={"version": version})
 
-        version = get_version(input_asset)
+        version = get_version(input_asset, supported_versions=supported_versions)
         import_task = build_import_operator(source_id, version)
         import_task >> finalize_import(version)
 

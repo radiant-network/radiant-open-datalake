@@ -1,35 +1,33 @@
 from dataclasses import dataclass, field
-from typing import override
 
 from opendatalake.lib.domain.model.config import DownloadConfig, ImportConfig, SourceConfig, UpdateMode
 
 _RELEASE_ROOT = "https://gnomad-public-us-east-1.s3.amazonaws.com/release"
 
-# gnomAD publishes each dataset on its own cadence, so we pin the two datasets separately
-JOINT_VERSION = "4.1"
-CNV_VERSION = "4.1"
-SV_VERSION = "4.1"
-
-_SV_VCF_URL = f"{_RELEASE_ROOT}/{SV_VERSION}/genome_sv/gnomad.v{SV_VERSION}.sv.sites.vcf.gz"
-
-CONSTRAINT_VERSION = "2.1.1"
-_CONSTRAINT_URL = (
-    f"{_RELEASE_ROOT}/{CONSTRAINT_VERSION}/constraint/gnomad.v{CONSTRAINT_VERSION}.lof_metrics.by_gene.txt.bgz"
-)
+# gnomAD publishes each dataset on its own cadence, so each source declares its own versions: the releases
+# its Spark normalizer is known to parse, oldest first. The DAGs offer exactly these, and every URL below is
+# built from the version picked at trigger time, so the file downloaded is the release the branch is named after.
+JOINT_VERSIONS = ("4.1",)
+CNV_VERSIONS = ("4.1",)  # The exome CNV files stopped at 4.1; the 4.1.1 patch covers short variants only.
+SV_VERSIONS = ("4.1",)  # gnomAD ships SV under 4.0 and 4.1 only; 4.1.1 has no `genome_sv/` directory.
+CONSTRAINT_VERSIONS = ("4.1.2",)
 
 
-def _joint_vcf_url(chromosome: str) -> str:
-    return f"{_RELEASE_ROOT}/{JOINT_VERSION}/vcf/joint/gnomad.joint.v{JOINT_VERSION}.sites.chr{chromosome}.vcf.bgz"
+def _joint_vcf_url(version: str, chromosome: str) -> str:
+    return f"{_RELEASE_ROOT}/{version}/vcf/joint/gnomad.joint.v{version}.sites.chr{chromosome}.vcf.bgz"
 
 
-# One pair of vcf, tbi file per chromosome
+def _sv_vcf_url(version: str) -> str:
+    return f"{_RELEASE_ROOT}/{version}/genome_sv/gnomad.v{version}.sv.sites.vcf.gz"
+
+
+# One pair of vcf, tbi file per chromosome. `c=chromosome` freezes the loop variable in each lambda.
 def _build_joint_download_configs() -> list[DownloadConfig]:
     configs = []
     for chromosome in [str(c) for c in range(1, 23)] + ["X", "Y"]:
-        vcf_url = _joint_vcf_url(chromosome)
         configs.append(
             DownloadConfig(
-                download_url=vcf_url,
+                download_url=lambda version, c=chromosome: _joint_vcf_url(version, c),
                 use_stream_upload=True,
                 md5_present=False,
                 label=f"vcf_chr{chromosome}",
@@ -37,7 +35,7 @@ def _build_joint_download_configs() -> list[DownloadConfig]:
         )
         configs.append(
             DownloadConfig(
-                download_url=f"{vcf_url}.tbi",
+                download_url=lambda version, c=chromosome: f"{_joint_vcf_url(version, c)}.tbi",
                 md5_present=False,
                 label=f"tbi_chr{chromosome}",
             )
@@ -64,10 +62,7 @@ class GnomadJointSourceConfig(SourceConfig):
             waiter_max_attempts=960,  # ~16h
         ),
     )
-
-    @override
-    def get_latest_version(self) -> str:
-        return JOINT_VERSION
+    supported_versions: tuple[str, ...] | None = field(init=False, default=JOINT_VERSIONS)
 
 
 # gnomAD publishes three exome CNV VCFs (all, non_neuro, non_neuro_controls); we take "all"
@@ -80,7 +75,7 @@ class GnomadCnvSourceConfig(SourceConfig):
         init=False,
         default_factory=lambda: [
             DownloadConfig(
-                download_url=f"{_RELEASE_ROOT}/{CNV_VERSION}/exome_cnv/gnomad.v{CNV_VERSION}.cnv.all.vcf.gz",
+                download_url=lambda version: f"{_RELEASE_ROOT}/{version}/exome_cnv/gnomad.v{version}.cnv.all.vcf.gz",
                 md5_present=False,
                 label="vcf",
             )
@@ -88,10 +83,7 @@ class GnomadCnvSourceConfig(SourceConfig):
     )
     update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_cnv"))
-
-    @override
-    def get_latest_version(self) -> str:
-        return CNV_VERSION
+    supported_versions: tuple[str, ...] | None = field(init=False, default=CNV_VERSIONS)
 
 
 # The gnomAD SV callset is genomes-only. We take the full release, not the non_neuro_controls subset
@@ -103,26 +95,21 @@ class GnomadSVSourceConfig(SourceConfig):
     download_configs: list[DownloadConfig] = field(
         init=False,
         default_factory=lambda: [
-            DownloadConfig(download_url=_SV_VCF_URL, use_stream_upload=True, md5_present=False, label="vcf"),
-            DownloadConfig(download_url=f"{_SV_VCF_URL}.tbi", md5_present=False, label="tbi"),
+            DownloadConfig(download_url=_sv_vcf_url, use_stream_upload=True, md5_present=False, label="vcf"),
+            DownloadConfig(download_url=lambda version: f"{_sv_vcf_url(version)}.tbi", md5_present=False, label="tbi"),
         ],
     )
     update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_sv"))
-
-    @override
-    def get_latest_version(self) -> str:
-        return SV_VERSION
+    supported_versions: tuple[str, ...] | None = field(init=False, default=SV_VERSIONS)
 
 
-# Pinned to v2.1.1, not the current v4.1.1: gnomAD now recommends v4.1.1's LOEUF threshold over v2's
-# (https://gnomad.broadinstitute.org/news/2026-03-gnomad-v4-1-1/), but v4.1.1's constraint file
-# (gnomad.v4.1.1.constraint_metrics.tsv.bgz) uses a different, nested/array-valued schema (e.g.
-# `lof.pLI`, per-ancestry array columns) than v2.1.1's flat lof_metrics.by_gene columns that
-# normalized/gnomad/GnomadConstraint.scala and enriched/Genes.scala are built against. Moving to
-# v4.1.1 needs a schema migration there first (tracked as follow-up), not just a version bump here.
+# Parsed by the Spark contract MAJOR 1 (normalized/gnomad/GnomadConstraint_v1.scala), which is built against
+# the v4 constraint_metrics file: dotted column names such as `lof.pLI` and JSON-array columns. The v2.1.1
+# lof_metrics.by_gene file is not supported. 4.1.1 has the same header as 4.1.2 but is not listed, because no
+# test runs 4.1.1 data; add a release to CONSTRAINT_VERSIONS only once the normalizer is checked against it.
 # bgzip is valid gzip, but Spark's CSV reader only auto-decompresses on a registered codec suffix
-# (.gz), so the upload is renamed from .txt.bgz to .txt.gz.
+# (.gz), so the upload is renamed from .tsv.bgz to .tsv.gz.
 @dataclass(frozen=True)
 class GnomadConstraintSourceConfig(SourceConfig):
     short_name: str = field(init=False, default="gnomad_constraint")
@@ -132,8 +119,10 @@ class GnomadConstraintSourceConfig(SourceConfig):
         init=False,
         default_factory=lambda: [
             DownloadConfig(
-                download_url=_CONSTRAINT_URL,
-                name=f"gnomad.v{CONSTRAINT_VERSION}.lof_metrics.by_gene.txt.gz",
+                download_url=lambda version: (
+                    f"{_RELEASE_ROOT}/{version}/constraint/gnomad.v{version}.constraint_metrics.tsv.bgz"
+                ),
+                name=lambda version: f"gnomad.v{version}.constraint_metrics.tsv.gz",
                 md5_present=False,
                 label="tsv",
             )
@@ -141,7 +130,4 @@ class GnomadConstraintSourceConfig(SourceConfig):
     )
     update_mode: UpdateMode = field(init=False, default=UpdateMode.MANUAL)
     import_config: ImportConfig | None = field(init=False, default=ImportConfig(spark_command="gnomad_constraint"))
-
-    @override
-    def get_latest_version(self) -> str:
-        return CONSTRAINT_VERSION
+    supported_versions: tuple[str, ...] | None = field(init=False, default=CONSTRAINT_VERSIONS)

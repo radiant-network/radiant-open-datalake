@@ -102,3 +102,30 @@ def test_source_config_with_update_mode_auto():
     )
 
     assert source_conf.update_mode == UpdateMode.AUTO
+
+
+def test_download_config_name_can_follow_the_version():
+    config = DownloadConfig(download_url="https://x/file.bgz", name=lambda version: f"file.v{version}.gz")
+    assert config.get_name("4.1.2") == "file.v4.1.2.gz"
+    assert DownloadConfig(download_url="https://x/file.bgz", name="fixed.gz").get_name("4.1.2") == "fixed.gz"
+    assert DownloadConfig(download_url="https://x/file.bgz").get_name("4.1.2") is None
+
+
+def _source(**kwargs) -> SourceConfig:
+    return SourceConfig(short_name="s", display_name="S", website="https://s", download_configs=[], **kwargs)
+
+
+def test_source_config_accepts_any_version_by_default():
+    source_conf = _source()
+    assert source_conf.supported_versions is None
+    with pytest.raises(NotImplementedError):
+        source_conf.get_latest_version()
+
+
+def test_source_config_latest_version_is_the_last_supported_one():
+    assert _source(supported_versions=("1.0", "2.0")).get_latest_version() == "2.0"
+
+
+def test_source_config_rejects_an_empty_supported_versions():
+    with pytest.raises(ValueError, match="supported_versions must be None or non-empty"):
+        _source(supported_versions=())

@@ -1,8 +1,8 @@
 executor: "CeleryExecutor"
 # Default airflow tag to deploy
-defaultAirflowTag: "3.0.6"
+defaultAirflowTag: "3.3.1"
 # Airflow version (Used to make some decisions based on Airflow Version being deployed)
-airflowVersion: "3.0.6"
+airflowVersion: "3.3.1"
 apiServer:
   service:
     type: LoadBalancer

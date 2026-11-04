@@ -90,3 +90,24 @@ def test_get_version_missing_version_in_event():
     event = MagicMock(extra={})
     with pytest.raises(KeyError):
         get_version(asset, triggering_asset_events={asset: [event]})
+
+
+def test_get_version_accepts_a_supported_version():
+    asset = DummyAsset("test-asset")
+    event = MagicMock(extra={"version": "4.1.2"})
+    result = get_version(asset, supported_versions=("4.1.2",), triggering_asset_events={asset: [event]})
+    assert result == "4.1.2"
+
+
+def test_get_version_rejects_an_unsupported_event_version():
+    # An asset event bypasses the param's enum, so the task itself must check.
+    asset = DummyAsset("test-asset")
+    event = MagicMock(extra={"version": "4.1.1"})
+    with pytest.raises(ValueError, match=r"Version '4.1.1' is not supported; supported versions: 4.1.2"):
+        get_version(asset, supported_versions=("4.1.2",), triggering_asset_events={asset: [event]})
+
+
+def test_get_version_rejects_an_unsupported_param_version():
+    asset = DummyAsset("test-asset")
+    with pytest.raises(ValueError, match="is not supported"):
+        get_version(asset, asset_active=False, supported_versions=("4.1.2",), params={"version": "2.1.1"})

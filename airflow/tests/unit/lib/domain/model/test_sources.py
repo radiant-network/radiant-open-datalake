@@ -12,6 +12,7 @@ from opendatalake.lib.domain.model.sources import (
     get_download_configs,
     get_import_config,
     get_latest_version,
+    get_supported_versions,
     get_update_mode,
     is_auto_update,
     requires_download_url,
@@ -219,3 +220,24 @@ def test_get_download_config_at_index_invalid():
 def test_get_download_config_at_index_invalid_source():
     with pytest.raises(KeyError):
         get_download_config_at_index("not_a_source", 0)
+
+
+def test_pinned_sources_declare_their_supported_versions():
+    assert get_supported_versions("gnomad_joint") == ("4.1",)
+    assert get_supported_versions("gnomad_cnv") == ("4.1",)
+    assert get_supported_versions("gnomad_sv") == ("4.1",)
+    assert get_supported_versions("gnomad_constraint") == ("4.1.2",)
+    assert get_supported_versions("1000_genomes") == ("20130502",)
+    assert get_latest_version("1000_genomes") == "20130502"
+
+
+def test_discovered_and_open_sources_accept_any_version():
+    for source in ("clinvar", "dbsnp", "ensembl", "dbnsfp", "topmed_bravo"):
+        assert get_supported_versions(source) is None, source
+
+
+def test_1000_genomes_url_follows_the_version():
+    vcf, tbi = get_download_configs("1000_genomes")
+    root = "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502"
+    assert vcf.get_url("20130502") == f"{root}/ALL.wgs.phase3_shapeit2_mvncall_integrated_v5c.20130502.sites.vcf.gz"
+    assert tbi.get_url("20130502") == vcf.get_url("20130502") + ".tbi"
