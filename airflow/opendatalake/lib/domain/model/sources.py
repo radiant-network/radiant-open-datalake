@@ -266,8 +266,8 @@ class _Source(Enum):
         import_config=ImportConfig(spark_command="ensembl"),
     )
 
-    # The `version` param is the MANE release (e.g. `1.4`). Each MANE release is built on one Ensembl release
-    # (1.4 on 114), so load the one that matches the Ensembl release published beside it.
+    # Each MANE release is built on one Ensembl release (1.4 on 114) and only joins that release's transcripts,
+    # so only the release matching the Ensembl release the variants are annotated with is offered.
     MANE = SourceConfig(
         short_name="mane",
         display_name="NCBI MANE",
@@ -284,6 +284,7 @@ class _Source(Enum):
         ],
         update_mode=UpdateMode.MANUAL,
         import_config=ImportConfig(spark_command="mane"),
+        supported_versions=("1.4",),
     )
 
     OMIM = OmimSourceConfig()

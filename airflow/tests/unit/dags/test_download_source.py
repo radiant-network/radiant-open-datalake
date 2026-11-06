@@ -233,6 +233,12 @@ def test_pinned_source_download_dag_offers_only_supported_versions(dag_bag):
     assert param.value == "4.1.2"
 
 
+def test_mane_download_dag_offers_only_the_release_matching_ensembl(dag_bag):
+    param = dag_bag.get_dag(dag_id="opendatalake-download-mane").params.get_param("version")
+    assert param.schema["enum"] == ["1.4"]
+    assert param.value == "1.4"
+
+
 def test_open_source_download_dag_keeps_a_free_text_version(dag_bag):
     param = dag_bag.get_dag(dag_id="opendatalake-download-ensembl").params.get_param("version")
     assert "enum" not in param.schema

@@ -122,11 +122,12 @@ backtick-quoted identifier, e.g. ``SELECT * FROM reference.ensembl_gene_v1.`bran
 `mane_v1` maps each MANE transcript (MANE Select and MANE Plus Clinical) to its RefSeq and Ensembl ids.
 Each MANE release is built on one Ensembl release, named in its
 [`README_versions.txt`](https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.4/README_versions.txt)
-(1.4 on Ensembl 114): load the MANE release that matches the Ensembl release you publish, or the Ensembl
-transcripts and their MANE rows will not join on transcript id and version. To ingest a release,
-**trigger the _Download NCBI MANE_ DAG** with a single param:
+(1.4 on Ensembl 114), and only joins that release's transcripts on transcript id and version. So the DAGs
+offer only the MANE release that matches the Ensembl release the variants are annotated with: `1.4`, set
+in `supported_versions` in `sources.py`. Moving to a new Ensembl release means adding its MANE release
+there. To ingest it, **trigger the _Download NCBI MANE_ DAG** with a single param:
 
-- `version` — the MANE release, e.g. `1.4`. The DAG fetches
+- `version` — the MANE release, picked from the drop-down (`1.4`). The DAG fetches
   `https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_<version>/MANE.GRCh38.v<version>.summary.txt.gz`
   into `raw/landing/mane/<version>/`.
 

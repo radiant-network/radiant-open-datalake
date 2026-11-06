@@ -249,10 +249,12 @@ def test_pinned_sources_declare_their_supported_versions():
     assert get_supported_versions("gnomad_constraint") == ("4.1.2",)
     assert get_supported_versions("1000_genomes") == ("20130502",)
     assert get_latest_version("1000_genomes") == "20130502"
+    assert get_supported_versions("mane") == ("1.4",)
+    assert get_latest_version("mane") == "1.4"
 
 
 def test_discovered_and_open_sources_accept_any_version():
-    for source in ("clinvar", "dbsnp", "ensembl", "mane", "dbnsfp", "topmed_bravo"):
+    for source in ("clinvar", "dbsnp", "ensembl", "dbnsfp", "topmed_bravo"):
         assert get_supported_versions(source) is None, source
 
 
