@@ -89,6 +89,11 @@ sources:
     contracts:
       - lineage: "1.0"
         release_notes: "doc/release-notes/hpo_terms/v1.md"
+  mane:
+    table_prefix: "mane"
+    contracts:
+      - lineage: "1.0"
+        release_notes: "doc/release-notes/mane/v1.md"
   mondo:
     table_prefix: "mondo"
     contracts:

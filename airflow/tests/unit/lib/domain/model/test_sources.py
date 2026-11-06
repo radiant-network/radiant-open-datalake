@@ -136,6 +136,26 @@ def test_ensembl_import_config():
     assert get_import_config("ensembl").spark_command == "ensembl"
 
 
+def test_mane_is_manual_source():
+    assert get_update_mode("mane") == "manual"
+    assert is_auto_update("mane") is False
+    assert requires_download_url("mane") is False
+    assert requires_headers_param("mane") is False
+
+
+def test_mane_download_url_is_built_from_the_release():
+    (conf,) = get_download_configs("mane")
+    assert (
+        conf.get_url("1.4")
+        == "https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt.gz"
+    )
+    assert conf.md5_present is False
+
+
+def test_mane_import_config():
+    assert get_import_config("mane").spark_command == "mane"
+
+
 def test_get_download_configs_with_string_lowercase():
     configs = get_download_configs("clinvar")
     assert isinstance(configs, list)
@@ -229,6 +249,8 @@ def test_pinned_sources_declare_their_supported_versions():
     assert get_supported_versions("gnomad_constraint") == ("4.1.2",)
     assert get_supported_versions("1000_genomes") == ("20130502",)
     assert get_latest_version("1000_genomes") == "20130502"
+    assert get_supported_versions("mane") == ("1.4",)
+    assert get_latest_version("mane") == "1.4"
 
 
 def test_discovered_and_open_sources_accept_any_version():

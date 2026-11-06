@@ -266,6 +266,27 @@ class _Source(Enum):
         import_config=ImportConfig(spark_command="ensembl"),
     )
 
+    # Each MANE release is built on one Ensembl release (1.4 on 114) and only joins that release's transcripts,
+    # so only the release matching the Ensembl release the variants are annotated with is offered.
+    MANE = SourceConfig(
+        short_name="mane",
+        display_name="NCBI MANE",
+        website="https://www.ncbi.nlm.nih.gov/refseq/MANE/",
+        download_configs=[
+            DownloadConfig(
+                download_url=lambda version: (
+                    f"https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_{version}/"
+                    f"MANE.GRCh38.v{version}.summary.txt.gz"
+                ),
+                md5_present=False,
+                label=_TSV_LABEL,
+            )
+        ],
+        update_mode=UpdateMode.MANUAL,
+        import_config=ImportConfig(spark_command="mane"),
+        supported_versions=("1.4",),
+    )
+
     OMIM = OmimSourceConfig()
 
     ORPHANET = OrphanetSourceConfig(
