@@ -45,6 +45,7 @@ Imported on demand.
 | [Ensembl](https://www.ensembl.org/) (transcripts) | `ensembl_transcript_v1` | [v1](spark/doc/release-notes/ensembl_transcript/v1.md) |
 | [Ensembl](https://www.ensembl.org/) (exons) | `ensembl_exon_v1` | [v1](spark/doc/release-notes/ensembl_exon/v1.md) |
 | [Ensembl](https://www.ensembl.org/) (exons by gene) | `ensembl_exon_by_gene_v1` | [v1](spark/doc/release-notes/ensembl_exon_by_gene/v1.md) |
+| [NCBI MANE](https://www.ncbi.nlm.nih.gov/refseq/MANE/) | `mane_v1` | [v1](spark/doc/release-notes/mane/v1.md) |
 
 #### Downloading dbNSFP
 
@@ -115,6 +116,21 @@ When it finishes, the **Import Ensembl** DAG builds `ensembl_gene_v1`, `ensembl_
 releases can coexist, one branch each. The release number is all digits, so read a branch with the
 backtick-quoted identifier, e.g. ``SELECT * FROM reference.ensembl_gene_v1.`branch_114` ``;
 `VERSION AS OF '114'` fails because Spark reads it as a snapshot id.
+
+#### Downloading MANE
+
+`mane_v1` maps each MANE transcript (MANE Select and MANE Plus Clinical) to its RefSeq and Ensembl ids.
+Each MANE release is built on one Ensembl release, named in its
+[`README_versions.txt`](https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.4/README_versions.txt)
+(1.4 on Ensembl 114): load the MANE release that matches the Ensembl release you publish, or the Ensembl
+transcripts and their MANE rows will not join on transcript id and version. To ingest a release,
+**trigger the _Download NCBI MANE_ DAG** with a single param:
+
+- `version` — the MANE release, e.g. `1.4`. The DAG fetches
+  `https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_<version>/MANE.GRCh38.v<version>.summary.txt.gz`
+  into `raw/landing/mane/<version>/`.
+
+When it finishes, the **Import NCBI MANE** DAG builds `mane_v1` on a branch named after the release.
 
 ## Architecture diagram
 

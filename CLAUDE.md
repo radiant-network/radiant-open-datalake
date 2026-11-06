@@ -162,14 +162,14 @@ location, `IcebergTable.createEmpty` qualifies it first (`/x` → `file:/x`, `s3
 Every job is a `case class Xxx(rc: RuntimeETLContext)` extending a FerLab base
 (`bio.ferlab.datalake.spark3.etl.v4`) and paired with a companion `object` exposing a `@main run` —
 except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`, `GnomadJoint_v1`,
-`GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mondo_v1`, `OneThousandGenomes_v1`, `SpliceAi_v1`), which
+`GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mane_v1`, `Mondo_v1`, `OneThousandGenomes_v1`, `SpliceAi_v1`), which
 have no companion at all: a second `@main` would be a launch path that skips contract selection and the destination
 check, so their only entry point is `ImportPublicTable` dispatching through `ContractRunner`.
 
 - `SimpleETLP` — normalized jobs (12 of them); publishes/partitions per the `DatasetConf`.
 - `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (3).
-- `contracts.ContractETLP` — the ten contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`,
-  `GnomadJoint_v1`, `GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mondo_v1`, `OneThousandGenomes_v1`,
+- `contracts.ContractETLP` — the eleven contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`,
+  `GnomadJoint_v1`, `GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mane_v1`, `Mondo_v1`, `OneThousandGenomes_v1`,
   `SpliceAi_v1`). It derives their
   destination per MAJOR (see **Data contracts** below) and extends `wap.WapETLP`, a `SimpleETLP` whose
   `loadSingle` publishes by Iceberg branch instead of overwriting the table; see **Write-Audit-Publish**
@@ -260,7 +260,9 @@ Consequences worth knowing before touching any of this:
   `SparkTable` advertises `ACCEPT_ANY_SCHEMA` only when it is set, which flips
   `DataSourceV2Relation.skipSchemaResolution`. Drop the option and the write dies with
   `Field <col> not found in source schema`; drop the property and it dies in analysis. Matching is by name,
-  so column order is irrelevant and a dropped column reads back null. Iceberg's schema is table-level, not
+  and a dropped column reads back null, but **order still matters**: the merge appends new columns at the end
+  of the table, and `TypeUtil.validateWriteSchema` then rejects a write that has them anywhere else
+  (`<col> is out of order, before <next>`). Add a MINOR's columns at the end of the `select`. Iceberg's schema is table-level, not
   per-branch, so widening shows the new column on already-published branches — with no value behind it.
 - `ETL.run()` returns `conf.getDataset(id).read`, i.e. `main`, so its return value is empty for these
   jobs. Nothing consumes it.
@@ -364,7 +366,7 @@ or a job whose destination is not the table its MAJOR implies all fail before th
 testable without Spark. Execution itself is sequential with no cross-contract rollback — fine while every
 contract destination is `OverWrite`. Each contract also re-extracts the raw input independently; §3.1
 encourages sharing intermediate transforms between MAJORs of one source, which nothing does yet because
-no source has two. `1000_genomes`, `clinvar`, `dbsnp`, `gnomad_cnv`, `gnomad_joint`, `gnomad_sv` and
+no source has two. `1000_genomes`, `clinvar`, `dbsnp`, `gnomad_cnv`, `gnomad_joint`, `gnomad_sv`, `mane` and
 `mondo` are wired; the other commands still dispatch directly until they get contract entries.
 
 `ContractFanOutSpec` is the end-to-end proof: it declares two MAJORs of a fictional source through
@@ -451,7 +453,8 @@ and `reference.<source>_v{N+1}` is derived from it. Three edits:
 If the new MAJOR needs different partitioning, declare an explicit `DatasetConf` for `<source>_v{N+1}` and
 override `mainDestination` to point at it — `destinationMismatchReason` still checks the name.
 
-MINOR is different: bump `lineage` in place on the existing row and add columns to the *same* normalizer.
+MINOR is different: bump `lineage` in place on the existing row and add columns at the end of the *same*
+normalizer's `select` (a column inserted earlier fails the write, see **Write-Audit-Publish**).
 Iceberg schema evolution widens the existing table (see the two required settings under **Write-Audit-Publish**).
 
 ## Known rough edges

@@ -77,6 +77,10 @@ object ImportPublicTable {
     ContractRunner.run("hpo_terms", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 
   @main
+  def mane(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
+    ContractRunner.run("mane", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
+
+  @main
   def mondo(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
     ContractRunner.run("mondo", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
 

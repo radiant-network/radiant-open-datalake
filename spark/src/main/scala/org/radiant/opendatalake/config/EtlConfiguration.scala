@@ -104,6 +104,7 @@ object EtlConfiguration extends App {
       DatasetConf("raw_ensembl_ena", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.ena.tsv.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
       DatasetConf("raw_ensembl_gff", raw_storage_id, "/ensembl/Homo_sapiens.GRCh38.gff.gz", GFF, OverWrite),
       DatasetConf("raw_ensembl_gff3", raw_storage_id, "/ensembl/{{VERSION}}/Homo_sapiens.GRCh38.*.gff3.gz", GFF, OverWrite),
+      DatasetConf("raw_mane_summary", raw_storage_id, "/mane/{{VERSION}}/MANE.GRCh38.v{{VERSION}}.summary.txt.gz", CSV, OverWrite, readoptions = Map("header" -> "true", "sep" -> "\t")),
       DatasetConf("raw_spliceai", raw_storage_id, "/spliceai/{{VERSION}}/spliceai_scores.raw.*.hg38.vcf.gz", VCF, OverWrite, readoptions = Map("flattenInfoFields" -> "true")),
 
       //normalized
@@ -139,6 +140,7 @@ object EtlConfiguration extends App {
       DatasetConf("normalized_hpo_gene_set", iceberg_storage_id, "/normalized/hpo_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("hpo_gene_set")),
       buildNormalizedDatasetConf(database, "hpo_genes"),
       buildNormalizedDatasetConf(database, "hpo_terms"),
+      buildNormalizedDatasetConf(database, "mane", repartition = Some(Coalesce())),
       buildNormalizedDatasetConf(database, "mondo"),
       buildNormalizedDatasetConf(database, "omim", repartition = Some(Coalesce())),
       DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
