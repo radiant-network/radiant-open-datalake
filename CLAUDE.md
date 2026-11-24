@@ -124,17 +124,19 @@ Local end-to-end runs (MinIO + Iceberg REST catalog via Docker Compose, plus a w
 `spark-submit` example): `spark/sandbox/README.md`. Storage/naming conventions:
 `spark/doc/storage_convention.md`.
 
-## Three layers, one config registry
+## Two layers, one config registry
 
 ```
 raw_*        (S3 landing: VCF / CSV / GFF / XML, read-only)
   → normalized_*  (one Iceberg table per source, schema standardized)
-    → enriched_*  (joins/aggregates across normalized tables)
 ```
 
+`enriched/` holds only transformation helpers (`dbnsfp`, `SpliceAi`) that normalizers call; no job publishes an
+`enriched_*` table.
+
 `config/EtlConfiguration.scala` is the single registry of every dataset (`DatasetConf`) and storage
-root (`StorageConf`). It is an `App`: running it **generates** `src/main/resources/config/prd.conf`
-and `src/test/resources/config/test.conf`. Never hand-edit those `.conf` files — edit
+root (`StorageConf`). It is an `App`: running it **generates** `src/main/resources/config/<env>.conf`
+(one per `Env` in `environments`) and `src/test/resources/config/test.conf`. Never hand-edit those `.conf` files — edit
 `EtlConfiguration.scala` and regenerate, or the next `runMain` silently reverts the change.
 
 Two storage ids only: `raw_storage` (`s3a://opendatalake-<env>/raw/landing`) and `iceberg_storage`
@@ -166,8 +168,7 @@ except the contract-managed ones (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`, `Gno
 have no companion at all: a second `@main` would be a launch path that skips contract selection and the destination
 check, so their only entry point is `ImportPublicTable` dispatching through `ContractRunner`.
 
-- `SimpleETLP` — normalized jobs (12 of them); publishes/partitions per the `DatasetConf`.
-- `SimpleSingleETL` — enriched jobs and `DBNSFPRaw` (3).
+- `SimpleETLP` — the pre-contract normalized jobs; publishes/partitions per the `DatasetConf`.
 - `contracts.ContractETLP` — the eleven contract-managed jobs (`Clinvar_v1`, `DBSNP_v1`, `GnomadCNV_v1`,
   `GnomadJoint_v1`, `GnomadSV_v1`, `HpoGenes_v1`, `HpoTerms_v1`, `Mane_v1`, `Mondo_v1`, `OneThousandGenomes_v1`,
   `SpliceAi_v1`). It derives their
@@ -383,7 +384,7 @@ singleton, the tmp dir is fixed and wiped in `beforeEach`/`afterEach` — do not
 warehouse paths. Mix in `CreateDatabasesBeforeAll` (creates the `reference` database) and
 `CleanUpBeforeAll` (drops tables + removes locations) when a spec loads to Iceberg.
 
-Expected input/output models (`RawClinvar`, `NormalizedClinvar`, `EnrichedGenes`, …) live **upstream**
+Expected input/output models (`RawClinvar`, `NormalizedClinvar`, …) live **upstream**
 in `bio.ferlab:datalake-test-utils`, not in this repo. A new table generally needs its model added
 there, or a locally-defined case class in the spec. Jobs under test are constructed with
 `TestETLContext()`; call `transformSingle`/`loadSingle` directly rather than `run()`.
@@ -459,9 +460,9 @@ Iceberg schema evolution widens the existing table (see the two required setting
 
 ## Known rough edges
 
-- `EtlConfiguration` only writes `prd.conf` and `test.conf`, but Airflow passes
-  `config/<environment>.conf` (and `spark/sandbox/README.md` references `config/qa.conf`). Non-prd
-  environments need their `StorageConf` list and a `ConfigurationWriter.writeTo` line added.
+- Airflow passes `config/<environment>.conf`, and `EtlConfiguration` writes one only per `Env` in
+  `environments` (today `prd` and `qa`, both on the prd bucket and database). A new environment needs its
+  `Env` entry, or its job fails to find its conf.
 - Glue-specific catalog properties are intentionally absent from the generated conf; they are injected
   at deploy/runtime by the Airflow operator's Spark conf.
 - **`split_multiallelics` in a `DatasetConf`'s `readoptions` does nothing.** Glow dropped the
