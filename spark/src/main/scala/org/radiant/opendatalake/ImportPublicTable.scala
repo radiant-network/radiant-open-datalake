@@ -2,7 +2,6 @@ package org.radiant.opendatalake
 
 import bio.ferlab.datalake.commons.config.RuntimeETLContext
 import org.radiant.opendatalake.contracts.ContractRunner
-import org.radiant.opendatalake.enriched.Genes
 import org.radiant.opendatalake.normalized._
 import org.radiant.opendatalake.normalized.gnomad._
 import org.radiant.opendatalake.normalized.refseq.{RefSeqAnnotation, RefSeqHumanGenes}
@@ -61,9 +60,6 @@ object ImportPublicTable {
   @main
   def gnomad_constraint(rc: RuntimeETLContext, version: Version, rawStorage: RawStorage, database: Database, warehouse: Warehouse): Unit =
     ContractRunner.run("gnomad_constraint", rc, version.value, rawStorage.value, database = Some(database.value), warehouse = Some(warehouse.value))
-
-  @main
-  def genes(rc: RuntimeETLContext): Unit = Genes.run(rc)
 
   @main
   def hpo(rc: RuntimeETLContext): Unit = HPOGeneSet.run(rc)

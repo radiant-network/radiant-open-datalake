@@ -128,10 +128,6 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "ensembl_gene", repartition = Some(Coalesce())),
       buildNormalizedDatasetConf(database, "ensembl_transcript", repartition = Some(Coalesce())),
       DatasetConf("normalized_ensembl_mapping", iceberg_storage_id, "/normalized/ensembl_mapping", ICEBERG, OverWrite, partitionby = List(), table = table("ensembl_mapping"), repartition = Some(Coalesce())),
-      // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
-      // contract table normalized_gnomad_constraint (gnomad_constraint_v1); gnomAD constraint ingestion
-      // itself is now the WAP contract GnomadConstraint_v1 (gnomAD v4.1.2).
-      DatasetConf("normalized_gnomad_constraint_v2_1_1", iceberg_storage_id, "/normalized/gnomad_constraint_v2_1_1", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("gnomad_constraint_v_2_1_1")),
       buildNormalizedDatasetConf(database, "gnomad_cnv", partitionby = List("chromosome")),
       buildNormalizedDatasetConf(database, "gnomad_constraint", partitionby = List("chromosome")),
       buildNormalizedDatasetConf(database, "gnomad_joint", partitionby = List("chromosome")),
@@ -145,15 +141,10 @@ object EtlConfiguration extends App {
       buildNormalizedDatasetConf(database, "omim", repartition = Some(Coalesce())),
       DatasetConf("normalized_omim_gene_set", iceberg_storage_id, "/normalized/omim_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("omim_gene_set")),
       buildNormalizedDatasetConf(database, "orphanet", repartition = Some(Coalesce())),
-      // Legacy input still read by enriched.Genes (via .read on main). Kept until Genes is wired to the
-      // contract table normalized_orphanet (orphanet_v1); Orphanet ingestion itself is now the WAP contract Orphanet_v1.
       DatasetConf("normalized_orphanet_gene_set", iceberg_storage_id, "/normalized/orphanet_gene_set", ICEBERG, OverWrite, partitionby = List(), table = table("orphanet_gene_set")),
       buildNormalizedDatasetConf(database, "topmed_bravo", partitionby = List("chromosome")),
       DatasetConf("normalized_refseq_annotation", iceberg_storage_id, "/normalized/refseq_annotation", ICEBERG, OverWrite, partitionby = List("chromosome"), table = table("refseq_annotation")),
-      buildNormalizedDatasetConf(database, "spliceai", partitionby = List("chromosome")),
-
-      // enriched
-      DatasetConf("enriched_genes", iceberg_storage_id, "/enriched/genes", ICEBERG, OverWrite, partitionby = List(), table = table("genes"))
+      buildNormalizedDatasetConf(database, "spliceai", partitionby = List("chromosome"))
     )
   }
 
